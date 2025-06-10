@@ -17,6 +17,9 @@ use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
 use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Session\Middleware\StartSession;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
+use SolutionForest\FilamentSimpleLightBox\SimpleLightBoxPlugin;
+use Solutionforest\FilamentLoginScreen\Filament\Pages\Auth\Themes\Theme1\LoginScreenPage;
+use Filament\Support\Enums\MaxWidth;
 
 class AdminPanelProvider extends PanelProvider
 {
@@ -26,10 +29,21 @@ class AdminPanelProvider extends PanelProvider
             ->default()
             ->id('admin')
             ->path('admin')
-            ->login()
+            ->login(LoginScreenPage::class)
+            ->brandName('Catcon')
+            ->brandLogo(asset('images/logocatcon.png'))
+            ->darkMode(false)
+            ->sidebarFullyCollapsibleOnDesktop()
             ->colors([
-                'primary' => Color::Amber,
+                'primary' => '#93160A',
+                'gray' => Color::Slate,
+                'info' => Color::Cyan,
+                'success' => Color::Emerald,
+                'warning' => Color::Amber,
+                'danger' => Color::Rose,
             ])
+            ->font('Inter')
+            ->maxContentWidth(MaxWidth::ScreenTwoExtraLarge)
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\\Filament\\Resources')
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\\Filament\\Pages')
             ->pages([
@@ -40,6 +54,10 @@ class AdminPanelProvider extends PanelProvider
                 Widgets\AccountWidget::class,
                 
             ])
+            ->sidebarWidth('18rem')
+            ->sidebarCollapsibleOnDesktop()
+            ->collapsibleNavigationGroups()
+            ->globalSearchKeyBindings(['command+k', 'ctrl+k'])            
             ->middleware([
                 EncryptCookies::class,
                 AddQueuedCookiesToResponse::class,
