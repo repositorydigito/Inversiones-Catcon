@@ -28,7 +28,7 @@ class ClientResource extends Resource
         return $form
             ->schema([
                 Forms\Components\TextInput::make('name')
-                    ->label('Nombre')
+                    ->label('Razón Social')
                     ->required(),  
                 Forms\Components\TextInput::make('comercial_name')
                     ->label('Nombre Comercial')

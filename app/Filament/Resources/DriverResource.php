@@ -36,6 +36,7 @@ class DriverResource extends Resource
                         'DNI' => 'DNI',
                         'RUC' => 'RUC',
                     ])
+                    ->default('RUC')
                     ->required(),
                 Forms\Components\TextInput::make('document_number')
                     ->label('Número de Documento')
