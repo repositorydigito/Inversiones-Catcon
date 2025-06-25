@@ -5,6 +5,7 @@ namespace App\Filament\Resources;
 use App\Filament\Resources\VehicleResource\Pages;
 use App\Filament\Resources\VehicleResource\RelationManagers;
 use App\Models\Vehicle;
+use App\Models\TrafficTicket;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
@@ -12,8 +13,9 @@ use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
-use Filament\Forms\Components\DatePicker; // Importa DatePicker
-use Filament\Forms\Components\Select; // Para el driver_id
+use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\Select; 
+use Filament\Tables\Actions\Action;
 
 class VehicleResource extends Resource
 {
@@ -24,25 +26,7 @@ class VehicleResource extends Resource
     protected static ?string $modelLabel = 'Vehículo';
     protected static ?int $navigationSort = 3;
     protected static ?string $navigationGroup = 'Entidades'; 
-
-    /* public static function form(Form $form): Form
-    {
-        return $form
-            ->schema([
-                Forms\Components\TextInput::make('plate_number')
-                    ->label('Número de Placa')
-                    ->required(),
-                Forms\Components\TextInput::make('brand')
-                    ->label('Marca')
-                    ->required(),
-                Forms\Components\TextInput::make('model')
-                    ->label('Modelo')
-                    ->required(),                
-                Forms\Components\TextInput::make('vehicle_certificate')
-                    ->label('Certificado Vehicular')
-                    ->nullable(),
-            ]);
-    } */
+    
     public static function form(Form $form): Form
     {
         return $form
@@ -65,7 +49,7 @@ class VehicleResource extends Resource
                             ->maxLength(255),
                         Forms\Components\TextInput::make('vehicle_certificate')
                             ->label('Certificado Vehicular')
-                            ->nullable()
+                            ->required()
                             ->maxLength(255),                        
                     ])->columns(2), 
 
@@ -85,6 +69,36 @@ class VehicleResource extends Resource
                             ->displayFormat('d/m/Y')
                             ->nullable(),
                     ])->columns(2), 
+                
+                Forms\Components\Section::make('Fotos de Papeletas (Vehículo)')
+                    ->description('Adjunte aquí las fotos de papeletas asociadas a este vehículo.')
+                    ->schema([
+                        Forms\Components\Repeater::make('trafficTickets') 
+                            ->relationship('trafficTickets') 
+                            ->label('Papeletas')
+                            ->addActionLabel('Añadir Papeleta')
+                            ->collapsible() 
+                            ->itemLabel(function (array $state): string {
+                                $imagePath = $state['image_path'] ?? null;
+                                if (is_array($imagePath)) {
+                                    $imagePath = $imagePath[0] ?? null;
+                                }
+                                return $imagePath ? basename($imagePath) : 'Nueva Papeleta';
+                            })
+                            ->schema([
+                                Forms\Components\FileUpload::make('image_path')
+                                    ->label('Foto de la Papeleta')
+                                    ->image() 
+                                    ->directory('traffic-tickets/vehicles') 
+                                    ->preserveFilenames() 
+                                    ->visibility('public') 
+                                    ->nullable(),
+                            ])
+                            ->defaultItems(0) 
+                            ->minItems(0) 
+                            ->grid(2),
+
+                    ]), 
             ]);
     }
 
@@ -111,6 +125,22 @@ class VehicleResource extends Resource
             ->actions([
                 Tables\Actions\EditAction::make(),
                 Tables\Actions\DeleteAction::make(),
+                Action::make('verPapeletas')
+                    ->label('Ver Papeletas')
+                    ->icon('heroicon-o-eye')
+                    ->color('info')
+                    ->modalHeading('Fotos de Papeletas')
+                    ->modalSubmitAction(false)
+                    ->modalCancelActionLabel('Cerrar')
+                    ->modalContent(function (Vehicle $record) {
+                        $imagenes = $record->trafficTickets->pluck('image_path')->filter()->values();
+                        if ($imagenes->isEmpty()) {
+                            return view('filament.resources.vehicle-resource.partials.papeletas-modal-empty');
+                        }
+                        return view('filament.resources.vehicle-resource.partials.papeletas-modal', [
+                            'imagenes' => $imagenes,
+                        ]);
+                    }),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([

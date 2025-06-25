@@ -18,4 +18,8 @@ class Driver extends Model
     {
         return $this->hasOne(Vehicle::class);
     }
+    public function trafficTickets()
+    {
+        return $this->hasMany(TrafficTicket::class);
+    }
 }

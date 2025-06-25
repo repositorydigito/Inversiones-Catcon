@@ -16,9 +16,19 @@ class Vehicle extends Model
         'technical_review_expiration_date',
         'tuce_expiration_date',
     ];
+
+    protected $casts = [
+        'soat_expiration_date' => 'date',
+        'technical_review_expiration_date' => 'date',
+        'tuce_expiration_date' => 'date',
+    ];
     
     public function driver()
     {
         return $this->belongsTo(Driver::class);
+    }
+    public function trafficTickets()
+    {
+        return $this->hasMany(TrafficTicket::class);
     }
 }

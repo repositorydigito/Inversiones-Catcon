@@ -15,4 +15,8 @@ return Application::configure(basePath: dirname(__DIR__))
     })
     ->withExceptions(function (Exceptions $exceptions) {
         //
-    })->create();
+    })
+    ->withSchedule(function (Illuminate\Console\Scheduling\Schedule $schedule) { 
+        $schedule->command('app:check-vehicle-expirations')->dailyAt('01:00')->withoutOverlapping();
+    })
+    ->create();
