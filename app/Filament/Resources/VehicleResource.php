@@ -12,6 +12,8 @@ use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
+use Filament\Forms\Components\DatePicker; // Importa DatePicker
+use Filament\Forms\Components\Select; // Para el driver_id
 
 class VehicleResource extends Resource
 {
@@ -23,7 +25,7 @@ class VehicleResource extends Resource
     protected static ?int $navigationSort = 3;
     protected static ?string $navigationGroup = 'Entidades'; 
 
-    public static function form(Form $form): Form
+    /* public static function form(Form $form): Form
     {
         return $form
             ->schema([
@@ -39,6 +41,50 @@ class VehicleResource extends Resource
                 Forms\Components\TextInput::make('vehicle_certificate')
                     ->label('Certificado Vehicular')
                     ->nullable(),
+            ]);
+    } */
+    public static function form(Form $form): Form
+    {
+        return $form
+            ->schema([
+                Forms\Components\Section::make('Datos del Vehículo')
+                    ->description('Registre los datos generales del vehículo.')
+                    ->schema([
+                        Forms\Components\TextInput::make('plate_number')
+                            ->label('Número de Placa')
+                            ->required()
+                            ->unique(ignoreRecord: true) 
+                            ->maxLength(255),
+                        Forms\Components\TextInput::make('brand')
+                            ->label('Marca')
+                            ->required()
+                            ->maxLength(255),
+                        Forms\Components\TextInput::make('model')
+                            ->label('Modelo')
+                            ->required()
+                            ->maxLength(255),
+                        Forms\Components\TextInput::make('vehicle_certificate')
+                            ->label('Certificado Vehicular')
+                            ->nullable()
+                            ->maxLength(255),                        
+                    ])->columns(2), 
+
+                Forms\Components\Section::make('Fechas de Vencimiento')
+                    ->description('Registre las fechas importantes de vencimiento del vehículo.')
+                    ->schema([
+                        DatePicker::make('soat_expiration_date')
+                            ->label('Vencimiento SOAT')
+                            ->displayFormat('d/m/Y') 
+                            ->nullable(),
+                        DatePicker::make('technical_review_expiration_date')
+                            ->label('Vencimiento Revisión Técnica')
+                            ->displayFormat('d/m/Y')
+                            ->nullable(),
+                        DatePicker::make('tuce_expiration_date')
+                            ->label('Vencimiento TUCE')
+                            ->displayFormat('d/m/Y')
+                            ->nullable(),
+                    ])->columns(2), 
             ]);
     }
 

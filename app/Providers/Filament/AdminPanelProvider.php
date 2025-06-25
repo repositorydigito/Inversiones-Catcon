@@ -29,7 +29,7 @@ class AdminPanelProvider extends PanelProvider
             ->default()
             ->id('admin')
             ->path('admin')
-            ->login(LoginScreenPage::class)
+            ->login()
             ->brandName('Catcon')
             ->brandLogo(asset('images/logocatcon.png'))
             ->darkMode(false)
