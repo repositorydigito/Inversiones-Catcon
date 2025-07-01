@@ -48,9 +48,10 @@ class VehicleResource extends Resource
                             ->required()
                             ->maxLength(255),
                         Forms\Components\TextInput::make('vehicle_certificate')
-                            ->label('Certificado Vehicular')
+                            ->label('Certificado Vehicular (TUCE)')
                             ->required()
-                            ->maxLength(255),                        
+                            ->minLength(10)
+                            ->maxLength(15),                        
                     ])->columns(2), 
 
                 Forms\Components\Section::make('Fechas de Vencimiento')

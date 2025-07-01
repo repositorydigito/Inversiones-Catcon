@@ -16,6 +16,11 @@ return new class extends Migration
             $table->string('commercial_name')->nullable();
             $table->string('logo_path')->nullable();
 
+            // Sección de campos para guias de remisión
+            $table->string('document_type')->default('6');
+            $table->string('address')->default('Cal. German Schreiber 276 Urb. Santa Ana');
+            $table->string('email')->nullable();
+
             // Sección Entorno del Sistema
             $table->enum('soap_type', ['demo', 'production'])->default('demo');
             $table->enum('soap_delivery_method', ['sunat', 'ose'])->default('sunat');

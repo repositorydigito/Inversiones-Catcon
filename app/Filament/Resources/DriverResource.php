@@ -29,8 +29,11 @@ class DriverResource extends Resource
     {
         return $form
             ->schema([
-                Forms\Components\TextInput::make('name')
-                    ->label('Nombre')
+                Forms\Components\TextInput::make('first_name')
+                    ->label('Nombres')
+                    ->required(),
+                Forms\Components\TextInput::make('last_name')
+                    ->label('Apellidos')
                     ->required(),
                 Forms\Components\Select::make('document_type')
                     ->label('Tipo de Documento')
@@ -45,6 +48,7 @@ class DriverResource extends Resource
                     ->required(),
                 Forms\Components\TextInput::make('license_number')
                     ->label('Número de Licencia')
+                    ->minLength(9)
                     ->required(),
                 Forms\Components\TextInput::make('phone')
                     ->label('Teléfono')
@@ -85,8 +89,11 @@ class DriverResource extends Resource
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('name')
-                    ->label('Nombre')
+                Tables\Columns\TextColumn::make('first_name')
+                    ->label('Nombres')
+                    ->searchable(),
+                Tables\Columns\TextColumn::make('last_name')
+                    ->label('Apellidos')
                     ->searchable(),
                 Tables\Columns\TextColumn::make('document_type')
                     ->label('Tipo de Documento')

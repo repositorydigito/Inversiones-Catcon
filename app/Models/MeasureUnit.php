@@ -15,4 +15,8 @@ class MeasureUnit extends Model
     {
         return $this->hasMany(InvoiceItem::class, 'unit_of_measure_id');
     }
+    public function despatchItems()
+    {
+        return $this->hasMany(DespatchItem::class, 'unit_of_measure_id');
+    }
 }

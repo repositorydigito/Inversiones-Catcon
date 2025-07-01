@@ -17,7 +17,7 @@ return new class extends Migration
             $table->string('comercial_name')->nullable();
             $table->string('document_type');
             $table->string('document_number');
-            $table->string('phone')->nullable();
+            $table->string('phone'  )->nullable();
             $table->string('address')->nullable();
             $table->string('email')->nullable();
             $table->timestamps();
