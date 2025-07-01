@@ -21,7 +21,7 @@ class DespatchService
         $this->apiUrl = env('NUBEFACT_API_URL');
     }
 
-    public function sendDespatch(Despatch $despatch): array
+    public function generateDespatch(Despatch $despatch): array
     {
         // Construye el payload JSON para Nubefact
         $payload = $this->buildDespatchPayload($despatch);
@@ -57,11 +57,12 @@ class DespatchService
                 'enlace_del_pdf'        => $decodedResponse['enlace_del_pdf'] ?? null,
                 'enlace_del_xml'        => $decodedResponse['enlace_del_xml'] ?? null,
                 'enlace_del_cdr'        => $decodedResponse['enlace_del_cdr'] ?? null,
+                //'enlace' enlace del json de respuesta de nubefact
             ]);
 
-            if (isset($decodedResponse['aceptada_por_sunat']) && $decodedResponse['aceptada_por_sunat'] === false) {
+            /* if (isset($decodedResponse['aceptada_por_sunat']) && $decodedResponse['aceptada_por_sunat'] === false) {
                 throw new Exception("SUNAT rechazó la guía: " . ($decodedResponse['sunat_description'] ?? 'Sin descripción de error.'));
-            }
+            } */
 
             return $decodedResponse;
 
@@ -75,6 +76,40 @@ class DespatchService
             throw $e; // Re-lanza la excepción para que el controlador o la acción de Filament la capturen
         }
     }   
+
+    public function consultDespatchStatus(Despatch $despatch): array
+    {
+        $response = Http::withHeaders([
+            'Authorization' => 'Token token="' . $this->apiToken . '"',
+            'Content-Type' => 'application/json',
+        ])->post($this->apiUrl, [
+            'operacion' => 'consultar_guia',
+            'tipo_de_comprobante' => $despatch->document_type, // '8' para GRE Transportista //
+            'serie' => $despatch->series,
+            'numero' => (string)$despatch->number,                       
+        ]);        
+        
+        $decodedResponse = $response->json(); 
+
+        if (isset($decodedResponse['errors'])) { 
+            $errorDetail = json_encode($decodedResponse['errors']);
+            throw new Exception("Error al consultar el estado de la guía en Nubefact: " . $errorDetail); //
+        }
+
+        $despatch->update([ //
+            'accepted_by_sunat'     => $decodedResponse['aceptada_por_sunat'] ?? false,
+            'sunat_description'     => $decodedResponse['sunat_description'] ?? null,
+            'sunat_note'            => $decodedResponse['sunat_note'] ?? null,
+            'sunat_response_code'   => $decodedResponse['sunat_responsecode'] ?? null,
+            'sunat_soap_error'      => $decodedResponse['sunat_soap_error'] ?? null, //
+            'qr_code_string'        => $decodedResponse['cadena_para_codigo_qr'] ?? null,
+            'enlace_del_pdf'        => $decodedResponse['enlace_del_pdf'] ?? null,
+            'enlace_del_xml'        => $decodedResponse['enlace_del_xml'] ?? null,
+            'enlace_del_cdr'        => $decodedResponse['enlace_del_cdr'] ?? null, //
+            // 'enlace'                => $decodedResponse['enlace'] ?? null,
+        ]);
+        return $decodedResponse; 
+    }
 
     protected function buildDespatchPayload(Despatch $despatch): array
     {

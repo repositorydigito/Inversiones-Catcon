@@ -409,21 +409,18 @@ class DespatchResource extends Resource
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),
-                Tables\Actions\Action::make('sendToNubefact')
+                Tables\Actions\Action::make('generateDespatchInNubefact')
                     ->label('Enviar a Nubefact')
                     ->icon('heroicon-o-cloud-arrow-up')
                     ->color('success')
                     ->action(function (Despatch $record, DespatchService $nubefactService) { // Inyecta el servicio aquí
                         try {
-                            $response = $nubefactService->sendDespatch($record);
-
-                            // Si la función sendDespatch lanza una excepción en caso de error,
-                            // no se llegará a esta parte en caso de fallo,
-                            // sino al bloque catch de la acción.
+                            $response = $nubefactService->generateDespatch($record);
+                            
                             Notification::make()
                                 ->title('Guía de Remisión Enviada')
                                 ->body("La guía #{$record->series}-{$record->number} ha sido procesada por SUNAT. Estado: " . ($record->accepted_by_sunat ? 'ACEPTADA' : 'RECHAZADA'))
-                                ->success() // O 'warning'/'danger' basado en $record->accepted_by_sunat
+                                ->success()
                                 ->send();
 
                         } catch (Exception $e) {
@@ -437,6 +434,59 @@ class DespatchResource extends Resource
                         $record->refresh(); // Recargar datos para mostrar el estado actualizado
                     })
                     ->visible(fn (Despatch $record): bool => !$record->accepted_by_sunat), // Muestra solo si no ha sido aceptada aún
+                
+                Tables\Actions\Action::make('consultDespatchStatus')
+                    ->label('Consultar Estado SUNAT')
+                    ->icon('heroicon-o-arrow-path')
+                    ->color('info')
+                    ->action(function (Despatch $record, DespatchService $nubefactService) {
+                        try {
+                            $response = $nubefactService->consultDespatchStatus($record); // Llama al nuevo método consultDespatchStatus
+
+                            Notification::make()
+                                ->title('Consulta de Estado Exitosa')
+                                ->body("Estado de la guía #{$record->series}-{$record->number}: " . ($record->accepted_by_sunat ? 'ACEPTADA' : 'RECHAZADA / PENDIENTE'))
+                                ->success()
+                                ->send();
+
+                        } catch (Exception $e) {
+                            Notification::make()
+                                ->title('Error al Consultar Estado')
+                                ->body($e->getMessage())
+                                ->danger()
+                                ->send();
+                        }
+
+                        $record->refresh(); // ¡MUY IMPORTANTE! Recarga el modelo para que la tabla muestre el nuevo estado y URLs
+                    }),
+                    // Muestra si la guía fue generada (tiene un response code, o al menos no ha sido aceptada)
+                    // y no ha sido aceptada por SUNAT (para seguir consultando hasta que se acepte o rechace).
+                    //->visible(fn (Despatch $record): bool => !is_null($record->sunat_response_code) && !$record->accepted_by_sunat), // Ajusta la visibilidad según tu flujo exacto.
+
+                // Opcional: Acción para descargar PDF/XML/CDR si existen
+                Tables\Actions\Action::make('downloadPdf')
+                    ->label('PDF')
+                    ->icon('heroicon-o-document-arrow-down')
+                    ->color('gray')
+                    ->url(fn (Despatch $record): string => $record->enlace_del_pdf ?? '#')
+                    ->openUrlInNewTab()
+                    ->visible(fn (Despatch $record): bool => !is_null($record->enlace_del_pdf)),
+
+                Tables\Actions\Action::make('downloadXml')
+                    ->label('XML')
+                    ->icon('heroicon-o-document-text')
+                    ->color('gray')
+                    ->url(fn (Despatch $record): string => $record->enlace_del_xml ?? '#')
+                    ->openUrlInNewTab()
+                    ->visible(fn (Despatch $record): bool => !is_null($record->enlace_del_xml)),
+
+                Tables\Actions\Action::make('downloadCdr')
+                    ->label('CDR')
+                    ->icon('heroicon-o-document-duplicate')
+                    ->color('gray')
+                    ->url(fn (Despatch $record): string => $record->enlace_del_cdr ?? '#')
+                    ->openUrlInNewTab()
+                    ->visible(fn (Despatch $record): bool => !is_null($record->enlace_del_cdr)),
                                 
             ])
             ->bulkActions([
