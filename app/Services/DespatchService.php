@@ -245,7 +245,7 @@ class DespatchService
             'RUC' => '6',
             'CE'  => '4',
             'Pasaporte' => '7',
-            //default => '0', 
+            default => '0', 
         };
     }
 }

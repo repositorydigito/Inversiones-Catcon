@@ -46,7 +46,209 @@ class DespatchResource extends Resource
     {
         return $form
             ->schema([
-                Section::make('Datos Generales de la Guía')
+                Section::make('Datos del Remitente')
+                    ->columns(4)
+                    ->schema([
+                        Select::make('company_id')
+                            ->label('Razón Social')
+                            ->options(Company::all()->pluck('name', 'id'))
+                            ->required()
+                            ->default(Company::first()?->id),
+                        TextInput::make('company_ruc')
+                            ->label('RUC')
+                            ->default(fn () => Company::first()?->ruc)
+                            ->required(),
+                        TextInput::make('departure_ubigeo')
+                            ->label('Ubigeo de Partida')
+                            ->required()
+                            ->maxLength(6)
+                            ->placeholder('Ej. 150101 (Lima, Lima, Lima)'),
+                        TextInput::make('departure_address')
+                            ->label('Dirección de Partida')
+                            ->required()
+                            ->maxLength(255),
+                        TextInput::make('departure_sunat_establishment_code')
+                            ->label('Código de Establecimiento SUNAT (Partida)')
+                            ->maxLength(4)
+                            ->placeholder('Ej. 0000')
+                            ->nullable()
+                            ->helperText('Opcional, código de SUNAT si aplica.'),
+                    ]),
+                Section::make('Datos del Destinatario')
+                    ->columns(4)
+                    ->schema([
+                        Select::make('client_id')
+                            ->label('Razón Social')
+                            ->options(Client::all()->pluck('name', 'id'))
+                            ->searchable()
+                            ->required()
+                            ->afterStateUpdated(function ($state, $set) {
+                                $client = \App\Models\Client::find($state);
+                                if ($client) {
+                                    $set('client_document_number', $client->document_number);
+                                } else {
+                                    $set('client_document_number', null);
+                                }
+                            })
+                            ->live(),
+                        TextInput::make('client_document_number')
+                            ->label('RUC')                            
+                            ->required()
+                            ->readOnly(),
+                        TextInput::make('arrival_ubigeo')
+                            ->label('Ubigeo de Llegada')
+                            ->required()
+                            ->maxLength(6)
+                            ->placeholder('Ej. 210101 (Piura, Piura, Piura)'),
+                        TextInput::make('arrival_address')
+                            ->label('Dirección de Llegada')
+                            ->required()
+                            ->maxLength(255),
+                        TextInput::make('arrival_sunat_establishment_code')
+                            ->label('Código de Establecimiento SUNAT (Llegada)')
+                            ->maxLength(4)
+                            ->placeholder('Ej. 0000')
+                            ->nullable()
+                            ->helperText('Opcional, código de SUNAT si aplica.'),                        
+                    ]),
+                Section::make('Información General')
+                    ->columns(4)
+                    ->schema([
+                        Select::make('document_type')
+                            ->label('Tipo de Guía')
+                            ->options([
+                                '7' => 'Guía de Remisión Remitente',
+                                '8' => 'Guía de Remisión Transportista',
+                            ])
+                            ->required()
+                            ->default('8'),
+
+                        TextInput::make('series')
+                            ->label('Serie')
+                            ->required()
+                            ->maxLength(4)
+                            ->default('VVV1'),
+
+                        TextInput::make('number')
+                            ->label('Número')
+                            ->numeric()
+                            ->required()
+                            ->minValue(1)
+                            ->default(fn () => Despatch::max('number') + 1), // Sugerir el siguiente número
+
+                        DatePicker::make('emission_date')
+                            ->label('Fecha de Emisión')
+                            ->required()
+                            ->default(now()),
+
+                        DatePicker::make('transfer_start_date')
+                            ->label('Fecha de Inicio de Traslado')
+                            ->required()
+                            ->default(now()), // Sugiere el mismo día
+
+                        Select::make('total_gross_weight_unit_of_measure')
+                            ->label('Unidad de Medida Peso')
+                            ->options([
+                                'KGM' => 'Kilogramos (KGM)',
+                                'TNE' => 'Toneladas (TNE)',
+                                // Agrega más si son necesarios según SUNAT/Nubefact
+                            ])
+                            ->required()
+                            ->reactive()
+                            ->default('KGM'),
+
+                        TextInput::make('total_gross_weight')
+                            ->label('Peso Bruto Total')
+                            ->numeric()
+                            ->required()
+                            ->minValue(0.01)
+                            ->step(0.01)
+                            ->suffix(fn (Forms\Get $get) => $get('total_gross_weight_unit_of_measure')),
+                        
+                        Textarea::make('observations')
+                            ->label('Observaciones')                            
+                            ->maxLength(100),
+
+                    ]),
+                Section::make('Datos de Pagador del Flete')
+                    ->description(new HtmlString('<p class="text-sm">Selecciona el indicador de envío para mostrar campos adicionales si aplica.</p>'))
+                    ->schema([
+                        Select::make('sunat_envio_indicador')
+                            ->label('Indicador de Envío SUNAT')
+                            ->options([
+                                ''    => 'Ninguno', // Opción por defecto
+                                '01' => 'Pagador Flete: Remitente',
+                                '02' => 'Pagador Flete: Subcontratista',
+                                '03' => 'Pagador Flete: Tercero',
+                                '04' => 'Retorno Vehículo/Envase Vacío',
+                                '05' => 'Retorno Vehículo Vacío',
+                                '06' => 'Traslado Vehículo M1L',
+                            ])
+                            ->default('')
+                            ->live() 
+                            ->nullable()
+                            ->columnSpanFull()
+                            ->helperText('Define el tipo de servicio de transporte.'),
+
+                        // Campos para Subcontratista (si sunat_envio_indicador es '02')
+                        Forms\Components\Fieldset::make('Datos del Subcontratista')
+                            ->schema([
+                                TextInput::make('subcontractor_document_type')
+                                    ->label('Tipo Doc. Subcontratista')
+                                    ->required()
+                                    ->numeric()
+                                    ->default(6) // Asume RUC por defecto
+                                    ->hiddenOn('create') // Ocultar por defecto en creación
+                                    ->disabled() // Deshabilitar si no se cumple la condición
+                                    ->dehydrated(fn ($state) => filled($state)) // No guardar si está vacío
+                                    ->helperText('Solo se acepta 6 (RUC) para subcontratista.'),
+                                TextInput::make('subcontractor_document_number')
+                                    ->label('Número Doc. Subcontratista')
+                                    ->required()
+                                    ->maxLength(11) // RUC tiene 11 dígitos
+                                    ->hiddenOn('create')
+                                    ->dehydrated(fn ($state) => filled($state)),
+                                TextInput::make('subcontractor_denomination')
+                                    ->label('Denominación Subcontratista')
+                                    ->required()
+                                    ->maxLength(255)
+                                    ->hiddenOn('create')
+                                    ->dehydrated(fn ($state) => filled($state)),
+                            ])
+                            ->visible(fn (Forms\Get $get): bool => $get('sunat_envio_indicador') === '02'), // Mostrar solo si el indicador es '02'
+
+                        // Campos para Pagador del Servicio (si sunat_envio_indicador es '03')
+                        Forms\Components\Fieldset::make('Datos del Pagador del Servicio')
+                            ->schema([
+                                Select::make('service_payer_document_type')
+                                    ->label('Tipo Doc. Pagador')
+                                    ->options([
+                                        '6' => 'RUC',
+                                        '1' => 'DNI',
+                                        '4' => 'CARNET DE EXTRANJERÍA',
+                                        '7' => 'PASAPORTE',
+                                        'A' => 'CÉDULA DIPLOMÁTICA DE IDENTIDAD',
+                                        '0' => 'NO DOMICILIADO, SIN RUC (EXPORTACIÓN)',
+                                    ])
+                                    ->required()
+                                    ->hiddenOn('create')
+                                    ->dehydrated(fn ($state) => filled($state)),
+                                TextInput::make('service_payer_document_number')
+                                    ->label('Número Doc. Pagador')
+                                    ->required()
+                                    ->maxLength(20) // Suficiente para todos los tipos
+                                    ->hiddenOn('create')
+                                    ->dehydrated(fn ($state) => filled($state)),
+                                TextInput::make('service_payer_denomination')
+                                    ->label('Denominación Pagador')
+                                    ->required()
+                                    ->maxLength(255)
+                                    ->hiddenOn('create')
+                                    ->dehydrated(fn ($state) => filled($state)),
+                            ])
+                            ->visible(fn (Forms\Get $get): bool => $get('sunat_envio_indicador') === '03'), // Mostrar solo si el indicador es '03'
+                    ]),
+                /* Section::make('Datos Generales de la Guía')
                     ->columns(3)
                     ->schema([                        
                         Select::make('company_id')
@@ -120,11 +322,10 @@ class DespatchResource extends Resource
                     ->schema([
                         Select::make('client_id')
                             ->label('Destinatario (Cliente)')
-                            ->options(Client::all()->pluck('name', 'id')) // Asume que tu modelo Client tiene un atributo 'full_name'
+                            ->options(Client::all()->pluck('name', 'id')) 
                             ->searchable()
                             ->required()
                             ->helperText('Selecciona al cliente que recibirá la mercadería.'),
-                        // Los datos del destinatario (tipo_documento, numero, denominacion) se obtendrán del modelo Client.
                     ]),
 
                 Section::make('Puntos de Partida y Llegada')
@@ -166,7 +367,7 @@ class DespatchResource extends Resource
                                     ->nullable()
                                     ->helperText('Opcional, código de SUNAT si aplica.'),
                             ]),
-                    ]),
+                    ]), */
 
                 Section::make('Transporte Principal')
                     ->columns(2)
@@ -181,90 +382,12 @@ class DespatchResource extends Resource
                         Select::make('driver_id')
                             ->label('Conductor Principal')
                             ->options(Driver::all()->mapWithKeys(function ($driver) {
-                                return [$driver->id => "{$driver->name} {$driver->last_name} ({$driver->license_number})"];
+                                return [$driver->id => "{$driver->first_name} {$driver->last_name} ({$driver->license_number})"];
                             }))
                             ->searchable()
                             ->nullable()
                             ->helperText('Selecciona al conductor principal del transporte.'),
-                    ]),
-
-                Section::make('Información Condicional de Envío')
-                    ->description(new HtmlString('<p class="text-sm">Selecciona el indicador de envío para mostrar campos adicionales si aplica.</p>'))
-                    ->schema([
-                        Select::make('sunat_envio_indicador')
-                            ->label('Indicador de Envío SUNAT')
-                            ->options([
-                                ''    => 'Ninguno', // Opción por defecto
-                                '01' => 'Pagador Flete: Remitente',
-                                '02' => 'Pagador Flete: Subcontratista',
-                                '03' => 'Pagador Flete: Tercero',
-                                '04' => 'Retorno Vehículo/Envase Vacío',
-                                '05' => 'Retorno Vehículo Vacío',
-                                '06' => 'Traslado Vehículo M1L',
-                            ])
-                            ->live() // Hace que el campo reaccione a los cambios
-                            ->nullable()
-                            ->columnSpanFull()
-                            ->helperText('Define el tipo de servicio de transporte.'),
-
-                        // Campos para Subcontratista (si sunat_envio_indicador es '02')
-                        Forms\Components\Fieldset::make('Datos del Subcontratista')
-                            ->schema([
-                                TextInput::make('subcontractor_document_type')
-                                    ->label('Tipo Doc. Subcontratista')
-                                    ->required()
-                                    ->numeric()
-                                    ->default(6) // Asume RUC por defecto
-                                    ->hiddenOn('create') // Ocultar por defecto en creación
-                                    ->disabled() // Deshabilitar si no se cumple la condición
-                                    ->dehydrated(fn ($state) => filled($state)) // No guardar si está vacío
-                                    ->helperText('Solo se acepta 6 (RUC) para subcontratista.'),
-                                TextInput::make('subcontractor_document_number')
-                                    ->label('Número Doc. Subcontratista')
-                                    ->required()
-                                    ->maxLength(11) // RUC tiene 11 dígitos
-                                    ->hiddenOn('create')
-                                    ->dehydrated(fn ($state) => filled($state)),
-                                TextInput::make('subcontractor_denomination')
-                                    ->label('Denominación Subcontratista')
-                                    ->required()
-                                    ->maxLength(255)
-                                    ->hiddenOn('create')
-                                    ->dehydrated(fn ($state) => filled($state)),
-                            ])
-                            ->visible(fn (Forms\Get $get): bool => $get('sunat_envio_indicador') === '02'), // Mostrar solo si el indicador es '02'
-
-                        // Campos para Pagador del Servicio (si sunat_envio_indicador es '03')
-                        Forms\Components\Fieldset::make('Datos del Pagador del Servicio')
-                            ->schema([
-                                Select::make('service_payer_document_type')
-                                    ->label('Tipo Doc. Pagador')
-                                    ->options([
-                                        '6' => 'RUC',
-                                        '1' => 'DNI',
-                                        '4' => 'CARNET DE EXTRANJERÍA',
-                                        '7' => 'PASAPORTE',
-                                        'A' => 'CÉDULA DIPLOMÁTICA DE IDENTIDAD',
-                                        '0' => 'NO DOMICILIADO, SIN RUC (EXPORTACIÓN)',
-                                    ])
-                                    ->required()
-                                    ->hiddenOn('create')
-                                    ->dehydrated(fn ($state) => filled($state)),
-                                TextInput::make('service_payer_document_number')
-                                    ->label('Número Doc. Pagador')
-                                    ->required()
-                                    ->maxLength(20) // Suficiente para todos los tipos
-                                    ->hiddenOn('create')
-                                    ->dehydrated(fn ($state) => filled($state)),
-                                TextInput::make('service_payer_denomination')
-                                    ->label('Denominación Pagador')
-                                    ->required()
-                                    ->maxLength(255)
-                                    ->hiddenOn('create')
-                                    ->dehydrated(fn ($state) => filled($state)),
-                            ])
-                            ->visible(fn (Forms\Get $get): bool => $get('sunat_envio_indicador') === '03'), // Mostrar solo si el indicador es '03'
-                    ]),
+                    ]),                
 
                 Section::make('Ítems de la Guía')
                     ->schema([
