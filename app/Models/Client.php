@@ -14,6 +14,7 @@ class Client extends Model
         'phone',
         'address',
         'email',
+        'days_to_pay',
     ];
 
     public function invoices()
