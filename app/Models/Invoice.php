@@ -52,10 +52,15 @@ class Invoice extends Model
         'sunat_note',
         'sunat_response_code',
         'sunat_soap_error',
+        'pdf_link',
+        'xml_link', 
+        'cdr_link',
+        'nubefact_key',
         'pdf_zip_base64',
         'xml_zip_base64',
         'cdr_zip_base64',
         'qr_code_string',
+        'barcode_string',
         'hash_code',
         'sunat_link',
     ];
@@ -76,6 +81,14 @@ class Invoice extends Model
     public function client()
     {
         return $this->belongsTo(Client::class);
+    }
+    public function despatches()
+    {
+        return $this->belongsToMany(Despatch::class, 'invoice_despatch', 'invoice_id', 'despatch_id');
+    }
+    public function accountReceivables()
+    {
+        return $this->hasMany(AccountReceivable::class);
     }
 
 }

@@ -21,4 +21,8 @@ class Client extends Model
     {
         return $this->hasMany(Invoice::class);
     }
+    public function accountReceivables()
+    {
+        return $this->hasMany(AccountReceivable::class);
+    }
 }

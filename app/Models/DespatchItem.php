@@ -19,7 +19,7 @@ class DespatchItem extends Model
     {
         return $this->belongsTo(Despatch::class);
     }
-    public function measureUnit()
+    public function unitOfMeasure()
     {
         return $this->belongsTo(MeasureUnit::class, 'unit_of_measure_id');
     }

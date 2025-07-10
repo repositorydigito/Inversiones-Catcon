@@ -71,8 +71,7 @@ class DespatchResource extends Resource
                             ->label('Código de Establecimiento SUNAT (Partida)')
                             ->maxLength(4)
                             ->placeholder('Ej. 0000')
-                            ->nullable()
-                            ->helperText('Opcional, código de SUNAT si aplica.'),
+                            ->nullable(),
                     ]),
                 Section::make('Datos del Destinatario')
                     ->columns(4)
@@ -108,8 +107,7 @@ class DespatchResource extends Resource
                             ->label('Código de Establecimiento SUNAT (Llegada)')
                             ->maxLength(4)
                             ->placeholder('Ej. 0000')
-                            ->nullable()
-                            ->helperText('Opcional, código de SUNAT si aplica.'),                        
+                            ->nullable(),
                     ]),
                 Section::make('Información General')
                     ->columns(4)
@@ -531,32 +529,7 @@ class DespatchResource extends Resource
                 //
             ])
             ->actions([
-                Tables\Actions\EditAction::make(),
-                Tables\Actions\Action::make('generateDespatchInNubefact')
-                    ->label('Enviar a Nubefact')
-                    ->icon('heroicon-o-cloud-arrow-up')
-                    ->color('success')
-                    ->action(function (Despatch $record, DespatchService $nubefactService) { // Inyecta el servicio aquí
-                        try {
-                            $response = $nubefactService->generateDespatch($record);
-                            
-                            Notification::make()
-                                ->title('Guía de Remisión Enviada')
-                                ->body("La guía #{$record->series}-{$record->number} ha sido procesada por SUNAT. Estado: " . ($record->accepted_by_sunat ? 'ACEPTADA' : 'RECHAZADA'))
-                                ->success()
-                                ->send();
-
-                        } catch (Exception $e) {
-                            Notification::make()
-                                ->title('Error al Enviar Guía de Remisión')
-                                ->body($e->getMessage())
-                                ->danger()
-                                ->send();
-                        }
-
-                        $record->refresh(); // Recargar datos para mostrar el estado actualizado
-                    })
-                    ->visible(fn (Despatch $record): bool => !$record->accepted_by_sunat), // Muestra solo si no ha sido aceptada aún
+                Tables\Actions\EditAction::make(),                
                 
                 Tables\Actions\Action::make('consultDespatchStatus')
                     ->label('Consultar Estado SUNAT')

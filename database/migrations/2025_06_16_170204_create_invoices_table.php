@@ -61,12 +61,18 @@ return new class extends Migration
             $table->text('sunat_note')->nullable();
             $table->string('sunat_response_code', 10)->nullable();
             $table->text('sunat_soap_error')->nullable();
+            $table->string('sunat_link')->nullable();
+            $table->string('pdf_link')->nullable();
+            $table->string('xml_link')->nullable();
+            $table->string('cdr_link')->nullable();
+            $table->string('nubefact_key')->nullable();            
             $table->longText('pdf_zip_base64')->nullable(); 
             $table->longText('xml_zip_base64')->nullable(); 
             $table->longText('cdr_zip_base64')->nullable(); 
             $table->text('qr_code_string')->nullable(); 
-            $table->string('hash_code', 255)->nullable(); 
-            $table->string('sunat_link', 255)->nullable(); 
+            $table->string('hash_code')->nullable(); 
+            $table->string('barcode_string')->nullable(); 
+            
             $table->timestamps();
         });
     }

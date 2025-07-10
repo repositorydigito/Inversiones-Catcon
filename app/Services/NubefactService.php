@@ -37,6 +37,7 @@ class NubefactService
             $errorDetail = json_encode($decodedResponse['errors']);
             throw new \Exception("La API de Nubefact devolvió un error: " . $errorDetail);
         }
+        
         if (isset($decodedResponse['aceptada_por_sunat']) && $decodedResponse['aceptada_por_sunat'] === false) {
              throw new \Exception("SUNAT rechazó el comprobante: " . ($decodedResponse['sunat_description'] ?? 'Sin descripción de error.'));
         }
@@ -50,13 +51,21 @@ class NubefactService
             'DNI' => '1',
             'RUC' => '6',
             'CE'  => '4', 
-            //default => '0', 
+            default => '1', // Por defecto DNI
+        };
+    }
+    protected function mapGuideType($documentType)
+    {
+        return match ($documentType) {
+            '7' => 1, // GRE Remitente
+            '8' => 2, // GRE Transportista
+            default => 2, // Por defecto GRE Transportista
         };
     }
     
     public function buildInvoicePayload(Invoice $invoice): array
     {        
-        $invoice->loadMissing(['client', 'items.unitOfMeasure']);
+        $invoice->loadMissing(['client', 'items.unitOfMeasure','despatches']);
 
         if (!$invoice->client) {
             throw new \Exception("La factura no tiene un cliente asociado.");
@@ -72,29 +81,30 @@ class NubefactService
                 throw new \Exception("Ítem sin unidad de medida asociada: " . $item->description);
             }
             return [
-                "unidad_de_medida" => $item->unitOfMeasure->code,
+                "unidad_de_medida" => $item->unitOfMeasure->code, // Usar directamente el campo code
                 "codigo"           => $item->code ?: '',
+                "codigo_producto_sunat" => "10000000", // Código por defecto para productos
                 "descripcion"      => $item->description,
                 "cantidad"         => (float) $item->quantity,
                 "valor_unitario"   => (float) $item->unit_value,
                 "precio_unitario"  => (float) $item->unit_price,
                 "descuento"        => (float) ($item->discount ?: 0),
                 "subtotal"         => (float) $item->subtotal,
-                "tipo_de_igv"      => $item->igv_type,
+                "tipo_de_igv"      => (int) $item->igv_type,
                 "igv"              => (float) $item->igv,
                 "total"            => (float) $item->total,
-                "anticipo_regularizacion" => $item->advance_regularization ? 'true' : 'false',
+                "anticipo_regularizacion" => $item->advance_regularization ? true : false,
                 "anticipo_documento_serie" => $item->advance_document_series ?: '',
-                "anticipo_documento_numero" => (float) ($item->advance_document_number ?: 0),
+                "anticipo_documento_numero" => (int) ($item->advance_document_number ?: 0),
             ];
         })->toArray();
 
         $payload = [
             "operacion"                 => "generar_comprobante",
-            "tipo_de_comprobante"       => $invoice->invoice_type,
+            "tipo_de_comprobante"       => (int) $invoice->invoice_type,
             "serie"                     => $invoice->series,
             "numero"                    => (int) $invoice->number,
-            "sunat_transaction"         => $invoice->transaction_type,
+            "sunat_transaction"         => (int) $invoice->transaction_type,
             "cliente_tipo_de_documento" => $this->mapDocumentType($invoice->client->document_type),
             "cliente_numero_de_documento" => $invoice->client->document_number,
             "cliente_denominacion"      => $invoice->client->name,
@@ -104,7 +114,8 @@ class NubefactService
             "cliente_email_2"           => "",
             "fecha_de_emision"          => $invoice->emission_date->format('d-m-Y'),
             "fecha_de_vencimiento"      => $invoice->due_date ? $invoice->due_date->format('d-m-Y') : '',
-            "moneda"                    => $currencyCode,
+            "moneda"                    => (int) $currencyCode,
+            "tipo_de_cambio"            => $invoice->exchange_rate ?: '',
             "porcentaje_de_igv"         => (float) $invoice->igv_percentage,
             "descuento_global"          => (float) ($invoice->global_discount ?: 0),
             "total_descuento"           => (float) ($invoice->total_discount ?: 0),
@@ -113,15 +124,19 @@ class NubefactService
             "total_inafecta"            => (float) ($invoice->total_unaffected ?: 0),
             "total_exonerada"           => (float) ($invoice->total_exonerated ?: 0),
             "total_igv"                 => (float) $invoice->total_igv,
-            "total_gratuita"             => (float) ($invoice->total_gratuitous ?: 0),
+            "total_gratuita"            => (float) ($invoice->total_gratuitous ?: 0),
             "total_otros_cargos"        => (float) ($invoice->total_other_charges ?: 0),
             "total"                     => (float) $invoice->total,
 
-            "tipo_de_percepcion"        => $invoice->perception_type ?: '',
-            "base_imponible_de_percepcion" => (float) ($invoice->perception_taxable_base ?: 0),
+            "percepcion_tipo"           => $invoice->perception_type ?: '',
+            "percepcion_base_imponible" => (float) ($invoice->perception_taxable_base ?: 0),
             "total_percepcion"          => (float) ($invoice->total_perception ?: 0),
             "total_incluido_percepcion" => (float) ($invoice->total_included_perception ?: 0),
-            "detraccion"                => $invoice->detraction ? 'true' : 'false',
+            "retencion_tipo"            => '',
+            "retencion_base_imponible"  => '',
+            "total_retencion"           => '',
+            "total_impuestos_bolsas"    => '',
+            "detraccion"                => $invoice->detraction,
 
             "observaciones"             => $invoice->observations ?: '',
             "documento_que_se_modifica_tipo" => $invoice->document_to_modify_type ?: '',
@@ -131,16 +146,29 @@ class NubefactService
             "tipo_de_nota_de_debito"    => $invoice->debit_note_type ?: '',
 
             "enviar_automaticamente_a_la_sunat" => $invoice->send_automatically_to_sunat,
-            "enviar_automaticamente_al_cliente" => $invoice->send_automatically_al_cliente,
+            "enviar_automaticamente_al_cliente" => $invoice->send_automatically_to_client,
             "codigo_unico"              => $invoice->unique_code ?: '',
             "condiciones_de_pago"       => $invoice->payment_conditions ?: '',
             "medio_de_pago"             => $invoice->payment_method ?: '',
             "placa_vehiculo"            => $invoice->vehicle_plate ?: '',
             "orden_compra_servicio"     => $invoice->purchase_order_service ?: '',
+            "tabla_personalizada_codigo" => $invoice->custom_table_code ?: '',
             "formato_de_pdf"            => $invoice->pdf_format ?: '',
+            "generado_por_contingencia" => '',
+            "bienes_region_selva"       => '',
+            "servicios_region_selva"    => '',
 
             "items"                     => $itemsPayload,
         ];
+
+        if ($invoice->despatches->isNotEmpty()) {
+            $payload['guias'] = $invoice->despatches->map(function ($despatch) {
+                return [
+                    'guia_tipo' => $this->mapGuideType($despatch->document_type),
+                    'guia_serie_numero' => $despatch->series . '-' . $despatch->number,
+                ];
+            })->toArray();
+        }
 
         return $payload;
     }

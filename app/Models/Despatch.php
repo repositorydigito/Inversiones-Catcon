@@ -57,46 +57,43 @@ class Despatch extends Model
     {
         return $this->belongsTo(Company::class);
     }
-
     // Relación con el vehículo principal
     public function vehicle()
     {
         return $this->belongsTo(Vehicle::class);
     }
-
     // Relación con el conductor principal
     public function driver()
     {
         return $this->belongsTo(Driver::class);
     }
-
     // Relación con el cliente (destinatario)
     public function client()
     {
         return $this->belongsTo(Client::class);
     }
-
     // Relación con los ítems de la guía de remisión
     public function items()
     {
         return $this->hasMany(DespatchItem::class);
     }
-
     // Relación con los documentos relacionados
     public function relatedDocuments()
     {
         return $this->hasMany(DespatchRelatedDocument::class);
     }
-
     // Relación de muchos a muchos con vehículos secundarios
     public function secondaryVehicles()
     {
         return $this->belongsToMany(Vehicle::class, 'despatch_secondary_vehicle', 'despatch_id', 'vehicle_id');
     }
-
     // Relación de muchos a muchos con conductores secundarios
     public function secondaryDrivers()
     {
         return $this->belongsToMany(Driver::class, 'despatch_secondary_driver', 'despatch_id', 'driver_id');
+    }
+    public function invoices()
+    {
+        return $this->belongsToMany(Invoice::class, 'invoice_despatch', 'despatch_id', 'invoice_id');
     }
 }

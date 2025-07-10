@@ -55,6 +55,13 @@ class ClientResource extends Resource
                     ->label('Correo Electrónico')
                     ->email()
                     ->nullable(),
+                Forms\Components\TextInput::make('days_to_pay')
+                    ->label('Días para pagar')
+                    ->numeric()
+                    ->minValue(1) 
+                    ->maxValue(365) 
+                    ->nullable() 
+                    ->helperText('Importante para las Cuentas por Cobrar'),
             ]);
     }
 

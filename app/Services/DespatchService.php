@@ -119,7 +119,7 @@ class DespatchService
             'client',
             'vehicle',
             'driver',
-            'items.measureUnit',
+            'items.unitOfMeasure',
             'secondaryVehicles',
             'secondaryDrivers',
             'relatedDocuments'
@@ -136,12 +136,12 @@ class DespatchService
         }
 
         $itemsPayload = $despatch->items->map(function ($item) {
-            if (!$item->measureUnit) { // Validar que la unidad de medida exista
+            if (!$item->unitOfMeasure) { // Validar que la unidad de medida exista
                 throw new Exception("Ítem sin unidad de medida asociada: " . $item->description);
             }
 
             return [
-                "unidad_de_medida" => $item->measureUnit->code,
+                "unidad_de_medida" => $item->unitOfMeasure->code,
                 "codigo"           => $item->code ?: '',
                 "descripcion"      => $item->description,
                 "cantidad"         => (int)$item->quantity,
@@ -149,7 +149,7 @@ class DespatchService
         })->toArray();
 
         $payload = [
-            "operacion"                        => $despatch->operation,
+            "operacion"                        => 'generar_guia',
             "tipo_de_comprobante"              => $despatch->document_type,
             "serie"                            => $despatch->series,
             "numero"                           => (int      )$despatch->number,
@@ -226,7 +226,7 @@ class DespatchService
         }
 
         if ($despatch->relatedDocuments->isNotEmpty()) {
-            $payload['documentos_relacionados'] = $despatch->relatedDocuments->map(function ($doc) {
+            $payload['documentos_relacionados'] = $despatcph->relatedDocuments->map(function ($doc) {
                 return [
                     'tipo_documento' => $doc->document_type,
                     'serie'          => $doc->series,

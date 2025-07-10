@@ -13,10 +13,13 @@ return new class extends Migration
             $table->foreignId('invoice_id');
             $table->foreignId('client_id');
             $table->date('emission_date');
-            $table->integer('days_elapsed');
+            $table->decimal('total_amount', 10, 2);
+            $table->date('due_date')->nullable();
+            $table->integer('days_elapsed')->default(0);
             $table->date('pay_date')->nullable();
+            $table->string('pay_mode')->nullable();
             $table->string('status');
-
+            $table->text('notes')->nullable();
             $table->timestamps();
         });
     }
