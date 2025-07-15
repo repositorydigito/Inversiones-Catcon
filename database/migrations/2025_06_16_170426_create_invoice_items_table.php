@@ -10,8 +10,8 @@ return new class extends Migration
     {
         Schema::create('invoice_items', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('invoice_id'); 
-            $table->foreignId('unit_of_measure_id'); 
+            $table->foreignId('invoice_id')->constrained('invoices')->onDelete('cascade');; 
+            $table->foreignId('unit_of_measure_id')->constrained('measure_units')->onDelete('cascade');; 
             $table->string('code', 50)->nullable(); 
             $table->string('description', 255); 
             $table->decimal('quantity', 10, 2);

@@ -10,8 +10,8 @@ return new class extends Migration
     {
         Schema::create('account_receivables', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('invoice_id');
-            $table->foreignId('client_id');
+            $table->foreignId('invoice_id')->constrained('invoices')->onDelete('cascade');;
+            $table->foreignId('client_id')->constrained('clients')->onDelete('cascade');;
             $table->date('emission_date');
             $table->decimal('total_amount', 10, 2);
             $table->date('due_date')->nullable();

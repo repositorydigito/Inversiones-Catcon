@@ -110,7 +110,7 @@ class DespatchResource extends Resource
                             ->nullable(),
                     ]),
                 Section::make('Información General')
-                    ->columns(4)
+                    ->columns(3)
                     ->schema([
                         Select::make('document_type')
                             ->label('Tipo de Guía')
@@ -163,11 +163,88 @@ class DespatchResource extends Resource
                             ->step(0.01)
                             ->suffix(fn (Forms\Get $get) => $get('total_gross_weight_unit_of_measure')),
                         
+                        TextInput::make('net_weight')
+                            ->label('Peso Neto')
+                            ->numeric()
+                            ->step(0.01)
+                            ->suffix(fn (Forms\Get $get) => $get('total_gross_weight_unit_of_measure'))
+                            ->helperText('Este campo no va a SUNAT'),
+                        
                         Textarea::make('observations')
                             ->label('Observaciones')                            
                             ->maxLength(100),
-
                     ]),
+
+                Section::make('Gastos Operativos')
+                    ->description('Información adicional para el control de gastos operativos. Estos campos no se envían a SUNAT.')
+                    ->schema([
+                        Forms\Components\Group::make()
+                            ->schema([
+                                Forms\Components\TextInput::make('loading_point')
+                                    ->label('Punto de Carga')
+                                    ->maxLength(255),                                    
+                                Forms\Components\TextInput::make('unloading_point')
+                                    ->label('Punto de Descarga')
+                                    ->maxLength(255),                                   
+                                Forms\Components\TextInput::make('product')
+                                    ->label('Producto')
+                                    ->maxLength(255),                                    
+                                Forms\Components\TextInput::make('supplier')
+                                    ->label('Proveedor')
+                                    ->maxLength(255),
+                                Forms\Components\TextInput::make('tolls')
+                                    ->label('Peajes')
+                                    ->numeric()
+                                    ->prefix('S/.')
+                                    ->step(0.01)
+                                    ->default(0)
+                                    ->helperText('Monto total de peajes del viaje'),
+                            ])
+                            ->columns(5),
+                        
+                        Forms\Components\Group::make()
+                            ->schema([                              
+                                Forms\Components\TextInput::make('loading_expenses')
+                                    ->label('Gastos de Carga')
+                                    ->numeric()
+                                    ->prefix('S/.')
+                                    ->step(0.01)
+                                    ->default(0)
+                                    ->helperText('Gastos incurridos en la carga'),
+                                
+                                Forms\Components\TextInput::make('travel_allowances')
+                                    ->label('Viáticos')
+                                    ->numeric()
+                                    ->prefix('S/.')
+                                    ->step(0.01)
+                                    ->default(0)
+                                    ->helperText('Viáticos asignados al conductor'),
+                                
+                                Forms\Components\TextInput::make('variable_salary')
+                                    ->label('Sueldo Variable')
+                                    ->numeric()
+                                    ->prefix('S/.')
+                                    ->step(0.01)
+                                    ->default(0),
+                                
+                                Forms\Components\TextInput::make('operations_manager')
+                                    ->label('Jefe de Operaciones')
+                                    ->numeric()
+                                    ->prefix('S/.')
+                                    ->step(0.01)
+                                    ->default(0),
+                                
+                                Forms\Components\TextInput::make('security')
+                                    ->label('Seguridad')
+                                    ->numeric()
+                                    ->prefix('S/.')
+                                    ->step(0.01)
+                                    ->default(0),
+                            ])
+                            ->columns(5),                      
+                    ])
+                    ->collapsible(),
+
                 Section::make('Datos de Pagador del Flete')
                     ->description(new HtmlString('<p class="text-sm">Selecciona el indicador de envío para mostrar campos adicionales si aplica.</p>'))
                     ->schema([
@@ -245,127 +322,7 @@ class DespatchResource extends Resource
                                     ->dehydrated(fn ($state) => filled($state)),
                             ])
                             ->visible(fn (Forms\Get $get): bool => $get('sunat_envio_indicador') === '03'), // Mostrar solo si el indicador es '03'
-                    ]),
-                /* Section::make('Datos Generales de la Guía')
-                    ->columns(3)
-                    ->schema([                        
-                        Select::make('company_id')
-                            ->label('Remitente (Tu Empresa)')
-                            ->options(Company::all()->pluck('name', 'id'))
-                            ->required()
-                            ->default(Company::first()?->id)
-                            ->helperText('La empresa que actúa como remitente de esta guía.'),
-                        
-                        Select::make('document_type')
-                            ->label('Tipo de Guía')
-                            ->options([
-                                '7' => 'Guía de Remisión Remitente',
-                                '8' => 'Guía de Remisión Transportista',
-                            ])
-                            ->required()
-                            ->default('8'),
-
-                        TextInput::make('series')
-                            ->label('Serie')
-                            ->required()
-                            ->maxLength(4)
-                            ->default('E001') // Ejemplo de serie por defecto
-                            ->helperText('Serie de la guía (ej. E001).'),
-
-                        TextInput::make('number')
-                            ->label('Número')
-                            ->numeric()
-                            ->required()
-                            ->minValue(1)
-                            ->default(fn () => Despatch::max('number') + 1) // Sugerir el siguiente número
-                            ->helperText('Número correlativo de la guía.'),
-
-                        DatePicker::make('emission_date')
-                            ->label('Fecha de Emisión')
-                            ->required()
-                            ->default(now()),
-
-                        DatePicker::make('transfer_start_date')
-                            ->label('Fecha de Inicio de Traslado')
-                            ->required()
-                            ->default(now()), // Sugiere el mismo día
-
-                        Select::make('total_gross_weight_unit_of_measure')
-                            ->label('Unidad de Medida Peso')
-                            ->options([
-                                'KGM' => 'Kilogramos (KGM)',
-                                'TNE' => 'Toneladas (TNE)',
-                                // Agrega más si son necesarios según SUNAT/Nubefact
-                            ])
-                            ->required()
-                            ->reactive()
-                            ->default('KGM'),
-
-                        TextInput::make('total_gross_weight')
-                            ->label('Peso Bruto Total')
-                            ->numeric()
-                            ->required()
-                            ->minValue(0.01)
-                            ->step(0.01)
-                            ->suffix(fn (Forms\Get $get) => $get('total_gross_weight_unit_of_measure')),
-
-                        Textarea::make('observations')
-                            ->label('Observaciones')
-                            ->columnSpanFull()
-                            ->maxLength(255),
-                    ]),
-
-                Section::make('Información de Destinatario')
-                    ->columns(2)
-                    ->schema([
-                        Select::make('client_id')
-                            ->label('Destinatario (Cliente)')
-                            ->options(Client::all()->pluck('name', 'id')) 
-                            ->searchable()
-                            ->required()
-                            ->helperText('Selecciona al cliente que recibirá la mercadería.'),
-                    ]),
-
-                Section::make('Puntos de Partida y Llegada')
-                    ->columns(2)
-                    ->schema([
-                        Group::make()
-                            ->schema([
-                                TextInput::make('departure_ubigeo')
-                                    ->label('Ubigeo de Partida')
-                                    ->required()
-                                    ->maxLength(6)
-                                    ->placeholder('Ej. 150101 (Lima, Lima, Lima)'), // Puedes integrar un selector de ubigeo si tienes uno
-                                TextInput::make('departure_address')
-                                    ->label('Dirección de Partida')
-                                    ->required()
-                                    ->maxLength(255),
-                                TextInput::make('departure_sunat_establishment_code')
-                                    ->label('Código de Establecimiento SUNAT (Partida)')
-                                    ->maxLength(4)
-                                    ->placeholder('Ej. 0000')
-                                    ->nullable()
-                                    ->helperText('Opcional, código de SUNAT si aplica.'),
-                            ]),
-                        Group::make()
-                            ->schema([
-                                TextInput::make('arrival_ubigeo')
-                                    ->label('Ubigeo de Llegada')
-                                    ->required()
-                                    ->maxLength(6)
-                                    ->placeholder('Ej. 210101 (Piura, Piura, Piura)'),
-                                TextInput::make('arrival_address')
-                                    ->label('Dirección de Llegada')
-                                    ->required()
-                                    ->maxLength(255),
-                                TextInput::make('arrival_sunat_establishment_code')
-                                    ->label('Código de Establecimiento SUNAT (Llegada)')
-                                    ->maxLength(4)
-                                    ->placeholder('Ej. 0000')
-                                    ->nullable()
-                                    ->helperText('Opcional, código de SUNAT si aplica.'),
-                            ]),
-                    ]), */
+                    ]),                
 
                 Section::make('Transporte Principal')
                     ->columns(2)

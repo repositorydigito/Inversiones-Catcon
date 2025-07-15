@@ -31,4 +31,20 @@ class Vehicle extends Model
     {
         return $this->hasMany(TrafficTicket::class);
     }
+    public function operationalExpenses()
+    {
+        return $this->hasMany(OperationalExpense::class);
+    }
+    public function expenseSummaries()
+    {
+        return $this->hasMany(DriverExpenseSummary::class);
+    }
+    
+    public function getExpensesByPeriod($startDate, $endDate)
+    {
+        return $this->operationalExpenses()
+                    ->whereBetween('expense_date', [$startDate, $endDate])
+                    ->with(['expenseType', 'driver', 'despatch'])
+                    ->get();
+    }
 }

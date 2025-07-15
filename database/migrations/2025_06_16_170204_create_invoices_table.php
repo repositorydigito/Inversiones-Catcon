@@ -10,7 +10,7 @@ return new class extends Migration
     {
         Schema::create('invoices', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('client_id');
+            $table->foreignId('client_id')->constrained('clients')->onDelete('cascade');;
             $table->string('series', 4); 
             $table->integer('number'); 
             $table->string('invoice_type', 2); 

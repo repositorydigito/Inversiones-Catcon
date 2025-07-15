@@ -16,6 +16,7 @@ class Despatch extends Model
         'observations',
         'total_gross_weight',
         'total_gross_weight_unit_of_measure',
+        'net_weight',
         'transfer_start_date',
         'vehicle_id', // Vehículo principal
         'driver_id',  // Conductor principal
@@ -44,12 +45,31 @@ class Despatch extends Model
         'enlace_del_pdf',
         'enlace_del_xml',
         'enlace_del_cdr',
+
+        //Gastos operativos
+        'loading_point',
+        'unloading_point',
+        'product',
+        'supplier',
+        'tolls',
+        'loading_expenses',
+        'travel_allowances', 
+        'variable_salary',
+        'operations_manager',
+        'security',
     ];
 
     protected $casts = [
         'emission_date' => 'date', 
         'transfer_start_date' => 'date',
         'accepted_by_sunat' => 'boolean',
+        'tolls' => 'decimal:2',
+        'loading_expenses' => 'decimal:2',
+        'travel_allowances' => 'decimal:2',
+        'variable_salary' => 'decimal:2',
+        'operations_manager' => 'decimal:2',
+        'security' => 'decimal:2',
+        'net_weight' => 'decimal:2',
     ];
 
     // Relación con la empresa remitente
@@ -95,5 +115,14 @@ class Despatch extends Model
     public function invoices()
     {
         return $this->belongsToMany(Invoice::class, 'invoice_despatch', 'despatch_id', 'invoice_id');
+    }
+    public function operationalExpenses()
+    {
+        return $this->hasMany(OperationalExpense::class);
+    }
+
+    public function getTotalOperationalExpensesAttribute(): float
+    {
+        return $this->tolls + $this->loading_expenses + $this->travel_allowances + $this->variable_salary;
     }
 }

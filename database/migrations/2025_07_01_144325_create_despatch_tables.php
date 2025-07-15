@@ -22,6 +22,7 @@ return new class extends Migration
             $table->text('observations')->nullable(); 
             $table->decimal('total_gross_weight', 10, 2); 
             $table->string('total_gross_weight_unit_of_measure', 3); 
+            $table->decimal('net_weight', 10, 2)->nullable();
             $table->date('transfer_start_date');
 
             // Main Transporter/Driver Information
@@ -67,6 +68,18 @@ return new class extends Migration
             $table->string('enlace_del_pdf')->nullable();
             $table->string('enlace_del_xml')->nullable();
             $table->string('enlace_del_cdr')->nullable();
+
+            // Gastos operativos
+            $table->string('loading_point')->nullable(); 
+            $table->string('unloading_point')->nullable(); 
+            $table->string('product')->nullable();
+            $table->string('supplier')->nullable(); 
+            $table->decimal('tolls', 10, 2)->default(0); // Peajes
+            $table->decimal('loading_expenses', 10, 2)->default(0); // Gastos de carga
+            $table->decimal('travel_allowances', 10, 2)->default(0); // Viáticos
+            $table->decimal('variable_salary', 10, 2)->default(0); // Sueldo variable
+            $table->decimal('operations_manager', 10, 2)->default(0); // Jefe de operaciones
+            $table->decimal('security', 10, 2)->default(0); // Seguridad
 
             $table->timestamps();
         });
