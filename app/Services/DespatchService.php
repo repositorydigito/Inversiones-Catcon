@@ -13,7 +13,7 @@ use Exception;
 class DespatchService
 {
     protected $apiToken;
-    protected $apiUrl; 
+    protected $apiUrl;
 
     public function __construct()
     {
@@ -75,7 +75,7 @@ class DespatchService
             ]);
             throw $e; // Re-lanza la excepción para que el controlador o la acción de Filament la capturen
         }
-    }   
+    }
 
     public function consultDespatchStatus(Despatch $despatch): array
     {
@@ -86,12 +86,12 @@ class DespatchService
             'operacion' => 'consultar_guia',
             'tipo_de_comprobante' => $despatch->document_type, // '8' para GRE Transportista //
             'serie' => $despatch->series,
-            'numero' => (string)$despatch->number,                       
-        ]);        
-        
-        $decodedResponse = $response->json(); 
+            'numero' => (string)$despatch->number,
+        ]);
 
-        if (isset($decodedResponse['errors'])) { 
+        $decodedResponse = $response->json();
+
+        if (isset($decodedResponse['errors'])) {
             $errorDetail = json_encode($decodedResponse['errors']);
             throw new Exception("Error al consultar el estado de la guía en Nubefact: " . $errorDetail); //
         }
@@ -108,7 +108,7 @@ class DespatchService
             'enlace_del_cdr'        => $decodedResponse['enlace_del_cdr'] ?? null, //
             // 'enlace'                => $decodedResponse['enlace'] ?? null,
         ]);
-        return $decodedResponse; 
+        return $decodedResponse;
     }
 
     protected function buildDespatchPayload(Despatch $despatch): array
@@ -204,29 +204,40 @@ class DespatchService
             $payload['pagador_servicio_denominacion'] = $despatch->service_payer_denomination;
         }
 
+        // VEHÍCULOS SECUNDARIOS (con sus conductores automáticamente)
         if ($despatch->secondaryVehicles->isNotEmpty()) {
             $payload['vehiculos_secundarios'] = $despatch->secondaryVehicles->map(function ($vehicle) {
                 return [
                     'placa_numero' => $vehicle->plate_number,
-                    'tuc'          => $vehicle->vehicle_certificate ?? '',
+                    'tuc' => $vehicle->vehicle_certificate ?? '',
                 ];
             })->toArray();
         }
 
-        if ($despatch->secondaryDrivers->isNotEmpty()) {
-            $payload['conductores_secundarios'] = $despatch->secondaryDrivers->map(function ($driver) {
+        // CONDUCTORES SECUNDARIOS (obtenidos de los vehículos seleccionados)
+        $secondaryDrivers = $despatch->secondaryVehicles
+            ->filter(function ($vehicle) {
+                return $vehicle->driver !== null; // Solo vehículos con conductor asignado
+            })
+            ->map(function ($vehicle) {
+                return $vehicle->driver;
+            })
+            ->unique('id'); // Evitar duplicados si dos vehículos tienen el mismo conductor
+
+        if ($secondaryDrivers->isNotEmpty()) {
+            $payload['conductores_secundarios'] = $secondaryDrivers->map(function ($driver) {
                 return [
-                    'documento_tipo'    => $driver->document_type,
+                    'documento_tipo'    => $this->mapDocumentType($driver->document_type),
                     'documento_numero'  => $driver->document_number,
-                    'nombre'            => $driver->name,
+                    'nombre'            => $driver->first_name,
                     'apellidos'         => $driver->last_name,
                     'numero_licencia'   => $driver->license_number,
                 ];
-            })->toArray();
+            })->values()->toArray(); 
         }
 
         if ($despatch->relatedDocuments->isNotEmpty()) {
-            $payload['documentos_relacionados'] = $despatcph->relatedDocuments->map(function ($doc) {
+            $payload['documentos_relacionados'] = $despatch->relatedDocuments->map(function ($doc) {
                 return [
                     'tipo_documento' => $doc->document_type,
                     'serie'          => $doc->series,
@@ -245,7 +256,7 @@ class DespatchService
             'RUC' => '6',
             'CE'  => '4',
             'Pasaporte' => '7',
-            default => '0', 
+            default => '0',
         };
     }
 }

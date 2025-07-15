@@ -23,7 +23,7 @@ class DriverResource extends Resource
     protected static ?string $pluralModelLabel = 'Conductores';
     protected static ?string $modelLabel = 'Conductor';
     protected static ?int $navigationSort = 2;
-    protected static ?string $navigationGroup = 'Entidades';     
+    protected static ?string $navigationGroup = 'Entidades';
 
     public static function form(Form $form): Form
     {
@@ -53,12 +53,12 @@ class DriverResource extends Resource
                 Forms\Components\TextInput::make('phone')
                     ->label('Teléfono')
                     ->nullable(),
-                
+
                 Forms\Components\Section::make('Fotos de Papeletas (Conductor)')
                     ->description('Adjunte aquí las fotos de papeletas asociadas a este conductor.')
                     ->schema([
                         Forms\Components\Repeater::make('trafficTickets')
-                            ->relationship('trafficTickets') 
+                            ->relationship('trafficTickets')
                             ->label('Papeletas')
                             ->addActionLabel('Añadir Papeleta')
                             ->collapsible()
@@ -121,7 +121,8 @@ class DriverResource extends Resource
                     ->modalHeading('Fotos de Papeletas')
                     ->modalSubmitAction(false)
                     ->modalCancelActionLabel('Cerrar')
-                    ->modalContent(function (\App\Models\Driver $record) {
+                    ->modalWidth('3xl')
+                    ->modalContent(function ($record) {
                         $imagenes = $record->trafficTickets->pluck('image_path')->filter()->values();
                         if ($imagenes->isEmpty()) {
                             return view('filament.resources.driver-resource.partials.papeletas-modal-empty');

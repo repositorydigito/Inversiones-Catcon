@@ -20,6 +20,7 @@ class Company extends Model
         'electronic_guides_client_id',
         'electronic_guides_client_secret',
         'certificate_path',
+        'certificate_pass',
     ];
 
     /**
@@ -31,5 +32,5 @@ class Company extends Model
         'cpe_client_secret',
         'electronic_guides_soap_password',
         'electronic_guides_client_secret',
-    ];  
+    ];
 }

@@ -5,7 +5,7 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
-{    
+{
     public function up(): void
     {
         Schema::create('companies', function (Blueprint $table) {
@@ -37,10 +37,11 @@ return new class extends Migration
 
             // Sección Certificado Digital
             $table->string('certificate_path')->nullable();
+            $table->string('certificate_pass')->nullable();
             $table->timestamps();
         });
     }
-    
+
     public function down(): void
     {
         Schema::dropIfExists('companies');

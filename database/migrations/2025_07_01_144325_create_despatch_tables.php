@@ -5,42 +5,48 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
-{    
+{
     public function up(): void
     {
         Schema::create('despatches', function (Blueprint $table) {
             $table->id();
             $table->string('operation')->default('generar_guia'); // Operación por defecto según nubefact
-            $table->integer('document_type'); 
-            $table->string('series'); 
-            $table->integer('number'); 
+            $table->integer('document_type');
+            $table->string('series');
+            $table->integer('number');
 
-            // Para los campos client (En GRE Transportista se refiere al Remitente) 
-            $table->foreignId('company_id')->constrained('companies');                        
+            // Para los campos client (En GRE Transportista se refiere al Remitente)
+            $table->foreignId('company_id')->constrained('companies');
 
-            $table->date('emission_date'); 
-            $table->text('observations')->nullable(); 
-            $table->decimal('total_gross_weight', 10, 2); 
-            $table->string('total_gross_weight_unit_of_measure', 3); 
+            $table->date('emission_date');
+            $table->text('observations')->nullable();
+            $table->decimal('total_gross_weight', 10, 2);
+            $table->string('total_gross_weight_unit_of_measure', 3);
             $table->decimal('net_weight', 10, 2)->nullable();
             $table->date('transfer_start_date');
 
             // Main Transporter/Driver Information
-            $table->foreignId('vehicle_id')->nullable()->constrained('vehicles'); 
+            $table->foreignId('vehicle_id')->nullable()->constrained('vehicles');
             $table->foreignId('driver_id')->nullable()->constrained('drivers');
-            
+
             // Para los campos destinatario
-            $table->foreignId('client_id')->constrained('clients');             
+            $table->foreignId('client_id')->constrained('clients');
 
             // Departure Point Information (Punto de Partida)
-            $table->string('departure_ubigeo', 6); 
-            $table->string('departure_address'); 
+            $table->string('departure_ubigeo', 6);
+            $table->string('departure_address');
             $table->string('departure_sunat_establishment_code', 4)->nullable();
+            $table->string('departure_departamento', 2)->nullable();
+            $table->string('departure_provincia', 2)->nullable();
+            $table->string('departure_distrito', 2)->nullable();
 
             // Arrival Point Information (Punto de Llegada)
             $table->string('arrival_ubigeo', 6);
-            $table->string('arrival_address'); 
+            $table->string('arrival_address');
             $table->string('arrival_sunat_establishment_code', 4)->nullable();
+            $table->string('arrival_departamento', 2)->nullable();
+            $table->string('arrival_provincia', 2)->nullable();
+            $table->string('arrival_distrito', 2)->nullable();
 
             // Nuevos campos opcionales/condicionales
             $table->string('sunat_envio_indicador', 2)->nullable(); // Código que indica el tipo de envío (01, 02, 03, 04, 05, 06)
@@ -55,25 +61,25 @@ return new class extends Migration
             $table->string('service_payer_document_number')->nullable();
             $table->string('service_payer_denomination')->nullable();
 
-            $table->boolean('send_automatically_to_client')->default(false); 
-            $table->string('pdf_format')->nullable(); 
+            $table->boolean('send_automatically_to_client')->default(false);
+            $table->string('pdf_format')->nullable();
 
             // SUNAT Response Fields
-            $table->boolean('accepted_by_sunat')->nullable(); 
-            $table->text('sunat_description')->nullable(); 
-            $table->text('sunat_note')->nullable(); 
-            $table->string('sunat_response_code')->nullable(); 
-            $table->text('sunat_soap_error')->nullable(); 
+            $table->boolean('accepted_by_sunat')->nullable();
+            $table->text('sunat_description')->nullable();
+            $table->text('sunat_note')->nullable();
+            $table->string('sunat_response_code')->nullable();
+            $table->text('sunat_soap_error')->nullable();
             $table->text('qr_code_string')->nullable();
             $table->string('enlace_del_pdf')->nullable();
             $table->string('enlace_del_xml')->nullable();
             $table->string('enlace_del_cdr')->nullable();
 
             // Gastos operativos
-            $table->string('loading_point')->nullable(); 
-            $table->string('unloading_point')->nullable(); 
+            $table->string('loading_point')->nullable();
+            $table->string('unloading_point')->nullable();
             $table->string('product')->nullable();
-            $table->string('supplier')->nullable(); 
+            $table->string('supplier')->nullable();
             $table->decimal('tolls', 10, 2)->default(0); // Peajes
             $table->decimal('loading_expenses', 10, 2)->default(0); // Gastos de carga
             $table->decimal('travel_allowances', 10, 2)->default(0); // Viáticos
@@ -88,7 +94,7 @@ return new class extends Migration
             $table->id();
             $table->foreignId('despatch_id')->constrained('despatches')->onDelete('cascade');
             $table->foreignId('unit_of_measure_id')->constrained('measure_units');
-            $table->string('code')->nullable(); 
+            $table->string('code')->nullable();
             $table->string('description');
             $table->decimal('quantity', 10, 2);
             $table->timestamps();
@@ -98,8 +104,8 @@ return new class extends Migration
             $table->id();
             $table->foreignId('despatch_id')->constrained('despatches')->onDelete('cascade');
             $table->string('document_type', 2);
-            $table->string('series', 4); 
-            $table->integer('number'); 
+            $table->string('series', 4);
+            $table->integer('number');
             $table->timestamps();
         });
 
@@ -107,7 +113,7 @@ return new class extends Migration
         Schema::create('despatch_secondary_vehicle', function (Blueprint $table) {
             $table->id();
             $table->foreignId('despatch_id')->constrained('despatches')->onDelete('cascade');
-            $table->foreignId('vehicle_id')->constrained('vehicles')->onDelete('cascade'); 
+            $table->foreignId('vehicle_id')->constrained('vehicles')->onDelete('cascade');
             $table->timestamps();
         });
 
@@ -115,11 +121,11 @@ return new class extends Migration
         Schema::create('despatch_secondary_driver', function (Blueprint $table) {
             $table->id();
             $table->foreignId('despatch_id')->constrained('despatches')->onDelete('cascade');
-            $table->foreignId('driver_id')->constrained('drivers')->onDelete('cascade'); 
+            $table->foreignId('driver_id')->constrained('drivers')->onDelete('cascade');
             $table->timestamps();
         });
     }
-    
+
     public function down(): void
     {
         Schema::dropIfExists('despatch_secondary_drivers');

@@ -40,7 +40,7 @@ class DespatchResource extends Resource
     protected static ?string $pluralModelLabel = 'Guías de Remisión';
     protected static ?string $modelLabel = 'Guía';
     //protected static ?int $navigationSort = 3;
-    //protected static ?string $navigationGroup = 'Entidades';    
+    //protected static ?string $navigationGroup = 'Entidades';
 
     public static function form(Form $form): Form
     {
@@ -58,20 +58,73 @@ class DespatchResource extends Resource
                             ->label('RUC')
                             ->default(fn () => Company::first()?->ruc)
                             ->required(),
-                        TextInput::make('departure_ubigeo')
-                            ->label('Ubigeo de Partida')
-                            ->required()
-                            ->maxLength(6)
-                            ->placeholder('Ej. 150101 (Lima, Lima, Lima)'),
                         TextInput::make('departure_address')
                             ->label('Dirección de Partida')
                             ->required()
                             ->maxLength(255),
                         TextInput::make('departure_sunat_establishment_code')
-                            ->label('Código de Establecimiento SUNAT (Partida)')
+                            ->label('Código de Establecimiento (Partida)')
                             ->maxLength(4)
                             ->placeholder('Ej. 0000')
                             ->nullable(),
+                        Forms\Components\Fieldset::make('Ubigeo de Partida')
+                            ->schema([
+                                Select::make('departure_departamento')
+                                    ->label('Departamento')
+                                    ->options(app(\App\Services\UbigeoService::class)->getDepartamentos())
+                                    ->live()
+                                    ->afterStateUpdated(function ($state, callable $set) {
+                                        $set('departure_provincia', null);
+                                        $set('departure_distrito', null);
+                                        $set('departure_ubigeo', null);
+                                    })
+                                    ->placeholder('Seleccionar departamento')
+                                    ->required(),
+
+                                Select::make('departure_provincia')
+                                    ->label('Provincia')
+                                    ->options(function (callable $get) {
+                                        $departamento = $get('departure_departamento');
+                                        if (!$departamento) return [];
+                                        return app(\App\Services\UbigeoService::class)->getProvincias($departamento);
+                                    })
+                                    ->live()
+                                    ->afterStateUpdated(function ($state, callable $set, callable $get) {
+                                        $set('departure_distrito', null);
+                                        $set('departure_ubigeo', null);
+                                    })
+                                    ->placeholder('Seleccionar provincia')
+                                    ->disabled(fn (callable $get) => !$get('departure_departamento'))
+                                    ->required(),
+
+                                Select::make('departure_distrito')
+                                    ->label('Distrito')
+                                    ->options(function (callable $get) {
+                                        $departamento = $get('departure_departamento');
+                                        $provincia = $get('departure_provincia');
+                                        if (!$departamento || !$provincia) return [];
+                                        return app(\App\Services\UbigeoService::class)->getDistritos($departamento, $provincia);
+                                    })
+                                    ->live()
+                                    ->afterStateUpdated(function ($state, callable $set, callable $get) {
+                                        $departamento = $get('departure_departamento');
+                                        $provincia = $get('departure_provincia');
+                                        $distrito = $state;
+
+                                        if ($departamento && $provincia && $distrito) {
+                                            $ubigeoCode = app(\App\Services\UbigeoService::class)
+                                                ->generateUbigeoCode($departamento, $provincia, $distrito);
+                                            $set('departure_ubigeo', $ubigeoCode);
+                                        }
+                                    })
+                                    ->placeholder('Seleccionar distrito')
+                                    ->disabled(fn (callable $get) => !$get('departure_provincia'))
+                                    ->required(),
+
+                                // Campo oculto que almacena el código ubigeo final
+                                Forms\Components\Hidden::make('departure_ubigeo'),
+                            ])
+                            ->columns(3),
                     ]),
                 Section::make('Datos del Destinatario')
                     ->columns(4)
@@ -91,23 +144,76 @@ class DespatchResource extends Resource
                             })
                             ->live(),
                         TextInput::make('client_document_number')
-                            ->label('RUC')                            
+                            ->label('RUC')
                             ->required()
                             ->readOnly(),
-                        TextInput::make('arrival_ubigeo')
-                            ->label('Ubigeo de Llegada')
-                            ->required()
-                            ->maxLength(6)
-                            ->placeholder('Ej. 210101 (Piura, Piura, Piura)'),
                         TextInput::make('arrival_address')
                             ->label('Dirección de Llegada')
                             ->required()
                             ->maxLength(255),
                         TextInput::make('arrival_sunat_establishment_code')
-                            ->label('Código de Establecimiento SUNAT (Llegada)')
+                            ->label('Código de Establecimiento (Llegada)')
                             ->maxLength(4)
                             ->placeholder('Ej. 0000')
                             ->nullable(),
+                        Forms\Components\Fieldset::make('Ubigeo de Llegada')
+                            ->schema([
+                                Select::make('arrival_departamento')
+                                    ->label('Departamento')
+                                    ->options(app(\App\Services\UbigeoService::class)->getDepartamentos())
+                                    ->live()
+                                    ->afterStateUpdated(function ($state, callable $set) {
+                                        $set('arrival_provincia', null);
+                                        $set('arrival_distrito', null);
+                                        $set('arrival_ubigeo', null);
+                                    })
+                                    ->placeholder('Seleccionar departamento')
+                                    ->required(),
+
+                                Select::make('arrival_provincia')
+                                    ->label('Provincia')
+                                    ->options(function (callable $get) {
+                                        $departamento = $get('arrival_departamento');
+                                        if (!$departamento) return [];
+                                        return app(\App\Services\UbigeoService::class)->getProvincias($departamento);
+                                    })
+                                    ->live()
+                                    ->afterStateUpdated(function ($state, callable $set, callable $get) {
+                                        $set('arrival_distrito', null);
+                                        $set('arrival_ubigeo', null);
+                                    })
+                                    ->placeholder('Seleccionar provincia')
+                                    ->disabled(fn (callable $get) => !$get('arrival_departamento'))
+                                    ->required(),
+
+                                Select::make('arrival_distrito')
+                                    ->label('Distrito')
+                                    ->options(function (callable $get) {
+                                        $departamento = $get('arrival_departamento');
+                                        $provincia = $get('arrival_provincia');
+                                        if (!$departamento || !$provincia) return [];
+                                        return app(\App\Services\UbigeoService::class)->getDistritos($departamento, $provincia);
+                                    })
+                                    ->live()
+                                    ->afterStateUpdated(function ($state, callable $set, callable $get) {
+                                        $departamento = $get('arrival_departamento');
+                                        $provincia = $get('arrival_provincia');
+                                        $distrito = $state;
+
+                                        if ($departamento && $provincia && $distrito) {
+                                            $ubigeoCode = app(\App\Services\UbigeoService::class)
+                                                ->generateUbigeoCode($departamento, $provincia, $distrito);
+                                            $set('arrival_ubigeo', $ubigeoCode);
+                                        }
+                                    })
+                                    ->placeholder('Seleccionar distrito')
+                                    ->disabled(fn (callable $get) => !$get('arrival_provincia'))
+                                    ->required(),
+
+                                // Campo oculto que almacena el código ubigeo final
+                                Forms\Components\Hidden::make('arrival_ubigeo'),
+                            ])
+                            ->columns(3),
                     ]),
                 Section::make('Información General')
                     ->columns(3)
@@ -162,16 +268,16 @@ class DespatchResource extends Resource
                             ->minValue(0.01)
                             ->step(0.01)
                             ->suffix(fn (Forms\Get $get) => $get('total_gross_weight_unit_of_measure')),
-                        
+
                         TextInput::make('net_weight')
                             ->label('Peso Neto')
                             ->numeric()
                             ->step(0.01)
                             ->suffix(fn (Forms\Get $get) => $get('total_gross_weight_unit_of_measure'))
                             ->helperText('Este campo no va a SUNAT'),
-                        
+
                         Textarea::make('observations')
-                            ->label('Observaciones')                            
+                            ->label('Observaciones')
                             ->maxLength(100),
                     ]),
 
@@ -182,13 +288,13 @@ class DespatchResource extends Resource
                             ->schema([
                                 Forms\Components\TextInput::make('loading_point')
                                     ->label('Punto de Carga')
-                                    ->maxLength(255),                                    
+                                    ->maxLength(255),
                                 Forms\Components\TextInput::make('unloading_point')
                                     ->label('Punto de Descarga')
-                                    ->maxLength(255),                                   
+                                    ->maxLength(255),
                                 Forms\Components\TextInput::make('product')
                                     ->label('Producto')
-                                    ->maxLength(255),                                    
+                                    ->maxLength(255),
                                 Forms\Components\TextInput::make('supplier')
                                     ->label('Proveedor')
                                     ->maxLength(255),
@@ -201,39 +307,37 @@ class DespatchResource extends Resource
                                     ->helperText('Monto total de peajes del viaje'),
                             ])
                             ->columns(5),
-                        
+
                         Forms\Components\Group::make()
-                            ->schema([                              
+                            ->schema([
                                 Forms\Components\TextInput::make('loading_expenses')
                                     ->label('Gastos de Carga')
                                     ->numeric()
                                     ->prefix('S/.')
                                     ->step(0.01)
-                                    ->default(0)
-                                    ->helperText('Gastos incurridos en la carga'),
-                                
+                                    ->default(0),
+
                                 Forms\Components\TextInput::make('travel_allowances')
                                     ->label('Viáticos')
                                     ->numeric()
                                     ->prefix('S/.')
                                     ->step(0.01)
-                                    ->default(0)
-                                    ->helperText('Viáticos asignados al conductor'),
-                                
+                                    ->default(0),
+
                                 Forms\Components\TextInput::make('variable_salary')
                                     ->label('Sueldo Variable')
                                     ->numeric()
                                     ->prefix('S/.')
                                     ->step(0.01)
                                     ->default(0),
-                                
+
                                 Forms\Components\TextInput::make('operations_manager')
                                     ->label('Jefe de Operaciones')
                                     ->numeric()
                                     ->prefix('S/.')
                                     ->step(0.01)
                                     ->default(0),
-                                
+
                                 Forms\Components\TextInput::make('security')
                                     ->label('Seguridad')
                                     ->numeric()
@@ -241,7 +345,7 @@ class DespatchResource extends Resource
                                     ->step(0.01)
                                     ->default(0),
                             ])
-                            ->columns(5),                      
+                            ->columns(5),
                     ])
                     ->collapsible(),
 
@@ -260,7 +364,7 @@ class DespatchResource extends Resource
                                 '06' => 'Traslado Vehículo M1L',
                             ])
                             ->default('')
-                            ->live() 
+                            ->live()
                             ->nullable()
                             ->columnSpanFull()
                             ->helperText('Define el tipo de servicio de transporte.'),
@@ -322,27 +426,7 @@ class DespatchResource extends Resource
                                     ->dehydrated(fn ($state) => filled($state)),
                             ])
                             ->visible(fn (Forms\Get $get): bool => $get('sunat_envio_indicador') === '03'), // Mostrar solo si el indicador es '03'
-                    ]),                
-
-                Section::make('Transporte Principal')
-                    ->columns(2)
-                    ->schema([
-                        Select::make('vehicle_id')
-                            ->label('Vehículo Principal')
-                            ->options(Vehicle::all()->pluck('plate_number', 'id'))
-                            ->searchable()
-                            ->nullable() // Puede no haber un vehículo principal si es solo un conductor
-                            ->helperText('Selecciona el vehículo principal del transporte.'),
-
-                        Select::make('driver_id')
-                            ->label('Conductor Principal')
-                            ->options(Driver::all()->mapWithKeys(function ($driver) {
-                                return [$driver->id => "{$driver->first_name} {$driver->last_name} ({$driver->license_number})"];
-                            }))
-                            ->searchable()
-                            ->nullable()
-                            ->helperText('Selecciona al conductor principal del transporte.'),
-                    ]),                
+                    ]),
 
                 Section::make('Ítems de la Guía')
                     ->schema([
@@ -363,9 +447,9 @@ class DespatchResource extends Resource
                                     ->required()
                                     ->minValue(0.01)
                                     ->step(0.01),
-                                Select::make('unit_of_measure_id') 
+                                Select::make('unit_of_measure_id')
                                 ->label('Unidad de Medida')
-                                ->options(MeasureUnit::all()->pluck('description', 'id')) 
+                                ->options(MeasureUnit::all()->pluck('description', 'id'))
                                 ->searchable()
                                 ->required(),
                             ])
@@ -373,47 +457,160 @@ class DespatchResource extends Resource
                             ->collapsible()
                             ->defaultItems(1)
                             ->reorderableWithButtons()
-                            ->itemLabel(fn (array $state): ?string => $state['description'] ?? null) 
+                            ->itemLabel(fn (array $state): ?string => $state['description'] ?? null)
                             ->addActionLabel('Agregar Ítem'),
                     ]),
 
-                Section::make('Vehículos y Conductores Secundarios')
-                    ->description('Agrega vehículos o conductores adicionales que participan en el transporte.')
+                Section::make('Transporte Principal')
+                    ->description('Selecciona el vehículo principal. Su conductor asignado se incluirá automáticamente.')
                     ->schema([
-                        Repeater::make('Vehículos secundarios')
-                            ->label('Vehículos Secundarios')
-                            ->relationship('secondaryVehicles') // Relación Many-to-Many
-                            ->schema([
-                                Select::make('vehicle_id')
-                                    ->label('Vehículo Secundario')
-                                    ->options(Vehicle::all()->pluck('plate_number', 'id'))
-                                    ->searchable()
-                                    ->required(),
-                            ])
-                            ->columns(1)
-                            ->collapsible()
-                            ->reorderableWithButtons()
-                            ->defaultItems(0)
-                            ->addActionLabel('Agregar Vehículo Secundario'),
+                        Select::make('vehicle_id')
+                            ->label('Vehículo Principal')
+                            ->options(Vehicle::with('driver')->get()->mapWithKeys(function ($vehicle) {
+                                $driverInfo = $vehicle->driver
+                                    ? " → 👨‍💼 {$vehicle->driver->first_name} {$vehicle->driver->last_name} ({$vehicle->driver->license_number})"
+                                    : " → ⚠️ Sin conductor asignado";
+                                return [$vehicle->id => "🚛 {$vehicle->plate_number}{$driverInfo}"];
+                            }))
+                            ->searchable()
+                            ->nullable()
+                            ->live() // ✅ CLAVE: Usar live() en lugar de reactive()
+                            ->afterStateUpdated(function ($state, callable $set, callable $get) {
+                                if ($state) {
+                                    $vehicle = Vehicle::with('driver')->find($state);
+                                    if ($vehicle && $vehicle->driver) {
+                                        $set('driver_id', $vehicle->driver->id);
 
-                        Repeater::make('Conductores secundarios')
-                            ->label('Conductores Secundarios')
-                            ->relationship('secondaryDrivers') // Relación Many-to-Many
-                            ->schema([
-                                Select::make('driver_id')
-                                    ->label('Conductor Secundario')
-                                    ->options(Driver::all()->mapWithKeys(function ($driver) {
-                                        return [$driver->id => "{$driver->name} {$driver->last_name} ({$driver->license_number})"];
-                                    }))
-                                    ->searchable()
-                                    ->required(),
-                            ])
+                                        // ✅ VALIDACIÓN EN TIEMPO REAL: Remover de secundarios automáticamente
+                                        $currentSecondary = $get('secondaryVehicles') ?? [];
+                                        if (in_array($state, $currentSecondary)) {
+                                            $newSecondary = array_filter($currentSecondary, fn($id) => $id != $state);
+                                            $set('secondaryVehicles', array_values($newSecondary));
+
+                                            Notification::make()
+                                                ->title('Vehículo removido de secundarios')
+                                                ->body("🚛 {$vehicle->plate_number} fue removido de vehículos secundarios porque ahora es el principal")
+                                                ->info()
+                                                ->send();
+                                        }
+                                    } else {
+                                        $set('driver_id', null);
+
+                                        if ($vehicle && !$vehicle->driver) {
+                                            Notification::make()
+                                                ->title('Vehículo sin conductor')
+                                                ->body("⚠️ {$vehicle->plate_number} no tiene conductor asignado. Asigna un conductor en el módulo de Vehículos.")
+                                                ->warning()
+                                                ->persistent()
+                                                ->send();
+                                        }
+                                    }
+                                } else {
+                                    $set('driver_id', null);
+                                }
+                            })
+                            ->helperText('El conductor asignado al vehículo se seleccionará automáticamente')
+                            ->placeholder('Seleccionar vehículo principal...'),
+
+                        Select::make('driver_id')
+                            ->label('Conductor Asignado')
+                            ->options(Driver::all()->mapWithKeys(function ($driver) {
+                                return [$driver->id => "{$driver->first_name} {$driver->last_name} ({$driver->license_number})"];
+                            }))
+                            ->disabled()
+                            ->dehydrated()
+                            ->placeholder('Se asignará automáticamente')
+                            ->helperText('Conductor del vehículo seleccionado'),
+                    ])
+                    ->columns(2),
+
+                // Reemplazar la sección "Transporte Secundario" con validaciones reactivas:
+
+                Section::make('Transporte Secundario')
+                    ->description('Selecciona hasta 2 vehículos secundarios. Sus conductores asignados se incluirán automáticamente.')
+                    ->schema([
+                        Forms\Components\CheckboxList::make('secondaryVehicles')
+                            ->label('Vehículos Secundarios (máximo 2)')
+                            ->relationship('secondaryVehicles', 'plate_number')
+                            ->options(Vehicle::with('driver')->get()->mapWithKeys(function ($vehicle) {
+                                $driverInfo = $vehicle->driver
+                                    ? " → 👨‍💼{$vehicle->driver->first_name} {$vehicle->driver->last_name}"
+                                    : " → ⚠️ Sin conductor asignado";
+                                return [$vehicle->id => "🚛 {$vehicle->plate_number}{$driverInfo}"];
+                            }))
+                            ->descriptions(Vehicle::with('driver')->get()->mapWithKeys(function ($vehicle) {
+                                if ($vehicle->driver) {
+                                    return [$vehicle->id => "Licencia: {$vehicle->driver->license_number} | {$vehicle->brand} {$vehicle->model}"];
+                                }
+                                return [$vehicle->id => "⚠️ Este vehículo necesita un conductor asignado | {$vehicle->brand} {$vehicle->model}"];
+                            }))
+                            ->searchable()
                             ->columns(1)
-                            ->collapsible()
-                            ->reorderableWithButtons()
-                            ->defaultItems(0)
-                            ->addActionLabel('Agregar Conductor Secundario'),
-                    ]),
+                            ->live() // ✅ CLAVE: Validación en tiempo real
+                            ->afterStateUpdated(function ($state, callable $get, callable $set) {
+                                if (!is_array($state)) return;
+
+                                $mainVehicleId = $get('vehicle_id');
+                                $mainDriverId = $get('driver_id');
+                                $validatedVehicles = [];
+                                $errorMessages = [];
+
+                                foreach ($state as $vehicleId) {
+                                    // ✅ VALIDACIÓN 1: No puede ser el vehículo principal
+                                    if ($mainVehicleId && $vehicleId == $mainVehicleId) {
+                                        $vehicle = Vehicle::find($vehicleId);
+                                        $errorMessages[] = "🚛 {$vehicle?->plate_number}: No puede ser principal y secundario a la vez";
+                                        continue;
+                                    }
+
+                                    // ✅ VALIDACIÓN 2: Debe tener conductor asignado
+                                    $vehicle = Vehicle::with('driver')->find($vehicleId);
+                                    if (!$vehicle || !$vehicle->driver) {
+                                        $errorMessages[] = "🚛 {$vehicle?->plate_number}: Sin conductor asignado";
+                                        continue;
+                                    }
+
+                                    // ✅ VALIDACIÓN 3: No puede tener el mismo conductor que el principal
+                                    if ($mainDriverId && $vehicle->driver->id == $mainDriverId) {
+                                        $errorMessages[] = "🚛 {$vehicle->plate_number}: Su conductor ya es el conductor principal";
+                                        continue;
+                                    }
+
+                                    // ✅ VALIDACIÓN 4: No duplicados
+                                    if (in_array($vehicleId, $validatedVehicles)) {
+                                        continue;
+                                    }
+
+                                    $validatedVehicles[] = $vehicleId;
+
+                                    // ✅ VALIDACIÓN 5: Máximo 2 vehículos
+                                    if (count($validatedVehicles) >= 2) {
+                                        if (count($state) > 2) {
+                                            $errorMessages[] = "Límite SUNAT: Solo 2 vehículos secundarios máximo";
+                                        }
+                                        break;
+                                    }
+                                }
+
+                                // ✅ APLICAR CORRECCIONES AUTOMÁTICAMENTE
+                                if ($validatedVehicles !== $state) {
+                                    $set('secondaryVehicles', $validatedVehicles);
+                                }
+
+                                // ✅ MOSTRAR ERRORES SI EXISTEN
+                                if (!empty($errorMessages)) {
+                                    Notification::make()
+                                        ->title('Selecciones corregidas automáticamente')
+                                        ->body('• ' . implode('<br>• ', $errorMessages))
+                                        ->warning()
+                                        ->send();
+                                }
+                            })
+                            ->rules(['max:2'])
+                            ->validationAttribute('vehículos secundarios'),
+                    ])
+                    ->collapsible()
+                    ->collapsed(false),
             ]);
     }
 
@@ -486,8 +683,6 @@ class DespatchResource extends Resource
                 //
             ])
             ->actions([
-                Tables\Actions\EditAction::make(),                
-                
                 Tables\Actions\Action::make('consultDespatchStatus')
                     ->label('Consultar Estado SUNAT')
                     ->icon('heroicon-o-arrow-path')
@@ -540,13 +735,12 @@ class DespatchResource extends Resource
                     ->url(fn (Despatch $record): string => $record->enlace_del_cdr ?? '#')
                     ->openUrlInNewTab()
                     ->visible(fn (Despatch $record): bool => !is_null($record->enlace_del_cdr)),
-                                
+
             ])
             ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
-                ]),
-            ]);
+
+            ])
+            ->defaultSort('created_at', 'desc');
     }
 
     public static function getRelations(): array
@@ -563,5 +757,5 @@ class DespatchResource extends Resource
             'create' => Pages\CreateDespatch::route('/create'),
             'edit' => Pages\EditDespatch::route('/{record}/edit'),
         ];
-    }    
+    }
 }

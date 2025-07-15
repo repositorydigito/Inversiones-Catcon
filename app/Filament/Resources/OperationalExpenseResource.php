@@ -26,10 +26,10 @@ class OperationalExpenseResource extends Resource
 {
     protected static ?string $model = OperationalExpense::class;
     protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
-    protected static ?string $navigationLabel = 'Gastos Variables';
+    protected static ?string $navigationLabel = 'Gastos Operativos';
     protected static ?string $pluralModelLabel = 'Gastos Operativos';
     protected static ?string $modelLabel = 'Gastos';
-    
+
     public static function form(Form $form): Form
     {
         return $form
@@ -312,7 +312,7 @@ class OperationalExpenseResource extends Resource
                 ->badge()
                 ->color(fn (string $state): string => match ($state) {
                     'pending' => 'warning',
-                    'paid' => 'success', 
+                    'paid' => 'success',
                 })
                 ->formatStateUsing(fn (string $state): string => match ($state) {
                     'pending' => 'Pendiente',
@@ -325,9 +325,24 @@ class OperationalExpenseResource extends Resource
                 ->label('Conductor')
                 ->options(Driver::all()->pluck('full_name', 'id')),
 
-            SelectFilter::make('expense_type_id')
-                ->label('Tipo de Gasto')
-                ->options(ExpenseType::all()->pluck('name', 'id')),
+            /* SelectFilter::make('category')
+                ->label('Categoría')
+                ->options([
+                    'fixed' => 'Regular',
+                    'variable' => 'Variable',
+                ])
+                ->query(function (Builder $query, $state) {
+                    // Solo aplicamos el filtro si se ha seleccionado una categoría
+                    if ($state) {
+                        $query->whereHas('expenseType', function ($q) use ($state) {
+                            $q->where('category', $state);
+                        });
+                    }
+                    // Si no hay filtro seleccionado, mostramos todos los resultados
+                    else {
+                        $query->with('expenseType'); // Cargamos la relación por defecto
+                    }
+                }), */
 
             Filter::make('expense_date')
                 ->form([
@@ -346,13 +361,13 @@ class OperationalExpenseResource extends Resource
                             $data['until'],
                             fn (Builder $query, $date): Builder => $query->whereDate('expense_date', '<=', $date),
                         );
-                }),            
+                }),
         ])
         ->actions([
-            Tables\Actions\EditAction::make(),            
+            Tables\Actions\EditAction::make(),
         ])
         ->bulkActions([
-            
+
         ])
         ->defaultSort('expense_date', 'desc')
         ->striped()

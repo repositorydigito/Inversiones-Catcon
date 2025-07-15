@@ -5,6 +5,7 @@ namespace App\Filament\Resources;
 use App\Filament\Resources\VehicleResource\Pages;
 use App\Filament\Resources\VehicleResource\RelationManagers;
 use App\Models\Vehicle;
+use App\Models\Driver;
 use App\Models\TrafficTicket;
 use Filament\Forms;
 use Filament\Forms\Form;
@@ -14,7 +15,7 @@ use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 use Filament\Forms\Components\DatePicker;
-use Filament\Forms\Components\Select; 
+use Filament\Forms\Components\Select;
 use Filament\Tables\Actions\Action;
 
 class VehicleResource extends Resource
@@ -25,8 +26,8 @@ class VehicleResource extends Resource
     protected static ?string $pluralModelLabel = 'Vehículos';
     protected static ?string $modelLabel = 'Vehículo';
     protected static ?int $navigationSort = 3;
-    protected static ?string $navigationGroup = 'Entidades'; 
-    
+    protected static ?string $navigationGroup = 'Entidades';
+
     public static function form(Form $form): Form
     {
         return $form
@@ -37,7 +38,7 @@ class VehicleResource extends Resource
                         Forms\Components\TextInput::make('plate_number')
                             ->label('Número de Placa')
                             ->required()
-                            ->unique(ignoreRecord: true) 
+                            ->unique(ignoreRecord: true)
                             ->maxLength(255),
                         Forms\Components\TextInput::make('brand')
                             ->label('Marca')
@@ -51,15 +52,23 @@ class VehicleResource extends Resource
                             ->label('Certificado Vehicular (TUCE)')
                             ->required()
                             ->minLength(10)
-                            ->maxLength(15),                        
-                    ])->columns(2), 
+                            ->maxLength(15),
+
+                        Forms\Components\Select::make('driver_id')
+                            ->label('Conductor Asignado')
+                            ->options(Driver::all()->mapWithKeys(function ($driver) {
+                                return [$driver->id => "{$driver->first_name} {$driver->last_name} ({$driver->license_number})"];
+                            }))
+                            ->searchable()
+                            ->nullable(),
+                    ])->columns(2),
 
                 Forms\Components\Section::make('Fechas de Vencimiento')
                     ->description('Registre las fechas importantes de vencimiento del vehículo.')
                     ->schema([
                         DatePicker::make('soat_expiration_date')
                             ->label('Vencimiento SOAT')
-                            ->displayFormat('d/m/Y') 
+                            ->displayFormat('d/m/Y')
                             ->nullable(),
                         DatePicker::make('technical_review_expiration_date')
                             ->label('Vencimiento Revisión Técnica')
@@ -69,16 +78,16 @@ class VehicleResource extends Resource
                             ->label('Vencimiento TUCE')
                             ->displayFormat('d/m/Y')
                             ->nullable(),
-                    ])->columns(2), 
-                
+                    ])->columns(2),
+
                 Forms\Components\Section::make('Fotos de Papeletas (Vehículo)')
                     ->description('Adjunte aquí las fotos de papeletas asociadas a este vehículo.')
                     ->schema([
-                        Forms\Components\Repeater::make('trafficTickets') 
-                            ->relationship('trafficTickets') 
+                        Forms\Components\Repeater::make('trafficTickets')
+                            ->relationship('trafficTickets')
                             ->label('Papeletas')
                             ->addActionLabel('Añadir Papeleta')
-                            ->collapsible() 
+                            ->collapsible()
                             ->itemLabel(function (array $state): string {
                                 $imagePath = $state['image_path'] ?? null;
                                 if (is_array($imagePath)) {
@@ -89,17 +98,17 @@ class VehicleResource extends Resource
                             ->schema([
                                 Forms\Components\FileUpload::make('image_path')
                                     ->label('Foto de la Papeleta')
-                                    ->image() 
-                                    ->directory('traffic-tickets/vehicles') 
-                                    ->preserveFilenames() 
-                                    ->visibility('public') 
+                                    ->image()
+                                    ->directory('traffic-tickets/vehicles')
+                                    ->preserveFilenames()
+                                    ->visibility('public')
                                     ->nullable(),
                             ])
-                            ->defaultItems(0) 
-                            ->minItems(0) 
+                            ->defaultItems(0)
+                            ->minItems(0)
                             ->grid(2),
 
-                    ]), 
+                    ]),
             ]);
     }
 
@@ -119,6 +128,16 @@ class VehicleResource extends Resource
                 Tables\Columns\TextColumn::make('vehicle_certificate')
                     ->label('Certificado Vehicular')
                     ->searchable(),
+                Tables\Columns\TextColumn::make('driver.full_name')
+                    ->label('Conductor Asignado')
+                    ->getStateUsing(function (Vehicle $record): string {
+                        if ($record->driver) {
+                            return $record->driver->first_name . ' ' . $record->driver->last_name;
+                        }
+                        return 'Sin asignar';
+                    })
+                    ->searchable()
+                    ->sortable(),
             ])
             ->filters([
                 //

@@ -27,6 +27,12 @@ class Despatch extends Model
         'arrival_ubigeo',
         'arrival_address',
         'arrival_sunat_establishment_code',
+        'departure_departamento',
+        'departure_provincia',
+        'departure_distrito',
+        'arrival_departamento',
+        'arrival_provincia',
+        'arrival_distrito',
         'sunat_envio_indicador',
         'subcontractor_document_type',
         'subcontractor_document_number',
@@ -53,14 +59,14 @@ class Despatch extends Model
         'supplier',
         'tolls',
         'loading_expenses',
-        'travel_allowances', 
+        'travel_allowances',
         'variable_salary',
         'operations_manager',
         'security',
     ];
 
     protected $casts = [
-        'emission_date' => 'date', 
+        'emission_date' => 'date',
         'transfer_start_date' => 'date',
         'accepted_by_sunat' => 'boolean',
         'tolls' => 'decimal:2',
@@ -105,12 +111,12 @@ class Despatch extends Model
     // Relación de muchos a muchos con vehículos secundarios
     public function secondaryVehicles()
     {
-        return $this->belongsToMany(Vehicle::class, 'despatch_secondary_vehicle', 'despatch_id', 'vehicle_id');
+        return $this->belongsToMany(Vehicle::class, 'despatch_secondary_vehicle', 'despatch_id', 'vehicle_id')->distinct();;
     }
     // Relación de muchos a muchos con conductores secundarios
     public function secondaryDrivers()
     {
-        return $this->belongsToMany(Driver::class, 'despatch_secondary_driver', 'despatch_id', 'driver_id');
+        return $this->belongsToMany(Driver::class, 'despatch_secondary_driver', 'despatch_id', 'driver_id')->distinct();;
     }
     public function invoices()
     {

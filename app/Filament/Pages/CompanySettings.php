@@ -9,8 +9,8 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Form;
 use Filament\Pages\Page;
-use Filament\Notifications\Notification; 
-use Illuminate\Support\Facades\Hash; 
+use Filament\Notifications\Notification;
+use Illuminate\Support\Facades\Hash;
 
 class CompanySettings extends Page
 {
@@ -26,8 +26,8 @@ class CompanySettings extends Page
     public ?array $data = [];
 
     public function mount(): void
-    {        
-        $company = Company::firstOrCreate([]);        
+    {
+        $company = Company::firstOrCreate([]);
         $this->form->fill($company->attributesToArray());
     }
 
@@ -45,8 +45,8 @@ class CompanySettings extends Page
                             ->required(),
                         TextInput::make('commercial_name')
                             ->label('Nombre Comercial')
-                            ->nullable(),                        
-                    ])->columns(3), 
+                            ->nullable(),
+                    ])->columns(3),
 
                 Section::make('Entorno del Sistema')
                     ->description('Configuración del entorno para la comunicación con SUNAT/OSE.')
@@ -78,7 +78,7 @@ class CompanySettings extends Page
                             ->maxLength(255),
                         TextInput::make('cpe_client_secret')
                             ->label('Client Secret (Clave)')
-                            ->nullable(),                            
+                            ->nullable(),
                     ])->columns(2),
 
                 Section::make('Guías Electrónicas')
@@ -86,17 +86,17 @@ class CompanySettings extends Page
                     ->schema([
                         TextInput::make('electronic_guides_soap_username')
                             ->label('SOAP Usuario')
-                            ->nullable()                           
+                            ->nullable()
                             ->helperText('RUC + Usuario. Ejemplo: 20123456789DELUSUARIO'),
                         TextInput::make('electronic_guides_soap_password')
-                            ->label('SOAP Password')                            
-                            ->nullable(),                            
+                            ->label('SOAP Password')
+                            ->nullable(),
                         TextInput::make('electronic_guides_client_id')
                             ->label('Client ID')
                             ->nullable(),
                         TextInput::make('electronic_guides_client_secret')
-                            ->label('Client Secret (Clave)')                            
-                            ->nullable(),                            
+                            ->label('Client Secret (Clave)')
+                            ->nullable(),
                     ])->columns(2),
 
                 Section::make('Certificado')
@@ -105,9 +105,12 @@ class CompanySettings extends Page
                         FileUpload::make('certificate_path')
                             ->label('Certificado Digital')
                             ->disk('public') // O el disco que uses
-                            ->directory('certificates') 
-                            ->acceptedFileTypes(['application/x-pkcs12', '.p12', '.pfx']) 
-                            ->maxSize(5120) 
+                            ->directory('certificates')
+                            ->acceptedFileTypes(['application/x-pkcs12', '.p12', '.pfx'])
+                            ->maxSize(5120)
+                            ->nullable(),
+                        TextInput::make('certificate_pass')
+                            ->label('Contraseña del certificado digital')
                             ->nullable(),
                     ]),
             ])
@@ -146,13 +149,13 @@ class CompanySettings extends Page
                 ->send();
         }
     }
-    
+
     protected function getFormActions(): array
     {
         return [
             \Filament\Actions\Action::make('save')
                 ->label('Guardar cambios')
-                ->submit('save'), 
+                ->submit('save'),
         ];
     }
 
