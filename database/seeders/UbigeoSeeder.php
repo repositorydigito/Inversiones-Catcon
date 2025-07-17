@@ -2163,23 +2163,29 @@ class UbigeoSeeder extends Seeder
         // Procesar departamentos
         $departamentosArray = [];
         foreach ($departamentos as $dep) {
+            $depId = str_pad($dep['id'], 2, '0', STR_PAD_LEFT);
             $departamentosArray[$dep['id']] = strtoupper($dep['name']);
         }
 
         // Procesar provincias agrupadas por departamento
         $provinciasArray = [];
         foreach ($provincias as $prov) {
-            $depId = $prov['department_id'];
+            $depId = str_pad($prov['department_id'], 2, '0', STR_PAD_LEFT);
+            // $depId = $prov['department_id'];
             $provId = substr($prov['id'], 2, 2); // Extraer últimos 2 dígitos
+            $provId = str_pad($provId, 2, '0', STR_PAD_LEFT);
             $provinciasArray[$depId][$provId] = strtoupper($prov['name']);
         }
 
         // Procesar distritos agrupados por departamento + provincia
         $distritosArray = [];
         foreach ($distritos as $dist) {
-            $depId = $dist['department_id'];
+            $depId = str_pad($dist['department_id'], 2, '0', STR_PAD_LEFT);
+            // $depId = $dist['department_id'];
             $provId = substr($dist['province_id'], 2, 2); // Extraer últimos 2 dígitos de provincia
+            $provId = str_pad($provId, 2, '0', STR_PAD_LEFT);
             $distId = substr($dist['id'], 4, 2); // Extraer últimos 2 dígitos de distrito
+            $distId = str_pad($distId, 2, '0', STR_PAD_LEFT);
             $key = $depId . $provId;
             $distritosArray[$key][$distId] = strtoupper($dist['name']);
         }
@@ -2191,12 +2197,33 @@ class UbigeoSeeder extends Seeder
         ];
     }
 
+    /* private function generateConfigFile(array $data): string
+    {
+        $content = "<?php\n\n";
+        $content .= "// Archivo generado automáticamente el " . now()->format('Y-m-d H:i:s') . "\n";
+        $content .= "// Datos de ubigeo de Perú obtenidos desde seeders\n\n";
+        $content .= "return " . var_export($data, true) . ";\n";       
+
+        return $content;
+    } */
     private function generateConfigFile(array $data): string
     {
         $content = "<?php\n\n";
         $content .= "// Archivo generado automáticamente el " . now()->format('Y-m-d H:i:s') . "\n";
         $content .= "// Datos de ubigeo de Perú obtenidos desde seeders\n\n";
-        $content .= "return " . var_export($data, true) . ";\n";
+
+        // Generar el contenido del array con var_export
+        $configData = var_export($data, true);
+
+        // ✅ MEJORAR LA GENERACIÓN DEL ARCHIVO
+        // Reemplazar array ( por array(
+        $configData = str_replace('array (', 'array(', $configData);
+
+        // Forzar que todas las claves numéricas mantengan comillas
+        $configData = preg_replace('/^\s*(\d+)\s*=>/m', "  '$1' =>", $configData);
+
+        // Agregar el array modificado al contenido
+        $content .= "return " . $configData . ";\n";
 
         return $content;
     }

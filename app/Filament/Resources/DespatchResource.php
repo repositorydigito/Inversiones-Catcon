@@ -59,14 +59,17 @@ class DespatchResource extends Resource
                             ->default(fn () => Company::first()?->ruc)
                             ->required(),
                         TextInput::make('departure_address')
-                            ->label('Dirección de Partida')
+                            ->label('Punto de Partida')
                             ->required()
                             ->maxLength(255),
                         TextInput::make('departure_sunat_establishment_code')
                             ->label('Código de Establecimiento (Partida)')
                             ->maxLength(4)
                             ->placeholder('Ej. 0000')
-                            ->nullable(),
+                            ->required(),
+                        TextInput::make('loading_point')
+                            ->label('Punto 1')
+                            ->maxLength(255),
                         Forms\Components\Fieldset::make('Ubigeo de Partida')
                             ->schema([
                                 Select::make('departure_departamento')
@@ -79,8 +82,8 @@ class DespatchResource extends Resource
                                         $set('departure_ubigeo', null);
                                     })
                                     ->placeholder('Seleccionar departamento')
-                                    ->required(),
-
+                                    ->required(),                              
+                                
                                 Select::make('departure_provincia')
                                     ->label('Provincia')
                                     ->options(function (callable $get) {
@@ -124,6 +127,7 @@ class DespatchResource extends Resource
                                 // Campo oculto que almacena el código ubigeo final
                                 Forms\Components\Hidden::make('departure_ubigeo'),
                             ])
+                            ->columnSpan(3)
                             ->columns(3),
                     ]),
                 Section::make('Datos del Destinatario')
@@ -148,14 +152,17 @@ class DespatchResource extends Resource
                             ->required()
                             ->readOnly(),
                         TextInput::make('arrival_address')
-                            ->label('Dirección de Llegada')
+                            ->label('Punto de Llegada')
                             ->required()
                             ->maxLength(255),
                         TextInput::make('arrival_sunat_establishment_code')
                             ->label('Código de Establecimiento (Llegada)')
                             ->maxLength(4)
                             ->placeholder('Ej. 0000')
-                            ->nullable(),
+                            ->required(),
+                        TextInput::make('unloading_point')
+                            ->label('Punto 4')
+                            ->maxLength(255),
                         Forms\Components\Fieldset::make('Ubigeo de Llegada')
                             ->schema([
                                 Select::make('arrival_departamento')
@@ -213,6 +220,7 @@ class DespatchResource extends Resource
                                 // Campo oculto que almacena el código ubigeo final
                                 Forms\Components\Hidden::make('arrival_ubigeo'),
                             ])
+                            ->columnSpan(3)
                             ->columns(3),
                     ]),
                 Section::make('Información General')
@@ -274,24 +282,19 @@ class DespatchResource extends Resource
                             ->numeric()
                             ->step(0.01)
                             ->suffix(fn (Forms\Get $get) => $get('total_gross_weight_unit_of_measure'))
-                            ->helperText('Este campo no va a SUNAT'),
+                            ->nullable(),
 
                         Textarea::make('observations')
                             ->label('Observaciones')
-                            ->maxLength(100),
+                            ->maxLength(100)
+                            ->nullable(),
                     ]),
 
                 Section::make('Gastos Operativos')
                     ->description('Información adicional para el control de gastos operativos. Estos campos no se envían a SUNAT.')
                     ->schema([
                         Forms\Components\Group::make()
-                            ->schema([
-                                Forms\Components\TextInput::make('loading_point')
-                                    ->label('Punto de Carga')
-                                    ->maxLength(255),
-                                Forms\Components\TextInput::make('unloading_point')
-                                    ->label('Punto de Descarga')
-                                    ->maxLength(255),
+                            ->schema([                                
                                 Forms\Components\TextInput::make('product')
                                     ->label('Producto')
                                     ->maxLength(255),
@@ -303,20 +306,18 @@ class DespatchResource extends Resource
                                     ->numeric()
                                     ->prefix('S/.')
                                     ->step(0.01)
-                                    ->default(0)
-                                    ->helperText('Monto total de peajes del viaje'),
-                            ])
-                            ->columns(5),
-
-                        Forms\Components\Group::make()
-                            ->schema([
+                                    ->default(0),
                                 Forms\Components\TextInput::make('loading_expenses')
                                     ->label('Gastos de Carga')
                                     ->numeric()
                                     ->prefix('S/.')
                                     ->step(0.01)
                                     ->default(0),
+                            ])
+                            ->columns(4),
 
+                        Forms\Components\Group::make()
+                            ->schema([                               
                                 Forms\Components\TextInput::make('travel_allowances')
                                     ->label('Viáticos')
                                     ->numeric()
@@ -345,9 +346,8 @@ class DespatchResource extends Resource
                                     ->step(0.01)
                                     ->default(0),
                             ])
-                            ->columns(5),
-                    ])
-                    ->collapsible(),
+                            ->columns(4),
+                    ]),                    
 
                 Section::make('Datos de Pagador del Flete')
                     ->description(new HtmlString('<p class="text-sm">Selecciona el indicador de envío para mostrar campos adicionales si aplica.</p>'))

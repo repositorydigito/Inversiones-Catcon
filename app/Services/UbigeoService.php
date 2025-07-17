@@ -10,10 +10,21 @@ class UbigeoService
     {
         $this->ubigeoData = config('ubigeo', []);
     }
-
+    
     public function getDepartamentos(): array
     {
-        return $this->ubigeoData['departamentos'];
+        $departamentos = $this->ubigeoData['departamentos'] ?? [];
+        
+        $ordered = collect($departamentos)
+            ->sortBy(function ($name, $code) {
+                // Prioridad especial para LIMA y CALLAO
+                if ($name === 'LIMA') return '1'; 
+                if ($name === 'CALLAO') return '2'; 
+                return '3' . $name; 
+            })
+            ->toArray();
+
+        return $ordered;
     }
 
     public function getProvincias(string $departamentoCode): array

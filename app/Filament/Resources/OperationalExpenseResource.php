@@ -152,9 +152,9 @@ class OperationalExpenseResource extends Resource
                 })
                 ->toggleable(isToggledHiddenByDefault: true),
 
-            // 7. Punto de Carga
+            // 7. Punto de Carga - Punto 1
             Tables\Columns\TextColumn::make('loading_point')
-                ->label('Punto de Carga')
+                ->label('Punto 1')
                 ->getStateUsing(function (OperationalExpense $record): ?string {
                     return $record->despatch?->loading_point;
                 })
@@ -164,9 +164,9 @@ class OperationalExpenseResource extends Resource
                 })
                 ->toggleable(isToggledHiddenByDefault: true),
 
-            // 8. Punto de Descarga
+            // 8. Punto de Descarga - Punto 4
             Tables\Columns\TextColumn::make('unloading_point')
-                ->label('Punto de Descarga')
+                ->label('Punto 4')
                 ->getStateUsing(function (OperationalExpense $record): ?string {
                     return $record->despatch?->unloading_point;
                 })
