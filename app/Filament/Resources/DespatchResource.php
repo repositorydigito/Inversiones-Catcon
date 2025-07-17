@@ -82,8 +82,8 @@ class DespatchResource extends Resource
                                         $set('departure_ubigeo', null);
                                     })
                                     ->placeholder('Seleccionar departamento')
-                                    ->required(),                              
-                                
+                                    ->required(),
+
                                 Select::make('departure_provincia')
                                     ->label('Provincia')
                                     ->options(function (callable $get) {
@@ -251,7 +251,13 @@ class DespatchResource extends Resource
                         DatePicker::make('emission_date')
                             ->label('Fecha de Emisión')
                             ->required()
-                            ->default(now()),
+                            ->default(now())
+                            ->live()
+                            ->afterStateUpdated(function ($state, callable $set, callable $get, $record) {
+                                // Recalcular viáticos cuando cambie la fecha
+                                $calculatedValue = static::calculateTravelAllowances($get, $record);
+                                $set('travel_allowances', $calculatedValue);
+                            }),
 
                         DatePicker::make('transfer_start_date')
                             ->label('Fecha de Inicio de Traslado')
@@ -294,13 +300,13 @@ class DespatchResource extends Resource
                     ->description('Información adicional para el control de gastos operativos. Estos campos no se envían a SUNAT.')
                     ->schema([
                         Forms\Components\Group::make()
-                            ->schema([                                
+                            ->schema([
                                 Forms\Components\TextInput::make('product')
                                     ->label('Producto')
                                     ->maxLength(255),
-                                Forms\Components\TextInput::make('supplier')
+                                /* Forms\Components\TextInput::make('supplier')
                                     ->label('Proveedor')
-                                    ->maxLength(255),
+                                    ->maxLength(255), */
                                 Forms\Components\TextInput::make('tolls')
                                     ->label('Peajes')
                                     ->numeric()
@@ -317,13 +323,47 @@ class DespatchResource extends Resource
                             ->columns(4),
 
                         Forms\Components\Group::make()
-                            ->schema([                               
+                            ->schema([
+                                /* Forms\Components\TextInput::make('travel_allowances')
+                                    ->label('Viáticos')
+                                    ->numeric()
+                                    ->prefix('S/.')
+                                    ->step(0.01)
+                                    ->default(30)
+                                    ->disabled()
+                                    ->dehydrated()
+                                    ->reactive()
+                                    ->afterStateHydrated(function (TextInput $component, $state, $record) {
+                                        // Mostrar información adicional cuando se está editando
+                                        if ($record && $record->driver_id) {
+                                            $emissionDate = $record->emission_date ? $record->emission_date->format('Y-m-d') : now()->format('Y-m-d');
+
+                                            $guidesCount = \App\Models\Despatch::where('driver_id', $record->driver_id)
+                                                ->whereDate('emission_date', $emissionDate)
+                                                ->where('id', '!=', $record->id)
+                                                ->count();
+
+                                            if ($guidesCount > 0) {
+                                                $component->helperText('Automático: S/. 0.00 (ya existe otra guía para este conductor en la fecha)');
+                                            } else {
+                                                $component->helperText('Automático: S/. 30.00 (primera guía del día para este conductor)');
+                                            }
+                                        }
+                                    }), */
+
                                 Forms\Components\TextInput::make('travel_allowances')
                                     ->label('Viáticos')
                                     ->numeric()
                                     ->prefix('S/.')
                                     ->step(0.01)
-                                    ->default(0),
+                                    ->disabled() // Deshabilitar edición manual
+                                    ->dehydrated() // Asegurar que se guarde el valor
+                                    ->live() // Para reactividad
+                                    ->afterStateHydrated(function (Forms\Components\TextInput $component, $state, $record, callable $get) {
+                                        // Calcular valor inicial cuando se carga el formulario
+                                        $calculatedValue = static::calculateTravelAllowances($get, $record);
+                                        $component->state($calculatedValue);
+                                    }),
 
                                 Forms\Components\TextInput::make('variable_salary')
                                     ->label('Sueldo Variable')
@@ -347,7 +387,7 @@ class DespatchResource extends Resource
                                     ->default(0),
                             ])
                             ->columns(4),
-                    ]),                    
+                    ]),
 
                 Section::make('Datos de Pagador del Flete')
                     ->description(new HtmlString('<p class="text-sm">Selecciona el indicador de envío para mostrar campos adicionales si aplica.</p>'))
@@ -475,11 +515,15 @@ class DespatchResource extends Resource
                             ->searchable()
                             ->nullable()
                             ->live() // ✅ CLAVE: Usar live() en lugar de reactive()
-                            ->afterStateUpdated(function ($state, callable $set, callable $get) {
+                            ->afterStateUpdated(function ($state, callable $set, callable $get, $record) {
                                 if ($state) {
                                     $vehicle = Vehicle::with('driver')->find($state);
                                     if ($vehicle && $vehicle->driver) {
                                         $set('driver_id', $vehicle->driver->id);
+
+                                        // ✅ RECALCULAR VIÁTICOS cuando cambie el conductor
+                                        $calculatedValue = static::calculateTravelAllowances($get, $record);
+                                        $set('travel_allowances', $calculatedValue);
 
                                         // ✅ VALIDACIÓN EN TIEMPO REAL: Remover de secundarios automáticamente
                                         $currentSecondary = $get('secondaryVehicles') ?? [];
@@ -495,6 +539,7 @@ class DespatchResource extends Resource
                                         }
                                     } else {
                                         $set('driver_id', null);
+                                        $set('travel_allowances', 0); // Sin conductor = sin viáticos
 
                                         if ($vehicle && !$vehicle->driver) {
                                             Notification::make()
@@ -507,6 +552,7 @@ class DespatchResource extends Resource
                                     }
                                 } else {
                                     $set('driver_id', null);
+                                    $set('travel_allowances', 0);
                                 }
                             })
                             ->helperText('El conductor asignado al vehículo se seleccionará automáticamente')
@@ -684,7 +730,7 @@ class DespatchResource extends Resource
             ])
             ->actions([
                 Tables\Actions\Action::make('consultDespatchStatus')
-                    ->label('Consultar Estado SUNAT')
+                    ->label('SUNAT')
                     ->icon('heroicon-o-arrow-path')
                     ->color('info')
                     ->action(function (Despatch $record, DespatchService $nubefactService) {
@@ -757,5 +803,36 @@ class DespatchResource extends Resource
             'create' => Pages\CreateDespatch::route('/create'),
             'edit' => Pages\EditDespatch::route('/{record}/edit'),
         ];
+    }
+
+    private static function calculateTravelAllowances(callable $get, $record = null): float
+    {
+        $driverId = $get('driver_id');
+        $emissionDate = $get('emission_date');
+
+        // Si no hay conductor o fecha, no hay viáticos
+        if (!$driverId || !$emissionDate) {
+            return 0.00;
+        }
+
+        // Configuración: monto de viáticos por día
+        $dailyTravelAllowance = 30.00;
+
+        // Formatear la fecha para comparación
+        $emissionDateFormatted = is_string($emissionDate)
+            ? $emissionDate
+            : (is_object($emissionDate) ? $emissionDate->format('Y-m-d') : $emissionDate);
+
+        // Contar cuántas guías tiene este conductor en la misma fecha (excluyendo la actual si existe)
+        $existingGuidesCount = \App\Models\Despatch::where('driver_id', $driverId)
+            ->whereDate('emission_date', $emissionDateFormatted)
+            ->when($record, function ($query) use ($record) {
+                // Si es una edición, excluir la guía actual del conteo
+                return $query->where('id', '!=', $record->id);
+            })
+            ->count();
+
+        // Si es la primera guía del día (no hay guías existentes), asignar viáticos
+        return $existingGuidesCount === 0 ? $dailyTravelAllowance : 0.00;
     }
 }

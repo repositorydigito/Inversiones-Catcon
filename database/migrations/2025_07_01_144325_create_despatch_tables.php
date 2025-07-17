@@ -76,8 +76,8 @@ return new class extends Migration
             $table->string('enlace_del_cdr')->nullable();
 
             // Gastos operativos
-            $table->string('loading_point')->nullable();
-            $table->string('unloading_point')->nullable();
+            $table->string('loading_point')->nullable(); // Punto 1
+            $table->string('unloading_point')->nullable(); // Punto 4
             $table->string('product')->nullable();
             $table->string('supplier')->nullable();
             $table->decimal('tolls', 10, 2)->default(0); // Peajes
