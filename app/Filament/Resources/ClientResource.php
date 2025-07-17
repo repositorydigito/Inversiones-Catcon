@@ -21,7 +21,7 @@ class ClientResource extends Resource
     protected static ?string $pluralModelLabel = 'Clientes';
     protected static ?string $modelLabel = 'Cliente';
     protected static ?int $navigationSort = 1;
-    protected static ?string $navigationGroup = 'Entidades';    
+    protected static ?string $navigationGroup = 'Entidades';
 
     public static function form(Form $form): Form
     {
@@ -29,7 +29,7 @@ class ClientResource extends Resource
             ->schema([
                 Forms\Components\TextInput::make('name')
                     ->label('Razón Social')
-                    ->required(),  
+                    ->required(),
                 Forms\Components\TextInput::make('comercial_name')
                     ->label('Nombre Comercial')
                     ->required()
@@ -38,15 +38,19 @@ class ClientResource extends Resource
                     ->label('Tipo de Documento')
                     ->options([
                         'DNI' => 'DNI',
-                        'RUC' => 'RUC',                        
+                        'RUC' => 'RUC',
                     ])
                     ->default('RUC')
                     ->required(),
                 Forms\Components\TextInput::make('document_number')
                     ->label('Número de Documento')
-                    ->required(),
+                    ->regex('/^\d{11}$/', 'El RUC debe tener exactamente 11 dígitos.')
+                    ->required()
+                    ->validationMessages([
+                        'regex' => 'El RUC debe tener exactamente 11 dígitos numéricos.',
+                    ]),
                 Forms\Components\TextInput::make('phone')
-                    ->label('Teléfono')                    
+                    ->label('Teléfono')
                     ->nullable(),
                 Forms\Components\TextInput::make('address')
                     ->label('Dirección')
@@ -58,9 +62,9 @@ class ClientResource extends Resource
                 Forms\Components\TextInput::make('days_to_pay')
                     ->label('Días para pagar')
                     ->numeric()
-                    ->minValue(1) 
-                    ->maxValue(365) 
-                    ->nullable() 
+                    ->minValue(1)
+                    ->maxValue(365)
+                    ->nullable()
                     ->helperText('Importante para las Cuentas por Cobrar'),
             ]);
     }
