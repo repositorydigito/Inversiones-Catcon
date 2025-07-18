@@ -96,8 +96,9 @@ return new class extends Migration
             $table->id();
             $table->foreignId('despatch_id')->constrained('despatches')->onDelete('cascade');
             $table->foreignId('unit_of_measure_id')->constrained('measure_units');
+            $table->foreignId('service_id')->constrained('services')->nullable();
             $table->string('code')->nullable();
-            $table->string('description');
+            $table->string('description')->nullable();
             $table->decimal('quantity', 10, 2);
             $table->timestamps();
         });

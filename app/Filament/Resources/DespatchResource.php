@@ -10,6 +10,7 @@ use App\Models\Despatch;
 use App\Models\Driver;
 use App\Models\Vehicle;
 use App\Models\MeasureUnit;
+use App\Models\Service;
 use App\Models\DespatchItem;
 use App\Models\OperationalExpenseConfig;
 use App\Services\DespatchService;
@@ -501,16 +502,40 @@ class DespatchResource extends Resource
                 Section::make('Ítems de la Guía')
                     ->schema([
                         Repeater::make('items')
-                            ->relationship('items') // Define la relación con el modelo DespatchItem
+                            ->relationship('items') 
                             ->schema([
+                                Select::make('service_id')
+                                    ->label('Servicio')
+                                    ->options(function () {
+                                        return Service::active()
+                                            ->orderBy('code')
+                                            ->get()
+                                            ->mapWithKeys(function ($service) {
+                                                return [$service->id => "{$service->code} - {$service->name}"];
+                                            });
+                                    })
+                                    ->searchable()
+                                    ->live()
+                                    ->afterStateUpdated(function ($state, callable $set) {
+                                        if ($state) {
+                                            $service = Service::find($state);
+                                            if ($service) {
+                                                $set('code', $service->code);
+                                                $set('description', $service->name);
+                                            }
+                                        }
+                                    })
+                                    ->placeholder('Seleccionar servicio...')
+                                    ->columnSpan(2),
                                 TextInput::make('code')
                                     ->label('Código')
-                                    ->maxLength(20)
-                                    ->nullable(),
+                                    ->readOnly()
+                                    ->dehydrated(),
                                 TextInput::make('description')
                                     ->label('Descripción')
-                                    ->required()
-                                    ->maxLength(255),
+                                    ->maxLength(255)
+                                    ->readOnly()
+                                    ->dehydrated(),
                                 TextInput::make('quantity')
                                     ->label('Cantidad')
                                     ->numeric()
@@ -523,8 +548,7 @@ class DespatchResource extends Resource
                                 ->searchable()
                                 ->required(),
                             ])
-                            ->columns(4)
-                            ->collapsible()
+                            ->columns(6)
                             ->defaultItems(1)
                             ->reorderableWithButtons()
                             ->itemLabel(fn (array $state): ?string => $state['description'] ?? null)

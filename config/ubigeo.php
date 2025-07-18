@@ -1,6 +1,6 @@
 <?php
 
-// Archivo generado automáticamente el 2025-07-18 22:12:04
+// Archivo generado automáticamente el 2025-07-18 22:52:28
 // Datos de ubigeo de Perú obtenidos desde seeders
 
 return array(

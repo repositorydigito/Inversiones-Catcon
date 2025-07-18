@@ -18,5 +18,6 @@ class DatabaseSeeder extends Seeder
         $this->call(MeasureUnitSeeder::class);
         $this->call(UbigeoSeeder::class);
         $this->call(OperationalExpenseConfigSeeder::class);
+        $this->call(ServiceSeeder::class);
     }
 }
