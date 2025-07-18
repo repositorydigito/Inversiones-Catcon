@@ -60,7 +60,7 @@ class InvoiceResource extends Resource
                                         $itemsCount = $despatch->items->count();
                                         $totalQty = $despatch->items->sum('quantity');
                                         return [
-                                            $despatch->id => "GR {$despatch->series}-{$despatch->number} | {$despatch->client->name} | {$itemsCount} item(s) | {$totalQty} unidades | {$despatch->emission_date->format('d/m/Y')}"
+                                            $despatch->id => "GR {$despatch->series}-{$despatch->number}"
                                         ];
                                     });
                             })

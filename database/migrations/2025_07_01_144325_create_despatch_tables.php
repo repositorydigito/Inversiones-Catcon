@@ -78,6 +78,8 @@ return new class extends Migration
             // Gastos operativos
             $table->string('loading_point')->nullable(); // Punto 1
             $table->string('unloading_point')->nullable(); // Punto 4
+            $table->string('departure_location')->nullable();
+            $table->string('arrival_location')->nullable();
             $table->string('product')->nullable();
             $table->string('supplier')->nullable();
             $table->decimal('tolls', 10, 2)->default(0); // Peajes

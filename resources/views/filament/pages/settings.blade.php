@@ -7,6 +7,7 @@
             </x-slot>
             <ul class="space-y-3 text-gray-700 dark:text-gray-300">
                 <li><a href="{{ url('/admin/company-settings') }}" class="text-primary-600 hover:text-primary-800 dark:text-primary-400 dark:hover:text-primary-600 hover:underline transition">Empresa</a></li>
+                <li><a href="{{ url('/admin/operational-expense-settings') }}" class="text-primary-600 hover:text-primary-800 dark:text-primary-400 dark:hover:text-primary-600 hover:underline transition">Gastos por Ruta</a></li>
                 {{-- <li><a href="{{ url('/admin/advanced-company-settings') }}" class="text-primary-600 hover:text-primary-800 dark:text-primary-400 dark:hover:text-primary-600 hover:underline transition">Avanzado</a></li> --}}
             </ul>
         </x-filament::section>

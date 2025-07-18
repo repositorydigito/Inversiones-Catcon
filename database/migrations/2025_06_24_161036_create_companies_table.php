@@ -23,7 +23,7 @@ return new class extends Migration
 
             // Sección Entorno del Sistema
             $table->enum('soap_type', ['demo', 'production'])->default('demo');
-            $table->enum('soap_delivery_method', ['sunat', 'ose'])->default('sunat');
+            $table->enum('soap_delivery_method', ['sunat', 'ose'])->default('ose');
 
             // Sección Consulta CPE
             $table->string('cpe_client_id')->nullable();

@@ -55,6 +55,8 @@ class Despatch extends Model
         //Gastos operativos
         'loading_point',
         'unloading_point',
+        'departure_location',  
+        'arrival_location', 
         'product',
         'supplier',
         'tolls',

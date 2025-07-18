@@ -11,6 +11,7 @@ use App\Models\Driver;
 use App\Models\Vehicle;
 use App\Models\MeasureUnit;
 use App\Models\DespatchItem;
+use App\Models\OperationalExpenseConfig;
 use App\Services\DespatchService;
 use Filament\Forms;
 use Filament\Forms\Form;
@@ -65,11 +66,11 @@ class DespatchResource extends Resource
                         TextInput::make('departure_sunat_establishment_code')
                             ->label('Código de Establecimiento (Partida)')
                             ->maxLength(4)
-                            ->placeholder('Ej. 0000')
+                            ->default('0000')
                             ->required(),
-                        TextInput::make('loading_point')
+                        /* TextInput::make('loading_point')
                             ->label('Punto 1')
-                            ->maxLength(255),
+                            ->maxLength(255), */                        
                         Forms\Components\Fieldset::make('Ubigeo de Partida')
                             ->schema([
                                 Select::make('departure_departamento')
@@ -158,11 +159,11 @@ class DespatchResource extends Resource
                         TextInput::make('arrival_sunat_establishment_code')
                             ->label('Código de Establecimiento (Llegada)')
                             ->maxLength(4)
-                            ->placeholder('Ej. 0000')
+                            ->default('0000')
                             ->required(),
-                        TextInput::make('unloading_point')
+                        /* TextInput::make('unloading_point')
                             ->label('Punto 4')
-                            ->maxLength(255),
+                            ->maxLength(255), */                        
                         Forms\Components\Fieldset::make('Ubigeo de Llegada')
                             ->schema([
                                 Select::make('arrival_departamento')
@@ -229,7 +230,7 @@ class DespatchResource extends Resource
                         Select::make('document_type')
                             ->label('Tipo de Guía')
                             ->options([
-                                '7' => 'Guía de Remisión Remitente',
+                                // '7' => 'Guía de Remisión Remitente',
                                 '8' => 'Guía de Remisión Transportista',
                             ])
                             ->required()
@@ -296,8 +297,49 @@ class DespatchResource extends Resource
                             ->nullable(),
                     ]),
 
+                Section::make('Puntos de Ruta')
+                    ->description('Información que se puede personalizar desde Configuraciones')
+                    ->schema([
+                        Select::make('loading_point')
+                            ->label('Punto 1')
+                            ->options(OperationalExpenseConfig::distinct()->pluck('departure_point', 'departure_point'))
+                            ->searchable()
+                            ->live()
+                            ->afterStateUpdated(function ($state, callable $get, callable $set) {
+                                static::autoCompleteFromFourFields($get, $set);
+                            }),
+
+                        Select::make('departure_location')
+                            ->label('Punto de Partida')
+                            ->options(OperationalExpenseConfig::distinct()->pluck('departure_location', 'departure_location'))
+                            ->searchable()
+                            ->live()
+                            ->afterStateUpdated(function ($state, callable $get, callable $set) {
+                                static::autoCompleteFromFourFields($get, $set);
+                            }),
+                        
+                        Select::make('arrival_location')
+                            ->label('Punto de Llegada')
+                            ->options(OperationalExpenseConfig::distinct()->pluck('arrival_location', 'arrival_location'))
+                            ->searchable()
+                            ->live()
+                            ->afterStateUpdated(function ($state, callable $get, callable $set) {
+                                static::autoCompleteFromFourFields($get, $set);
+                            }),
+
+                        Select::make('unloading_point')
+                            ->label('Punto 4')
+                            ->options(OperationalExpenseConfig::distinct()->pluck('destination_point', 'destination_point'))
+                            ->searchable()
+                            ->live()
+                            ->afterStateUpdated(function ($state, callable $get, callable $set) {
+                                static::autoCompleteFromFourFields($get, $set);
+                            }),                        
+                    ])
+                    ->columns(4),
+
                 Section::make('Gastos Operativos')
-                    ->description('Información adicional para el control de gastos operativos. Estos campos no se envían a SUNAT.')
+                    ->description('Información autogenerada en función a los puntos de ruta para el control de gastos operativos.')
                     ->schema([
                         Forms\Components\Group::make()
                             ->schema([
@@ -312,53 +354,32 @@ class DespatchResource extends Resource
                                     ->numeric()
                                     ->prefix('S/.')
                                     ->step(0.01)
-                                    ->default(0),
+                                    ->default(0)
+                                    ->disabled()  
+                                    ->dehydrated() 
+                                    ->live(),
                                 Forms\Components\TextInput::make('loading_expenses')
                                     ->label('Gastos de Carga')
                                     ->numeric()
                                     ->prefix('S/.')
                                     ->step(0.01)
-                                    ->default(0),
+                                    ->default(0)
+                                    ->disabled()  
+                                    ->dehydrated() 
+                                    ->live(),
                             ])
                             ->columns(4),
 
                         Forms\Components\Group::make()
-                            ->schema([
-                                /* Forms\Components\TextInput::make('travel_allowances')
-                                    ->label('Viáticos')
-                                    ->numeric()
-                                    ->prefix('S/.')
-                                    ->step(0.01)
-                                    ->default(30)
-                                    ->disabled()
-                                    ->dehydrated()
-                                    ->reactive()
-                                    ->afterStateHydrated(function (TextInput $component, $state, $record) {
-                                        // Mostrar información adicional cuando se está editando
-                                        if ($record && $record->driver_id) {
-                                            $emissionDate = $record->emission_date ? $record->emission_date->format('Y-m-d') : now()->format('Y-m-d');
-
-                                            $guidesCount = \App\Models\Despatch::where('driver_id', $record->driver_id)
-                                                ->whereDate('emission_date', $emissionDate)
-                                                ->where('id', '!=', $record->id)
-                                                ->count();
-
-                                            if ($guidesCount > 0) {
-                                                $component->helperText('Automático: S/. 0.00 (ya existe otra guía para este conductor en la fecha)');
-                                            } else {
-                                                $component->helperText('Automático: S/. 30.00 (primera guía del día para este conductor)');
-                                            }
-                                        }
-                                    }), */
-
+                            ->schema([                               
                                 Forms\Components\TextInput::make('travel_allowances')
                                     ->label('Viáticos')
                                     ->numeric()
                                     ->prefix('S/.')
                                     ->step(0.01)
-                                    ->disabled() // Deshabilitar edición manual
-                                    ->dehydrated() // Asegurar que se guarde el valor
-                                    ->live() // Para reactividad
+                                    ->disabled() 
+                                    ->dehydrated() 
+                                    ->live() 
                                     ->afterStateHydrated(function (Forms\Components\TextInput $component, $state, $record, callable $get) {
                                         // Calcular valor inicial cuando se carga el formulario
                                         $calculatedValue = static::calculateTravelAllowances($get, $record);
@@ -370,21 +391,30 @@ class DespatchResource extends Resource
                                     ->numeric()
                                     ->prefix('S/.')
                                     ->step(0.01)
-                                    ->default(0),
+                                    ->default(0)
+                                    ->disabled()  
+                                    ->dehydrated() 
+                                    ->live(),
 
                                 Forms\Components\TextInput::make('operations_manager')
                                     ->label('Jefe de Operaciones')
                                     ->numeric()
                                     ->prefix('S/.')
                                     ->step(0.01)
-                                    ->default(0),
+                                    ->default(0)
+                                    ->disabled() 
+                                    ->dehydrated() 
+                                    ->live(),
 
                                 Forms\Components\TextInput::make('security')
                                     ->label('Seguridad')
                                     ->numeric()
                                     ->prefix('S/.')
                                     ->step(0.01)
-                                    ->default(0),
+                                    ->default(0)
+                                    ->disabled()  
+                                    ->dehydrated() 
+                                    ->live(),
                             ])
                             ->columns(4),
                     ]),
@@ -801,7 +831,7 @@ class DespatchResource extends Resource
         return [
             'index' => Pages\ListDespatches::route('/'),
             'create' => Pages\CreateDespatch::route('/create'),
-            'edit' => Pages\EditDespatch::route('/{record}/edit'),
+            // 'edit' => Pages\EditDespatch::route('/{record}/edit'),
         ];
     }
 
@@ -835,4 +865,43 @@ class DespatchResource extends Resource
         // Si es la primera guía del día (no hay guías existentes), asignar viáticos
         return $existingGuidesCount === 0 ? $dailyTravelAllowance : 0.00;
     }
+    private static function autoCompleteFromFourFields(callable $get, callable $set): void
+    {
+        $loadingPoint = $get('loading_point');
+        $departureLocation = $get('departure_location');
+        $arrivalLocation = $get('arrival_location');
+        $unloadingPoint = $get('unloading_point');
+
+        // Solo buscar si tenemos los 4 campos completos
+        if ($loadingPoint && $departureLocation && $arrivalLocation && $unloadingPoint) {
+            $config = OperationalExpenseConfig::where('departure_point', $loadingPoint)
+                                            ->where('departure_location', $departureLocation)
+                                            ->where('arrival_location', $arrivalLocation)
+                                            ->where('destination_point', $unloadingPoint)
+                                            ->first();
+
+            if ($config) {
+                $set('tolls', $config->tolls);
+                $set('loading_expenses', $config->loading_expenses);
+                $set('variable_salary', $config->variable_salary);
+                $set('operations_manager', $config->operations_manager);
+                $set('security', $config->security);
+
+                // Recalcular viáticos
+                $calculatedValue = static::calculateTravelAllowances($get, null);
+                $set('travel_allowances', $calculatedValue);
+            } else {
+                // Si no hay configuración, poner todo en 0 (excepto viáticos que se calculan automáticamente)
+                $set('tolls', 0);
+                $set('loading_expenses', 0);
+                $set('variable_salary', 0);
+                $set('operations_manager', 0);
+                $set('security', 0);
+
+                // Recalcular viáticos
+                $calculatedValue = static::calculateTravelAllowances($get, null);
+                $set('travel_allowances', $calculatedValue);
+            }
+        }
+    }    
 }
