@@ -18,7 +18,7 @@ return [
             'direccion' => env('GREENTER_COMPANY_ADDRESS', 'Av. Villa Nueva 221'),
         ],
 
-        'certificate' => public_path('certs/certificate.pem'),
+        'certificate' => public_path('certs/CT2507128340.pem'),
         // 'certificate' => base_path('vendor/codersfree/laravel-greenter/stubs/certificate.pem'),
 
         'clave_sol' => [

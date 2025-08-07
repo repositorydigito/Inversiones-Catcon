@@ -16,3 +16,9 @@ Route::get('/test-gre-remitente', [App\Http\Controllers\GreenterTestController::
 
 // GRE Transportista
 Route::get('/test-gre-transportista', [App\Http\Controllers\GreenterTestController::class, 'testGRETransportista']);
+
+Route::get('/test-gre-sunat', [App\Http\Controllers\GreenterTestController::class, 'testGRERemitenteSunat']);
+
+Route::get('/debug-basico', [App\Http\Controllers\GreenterTestController::class, 'debugBasico']);
+
+Route::get('/test-gre-transportista-sunat', [App\Http\Controllers\GreenterTestController::class, 'testGRETransportistaSunat']);

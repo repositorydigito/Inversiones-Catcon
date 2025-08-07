@@ -1,0 +1,166 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<DespatchAdvice xmlns="urn:oasis:names:specification:ubl:schema:xsd:DespatchAdvice-2" xmlns:cac="urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2" xmlns:cbc="urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2" xmlns:ext="urn:oasis:names:specification:ubl:schema:xsd:CommonExtensionComponents-2">
+  
+  <!-- AQUÍ VA LA FIRMA DIGITAL (se agrega después del firmado) -->
+  <ext:UBLExtensions>
+    <ext:UBLExtension>
+      <ext:ExtensionContent>
+        <!-- La firma digital se insertará aquí -->
+      <ds:Signature xmlns:ds="http://www.w3.org/2000/09/xmldsig#" Id="GreenterSign"><ds:SignedInfo><ds:CanonicalizationMethod Algorithm="http://www.w3.org/TR/2001/REC-xml-c14n-20010315"/><ds:SignatureMethod Algorithm="http://www.w3.org/2000/09/xmldsig#rsa-sha1"/><ds:Reference URI=""><ds:Transforms><ds:Transform Algorithm="http://www.w3.org/2000/09/xmldsig#enveloped-signature"/></ds:Transforms><ds:DigestMethod Algorithm="http://www.w3.org/2000/09/xmldsig#sha1"/><ds:DigestValue>t62L5wUss/vtaTL0uaquEErWfnY=</ds:DigestValue></ds:Reference></ds:SignedInfo><ds:SignatureValue>emEy+XFEmOUQA1U2YUpjxK5HICiEQqYxvs9+uo3iwRAz5Q2Mhm2zVeHC7y2tjOQ8g37q+vF2mpOzEJC3WjCuBvkSSO3tdQW4pMhRJ9sBTU8CQKNczrC35/eIRNuqu0RfgVvXjtquu37uKU/yckeq2PlxazFCiUT2uE2ViJU/21HGRmPGJWBXvMpSJHSGTLwFwvDd1Di51SR0WBxXmwD0i4hq7+TkqVN3puTouOu95OwmQvLec4nozLya3TVe1or+CuBnCyAEQ2V2u1Ril45OGps6ULtdIiCAGBC+Ui8hJhWDvU7bDODlXJ8p8BNvfzijStj2RT0pXRSUneUfW2toxw==</ds:SignatureValue><ds:KeyInfo><ds:X509Data><ds:X509Certificate>MIIFcjCCBFqgAwIBAgIIR8fjr995ybkwDQYJKoZIhvcNAQELBQAwRjEkMCIGA1UEAwwbTGxhbWEucGUgU0hBMjU2IFN0YW5kYXJkIENBMREwDwYDVQQKDAhMTEFNQS5QRTELMAkGA1UEBhMCUEUwHhcNMjUwNzIxMTUyNTM0WhcNMjYwNzIxMTUyNTAwWjCCARoxNzA1BgNVBAkMLkNBTC4gR0VSTUFOIFNDSEVSRUlCRVIgTlJPLiAyNzYgVVJCLiBTQU5UQSBBTkExIDAeBgkqhkiG9w0BCQEWEWFuc0BpbnZjYXRjb24uY29tMSwwKgYDVQQDDCNTT0ZUV0FSRSBERSBGQUNUVVJBQ0lPTiBFTEVDVFJPTklDQTEsMCoGA1UECwwjRkFDVFVSQSBFTEVDVFJPTklDQSBSVUMgMjA2MDE5MjEwMjMxITAfBgNVBAsMGFZhbGlkYWRvIHBvciBMbGFtYS5wZSBFUjEiMCAGA1UECgwZSU5WRVJTSU9ORVMgQ0FUQ09OIFMuQS5DLjENMAsGA1UEBwwETElNQTELMAkGA1UEBhMCUEUwggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQCxGdArD+/1HFLpxnPJPY6q49s+Xn/ffD2CUnhwd7GCo2uTodQriNC6k7XfgGKwJJTFMyP6fleVOOqig/eih0f2Ok7R3vmSHMq7RZjujnur4q9Z6pq6VA8iAuoHEM20Sl0Lnw/dkGG1GbHiUYWfawYEYn8Kse3GyM46N36h+QZ+JUCjUx1hxL/M7TOjTCxMhxCosZx1VLyC1z5YVVKsVb/h3s9i5ZDwS0M+bfeptSsz5aZXVaQ2IOYjk9vkLNM0VOloE3htUslvG7D3t27hwtdWUPgOKx4TXeNZ33JSkJR/CxOR04EdNNW7ai1MMq549sDge/IztdHIS91ARLzUVyFDAgMBAAGjggGMMIIBiDAMBgNVHRMBAf8EAjAAMB8GA1UdIwQYMBaAFF2IW63rZfv+aKLk2W89V3Ki7yuZMGcGCCsGAQUFBwEBBFswWTA1BggrBgEFBQcwAoYpaHR0cDovL2NydC5sbGFtYS5wZS9sbGFtYXBlc3RhbmRhcmRjYS5jZXIwIAYIKwYBBQUHMAGGFGh0dHA6Ly9vY3NwLmxsYW1hLnBlMBwGA1UdEQQVMBOBEWFuc0BpbnZjYXRjb24uY29tMEYGA1UdIAQ/MD0wOwYNKwYBBAGDl3cAAQADATAqMCgGCCsGAQUFBwIBFhxodHRwczovL2xsYW1hLnBlL3JlcG9zaXRvcnkvMB0GA1UdJQQWMBQGCCsGAQUFBwMCBggrBgEFBQcDBDA6BgNVHR8EMzAxMC+gLaArhilodHRwOi8vY3JsLmxsYW1hLnBlL2xsYW1hcGVzdGFuZGFyZGNhLmNybDAdBgNVHQ4EFgQUf9PiHzuc8GVLe+7o6+V8Qnlp2h0wDgYDVR0PAQH/BAQDAgbAMA0GCSqGSIb3DQEBCwUAA4IBAQBNcUui7TM7H9cWh0wemdnBj0gQroGImekrKb4PjZDRu6jePoYWWH0pUbz2hXJTFEQe9svlpUwwZHepY6DCj4UprbO9nFVw23Vy5F6KbmOMGZpn43QbpoYcjsqIfWcGU1gJuoSaBazAEnDh0zXXTmD2KNX1OMHeU41EYHT1hxss90AxBEYFWt3/ZSBgrVXTqy+jrk5trHD5ohRVHrOEssTVx9fq26bXex6FD5mWYP5DL2UlMfRLcoHCYmv774J/+bFl+93h58jEI/19xDMoVpGOJXnl8oWZMg+eFayT8GNRAqFifLO1yhQlIVIiRv2O3hrkAAwOLeoVP/K9S6ggOIq1</ds:X509Certificate><ds:X509Certificate>MIIDoDCCAoigAwIBAgIIPqXfSPJocNIwDQYJKoZIhvcNAQELBQAwOzEZMBcGA1UEAwwQTGxhbWEucGUgUm9vdCBDQTERMA8GA1UECgwITExBTUEuUEUxCzAJBgNVBAYTAlBFMB4XDTE4MDcxODIzMDUxOFoXDTM4MDcxMzIyNTQyMVowRjEkMCIGA1UEAwwbTGxhbWEucGUgU0hBMjU2IFN0YW5kYXJkIENBMREwDwYDVQQKDAhMTEFNQS5QRTELMAkGA1UEBhMCUEUwggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQC70HwZu6wAQIYR7TMNbYm3KJxv60Ax0FpARIt+4hGOrK6LN0OBPQA1BUJqg27zrPx2PG5J1C4aqvd6QgyeQJC3hdcsThYMQbq62aPjQaVWlY5dPWNtWRhi/3YCXNyLlMs16TZfRx5N/KvgJSBrAYRzPMqRhontKmrxKzjZTl29EfyBdLu5WwGv5Z2sKmoArp0Te/Np/9+ND4mopl7wsgBWfv8TxCrWhkAxvLm2R4psRO6eJgCJYWN7AyzkRH3YR68yrfz2bg3VFPiVVydgSrEYUFwKXCuKZfx2jOCDIPjf8L11nuhDL0U0b4ko5HgQ4SSPqlWYtKMbXjI5AJEvdzjTAgMBAAGjgZwwgZkwDwYDVR0TAQH/BAUwAwEB/zAfBgNVHSMEGDAWgBSmg0TNVZeEH4gJ4a115ylaX5j3pDA2BgNVHR8ELzAtMCugKaAnhiVodHRwOi8vY3JsLmxsYW1hLnBlL2xsYW1hcGVyb290Y2EuY3JsMB0GA1UdDgQWBBRdiFut62X7/mii5NlvPVdyou8rmTAOBgNVHQ8BAf8EBAMCAYYwDQYJKoZIhvcNAQELBQADggEBAGntu+P4r1+TOjWWL0wmGS9pvQmqleKTwyXaKCeBdx6Jkg+JzvEnvetxZ3qvZ54RPUH5bAo/Hi504wungaDrFys6D49b8NYay8X7vCpY/UQU8aspU4JRF6cNLyQr4tfwF3raoRn12sOuOd342bGdmgsqxzGXzioT3m7/xX7Xo+mnPa3nP6F211pOZ/I22s2+FackqXcyHX59JxBvZ0HXZ7FWPlmOWbVq/vHTkVpaaG++KLCbr64cP3M9D98tawgjp4T6sns2yrBw8Jr4QMymF+8JBJkUZJP5cWrvJu522BhDwMJoj7LFtlq+4Anb2jy3L+KVlEvUzsxUOADQEpeb9hc=</ds:X509Certificate><ds:X509Certificate>MIIDWzCCAkOgAwIBAgIIOixEWV433QMwDQYJKoZIhvcNAQELBQAwOzEZMBcGA1UEAwwQTGxhbWEucGUgUm9vdCBDQTERMA8GA1UECgwITExBTUEuUEUxCzAJBgNVBAYTAlBFMB4XDTE4MDcxODIyNTQyMVoXDTM4MDcxMzIyNTQyMVowOzEZMBcGA1UEAwwQTGxhbWEucGUgUm9vdCBDQTERMA8GA1UECgwITExBTUEuUEUxCzAJBgNVBAYTAlBFMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAsUhv+jmfYMop5RUOZUZYaDwJtREVNMrpFu8Wu1ybT94LFGO8h11bwnOy92R+ARPSm/JF8jzBu/M7/JKQqe1dUEOaleWvNRMko2CTvAdkkmWdaAQloR+D5N8DgoAz/XStGwOUInuKCj3NDfdmN81j88hicK1/jsf0Cm6e8eIBdtpkwwwJPuQQMU4sFK1sAFC453etEVCoXVYjELUVdlm6ZaB0otpqYG7xiKRL2iaxGOxX7U7jUoYMKQMKfD5foiNyJojNq3wFpkZiifvqf6oYxw41w8OJ0tPvEDVCJKn0bouOF2fctVsrvB6uiURvIuiVJpHOwggcjQA32lo+tGuYpwIDAQABo2MwYTAPBgNVHRMBAf8EBTADAQH/MB8GA1UdIwQYMBaAFKaDRM1Vl4QfiAnhrXXnKVpfmPekMB0GA1UdDgQWBBSmg0TNVZeEH4gJ4a115ylaX5j3pDAOBgNVHQ8BAf8EBAMCAYYwDQYJKoZIhvcNAQELBQADggEBAHAm1Fne6tOL/uLyfmT/g3D1rnp9iT0mFPTAy/FC/zYLCFacpeZYgxnH5zFkJXRSCmFAf05M2tbUulIGTZCs+z5La0VdYnwAp7DovKuKU81rUHp5QXmFc4W6rMqZXtLg3kzfi2y9KfTeiZjE/MiDWPP65XlF7xhC3vEOzh3yP8kRkSb4SUbRReV+ZBb2un4eM3exFYc+RckIjA9PyMBK75XPi0VeJm4qWoYYuQr/4cro76AyyIJTp9IsUWP53Gzqbl4ZdBuFPJoF6FkTs1Wbg39IEDBiKtkn6pUtCq6bIvuygYsPCQoDkeFRKYcyUCuvoA/3akhr3u8l7aTqTn8A6G0=</ds:X509Certificate></ds:X509Data></ds:KeyInfo></ds:Signature></ext:ExtensionContent>
+    </ext:UBLExtension>
+  </ext:UBLExtensions>
+
+  <cbc:UBLVersionID>2.1</cbc:UBLVersionID>
+  <cbc:CustomizationID>2.0</cbc:CustomizationID>
+  
+  <!-- CAMBIAR: Tu serie y número -->
+  <cbc:ID>V001-1</cbc:ID>
+  
+  <!-- CAMBIAR: Fecha y hora actuales -->
+  <cbc:IssueDate>2025-08-07</cbc:IssueDate>
+  <cbc:IssueTime>14:30:00</cbc:IssueTime>
+  
+  <cbc:DespatchAdviceTypeCode>31</cbc:DespatchAdviceTypeCode>
+  <cbc:Note>Transporte de mercadería para cliente</cbc:Note>
+
+  <cac:Signature>
+    <cbc:ID>20601921023</cbc:ID>
+    <cac:SignatoryParty>
+      <cac:PartyIdentification>
+        <cbc:ID>20601921023</cbc:ID>
+      </cac:PartyIdentification>
+      <cac:PartyName>
+        <cbc:Name>CATCON SAC</cbc:Name>
+      </cac:PartyName>
+    </cac:SignatoryParty>
+    <cac:DigitalSignatureAttachment>
+      <cac:ExternalReference>
+        <cbc:URI>20601921023</cbc:URI>
+      </cac:ExternalReference>
+    </cac:DigitalSignatureAttachment>
+  </cac:Signature>
+
+  <!-- TRANSPORTISTA = CATCON -->
+  <cac:DespatchSupplierParty>
+    <cbc:CustomerAssignedAccountID schemeID="6">20601921023</cbc:CustomerAssignedAccountID>
+    <cac:Party>
+      <cac:PartyIdentification>
+        <cbc:ID schemeID="6">20601921023</cbc:ID>
+      </cac:PartyIdentification>
+      <cac:PartyLegalEntity>
+        <cbc:RegistrationName>CATCON SAC</cbc:RegistrationName>
+      </cac:PartyLegalEntity>
+    </cac:Party>
+  </cac:DespatchSupplierParty>
+
+  <!-- CAMBIAR: Datos del destinatario -->
+  <cac:DeliveryCustomerParty>
+    <cac:Party>
+      <cac:PartyIdentification>
+        <cbc:ID schemeID="6">20123456789</cbc:ID>
+      </cac:PartyIdentification>
+      <cac:PartyLegalEntity>
+        <cbc:RegistrationName>EMPRESA DESTINATARIO SAC</cbc:RegistrationName>
+      </cac:PartyLegalEntity>
+    </cac:Party>
+  </cac:DeliveryCustomerParty>
+
+  <cac:Shipment>
+    <cbc:ID>SUNAT_Envio</cbc:ID>
+    
+    <!-- CAMBIAR: Peso total en KG -->
+    <cbc:GrossWeightMeasure unitCode="KGM">100.0</cbc:GrossWeightMeasure>
+    
+    <cac:ShipmentStage>
+      <cac:TransitPeriod>
+        <!-- CAMBIAR: Fecha de inicio del traslado -->
+        <cbc:StartDate>2025-08-08</cbc:StartDate>
+      </cac:TransitPeriod>
+
+      <cac:CarrierParty>
+        <cac:PartyIdentification>
+          <cbc:ID schemeID="6">20601921023</cbc:ID>
+        </cac:PartyIdentification>
+        <cac:PartyLegalEntity>
+          <cbc:RegistrationName>CATCON SAC</cbc:RegistrationName>
+        </cac:PartyLegalEntity>
+      </cac:CarrierParty>
+
+      <cac:TransportMeans>
+        <cac:RoadTransport>
+          <!-- CAMBIAR: Placa del vehículo -->
+          <cbc:LicensePlateID>ABC123</cbc:LicensePlateID>
+        </cac:RoadTransport>
+      </cac:TransportMeans>
+
+      <cac:DriverPerson>
+        <!-- CAMBIAR: DNI del conductor -->
+        <cbc:ID schemeID="1">12345678</cbc:ID>
+        <!-- CAMBIAR: Nombres y apellidos -->
+        <cbc:FirstName>JUAN</cbc:FirstName>
+        <cbc:FamilyName>PEREZ GARCIA</cbc:FamilyName>
+        <cbc:JobTitle>Principal</cbc:JobTitle>
+        <cac:IdentityDocumentReference>
+          <!-- CAMBIAR: Número de licencia -->
+          <cbc:ID>Q12345678</cbc:ID>
+        </cac:IdentityDocumentReference>
+      </cac:DriverPerson>
+    </cac:ShipmentStage>
+
+    <cac:Delivery>
+      <cac:DeliveryAddress>
+        <!-- CAMBIAR: Ubigeo de destino -->
+        <cbc:ID schemeAgencyName="PE:INEI" schemeName="Ubigeos">150101</cbc:ID>
+        <cac:AddressLine>
+          <!-- CAMBIAR: Dirección de llegada -->
+          <cbc:Line>AV. EJEMPLO 123, LIMA LIMA LIMA</cbc:Line>
+        </cac:AddressLine>
+      </cac:DeliveryAddress>
+
+      <cac:Despatch>
+        <cac:DespatchAddress>
+          <!-- CAMBIAR: Ubigeo de origen -->
+          <cbc:ID schemeAgencyName="PE:INEI" schemeName="Ubigeos">150101</cbc:ID>
+          <cac:AddressLine>
+            <!-- CAMBIAR: Dirección de partida -->
+            <cbc:Line>AV. PARTIDA 456, LIMA LIMA LIMA</cbc:Line>
+          </cac:AddressLine>
+        </cac:DespatchAddress>
+
+        <cac:DespatchParty>
+          <cac:PartyIdentification>
+            <!-- CAMBIAR: RUC del remitente -->
+            <cbc:ID schemeID="6">20987654321</cbc:ID>
+          </cac:PartyIdentification>
+          <cac:PartyLegalEntity>
+            <!-- CAMBIAR: Razón social del remitente -->
+            <cbc:RegistrationName>EMPRESA REMITENTE SAC</cbc:RegistrationName>
+          </cac:PartyLegalEntity>
+        </cac:DespatchParty>
+      </cac:Despatch>
+    </cac:Delivery>
+
+    <cac:TransportHandlingUnit>
+      <cac:TransportEquipment>
+        <!-- CAMBIAR: Misma placa del vehículo -->
+        <cbc:ID>ABC123</cbc:ID>
+      </cac:TransportEquipment>
+    </cac:TransportHandlingUnit>
+  </cac:Shipment>
+
+  <!-- CAMBIAR: Productos transportados -->
+  <cac:DespatchLine>
+    <cbc:ID>1</cbc:ID>
+    <cbc:DeliveredQuantity unitCode="NIU">5</cbc:DeliveredQuantity>
+    <cac:OrderLineReference>
+      <cbc:LineID>1</cbc:LineID>
+    </cac:OrderLineReference>
+    <cac:Item>
+      <cbc:Description>CAJAS DE PRODUCTOS VARIOS</cbc:Description>
+      <cac:SellersItemIdentification>
+        <cbc:ID>PROD001</cbc:ID>
+      </cac:SellersItemIdentification>
+    </cac:Item>
+  </cac:DespatchLine>
+
+</DespatchAdvice>
