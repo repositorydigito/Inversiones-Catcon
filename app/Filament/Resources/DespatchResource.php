@@ -783,7 +783,67 @@ class DespatchResource extends Resource
                 //
             ])
             ->actions([
-                Tables\Actions\Action::make('consultDespatchStatus')
+                // Acción para consultar estado en SUNAT directo
+                Tables\Actions\Action::make('consultSunatStatus')
+                    ->label('SUNAT')
+                    ->icon('heroicon-o-arrow-path')
+                    ->color('info')
+                    ->action(function (Despatch $record) {
+                        try {
+                            $sunatService = app(\App\Services\SunatDespatchService::class);
+                            $response = $sunatService->consultDespatchStatus($record);
+
+                            Notification::make()
+                                ->title('✅ Consulta de Estado Exitosa')
+                                ->body("Estado de la guía #{$record->series}-{$record->number}: " . ($record->accepted_by_sunat ? 'ACEPTADA' : 'PENDIENTE'))
+                                ->success()
+                                ->send();
+
+                        } catch (Exception $e) {
+                            Notification::make()
+                                ->title('❌ Error al Consultar Estado')
+                                ->body($e->getMessage())
+                                ->danger()
+                                ->send();
+                        }
+
+                        $record->refresh();
+                    })
+                    ->visible(fn (Despatch $record): bool => !is_null($record->sunat_ticket)),
+
+                // Acción para reenviar a SUNAT (si falló el envío inicial)
+                Tables\Actions\Action::make('resendToSunat')
+                    ->label('Reenviar')
+                    ->icon('heroicon-o-paper-airplane')
+                    ->color('warning')
+                    ->action(function (Despatch $record) {
+                        try {
+                            $sunatService = app(\App\Services\SunatDespatchService::class);
+                            $response = $sunatService->sendDespatch($record);
+
+                            if ($response['success']) {
+                                Notification::make()
+                                    ->title('🎉 Reenviado Exitosamente')
+                                    ->body("Ticket: {$response['ticket']}")
+                                    ->success()
+                                    ->send();
+                            }
+
+                        } catch (Exception $e) {
+                            Notification::make()
+                                ->title('❌ Error al Reenviar')
+                                ->body($e->getMessage())
+                                ->danger()
+                                ->send();
+                        }
+
+                        $record->refresh();
+                    })
+                    ->visible(fn (Despatch $record): bool => is_null($record->sunat_ticket) || !empty($record->sunat_soap_error))
+                    ->requiresConfirmation()
+                    ->modalDescription('¿Está seguro de reenviar esta guía a SUNAT?'),
+
+                /* Tables\Actions\Action::make('consultDespatchStatus')
                     ->label('SUNAT')
                     ->icon('heroicon-o-arrow-path')
                     ->color('info')
@@ -806,12 +866,11 @@ class DespatchResource extends Resource
                         }
 
                         $record->refresh(); // ¡MUY IMPORTANTE! Recarga el modelo para que la tabla muestre el nuevo estado y URLs
-                    }),
+                    }), */
                     // Muestra si la guía fue generada (tiene un response code, o al menos no ha sido aceptada)
                     // y no ha sido aceptada por SUNAT (para seguir consultando hasta que se acepte o rechace).
                     //->visible(fn (Despatch $record): bool => !is_null($record->sunat_response_code) && !$record->accepted_by_sunat), // Ajusta la visibilidad según tu flujo exacto.
 
-                // Opcional: Acción para descargar PDF/XML/CDR si existen
                 Tables\Actions\Action::make('downloadPdf')
                     ->label('PDF')
                     ->icon('heroicon-o-document-arrow-down')

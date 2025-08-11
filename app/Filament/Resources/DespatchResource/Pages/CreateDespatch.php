@@ -4,6 +4,7 @@ namespace App\Filament\Resources\DespatchResource\Pages;
 
 use App\Filament\Resources\DespatchResource;
 use App\Services\DespatchService;
+use App\Services\SunatDespatchService;
 use App\Models\Driver;
 use App\Models\Vehicle;
 use Filament\Actions;
@@ -132,10 +133,90 @@ class CreateDespatch extends CreateRecord
     protected function afterCreate(): void
     {
         // Automáticamente enviar la guía a Nubefact después de crearla
-        $this->sendToNubefact();
+        // $this->sendToNubefact();
+        // Automáticamente enviar la guía a SUNAT después de crearla
+        $this->sendToSunat();
     }
 
-    protected function sendToNubefact(): void
+    protected function sendToSunat(): void
+    {
+        try {
+            $sunatService = app(SunatDespatchService::class);
+            
+            // Validar antes de enviar
+            $validation = $sunatService->validateDespatchForSending($this->record);
+            
+            if (!$validation['is_valid']) {
+                Notification::make()
+                    ->title('Guía Creada - Errores de Validación')
+                    ->body('La guía fue creada pero no se pudo enviar a SUNAT:<br>• ' . implode('<br>• ', $validation['errors']))
+                    ->warning()
+                    ->persistent()
+                    ->send();
+                return;
+            }
+
+            // Mostrar advertencias si las hay
+            if (!empty($validation['warnings'])) {
+                Notification::make()
+                    ->title('Advertencias')
+                    ->body('• ' . implode('<br>• ', $validation['warnings']))
+                    ->warning()
+                    ->send();
+            }
+
+            // Verificar disponibilidad de SUNAT
+            if (!$sunatService->isSunatAvailable()) {
+                Notification::make()
+                    ->title('Guía Creada - SUNAT No Disponible')
+                    ->body('La guía fue creada pero SUNAT no está disponible. Puede reenviar manualmente desde la lista.')
+                    ->warning()
+                    ->send();
+                return;
+            }
+
+            // Enviar a SUNAT
+            $response = $sunatService->sendDespatch($this->record);
+
+            if ($response['success']) {
+                $ticket = $response['ticket'] ?? 'N/A';
+                
+                Notification::make()
+                    ->title('🎉 Guía Enviada a SUNAT Exitosamente')
+                    ->body("La guía #{$this->record->series}-{$this->record->number} ha sido enviada a SUNAT.<br>📋 Ticket: {$ticket}<br>📄 XML: {$response['xml_data']['file_name']}")
+                    ->success()
+                    ->persistent()
+                    ->actions([
+                        \Filament\Notifications\Actions\Action::make('ver_estado')
+                            ->label('Ver Estado')
+                            ->url(DespatchResource::getUrl('index'))
+                            ->button()
+                    ])
+                    ->send();
+            } else {
+                throw new Exception('Error en la respuesta de SUNAT');
+            }
+
+        } catch (Exception $e) {
+            Notification::make()
+                ->title('Guía Creada - Error al Enviar a SUNAT')
+                ->body("La guía fue creada correctamente, pero hubo un error al enviarla a SUNAT:<br><strong>Error:</strong> " . $e->getMessage())
+                ->danger()
+                ->persistent()
+                ->actions([
+                    \Filament\Notifications\Actions\Action::make('reintentar')
+                        ->label('Reintentar Envío')
+                        ->action(function () {
+                            $this->sendToSunat();
+                        })
+                        ->button()
+                        ->color('primary')
+                ])
+                ->send();
+        }
+    }
+
+    /* protected function sendToNubefact(): void
     {
         try {
             $despatchService = app(DespatchService::class);
@@ -154,7 +235,7 @@ class CreateDespatch extends CreateRecord
                 ->warning()
                 ->send();
         }
-    }
+    } */
 
     protected function getRedirectUrl(): string
     {

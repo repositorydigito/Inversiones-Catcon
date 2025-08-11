@@ -17,7 +17,7 @@ class GreenterTestController extends Controller
                 "tipoOperacion" => "0101",
                 "tipoDoc" => "01", // FACTURA
                 "serie" => "F001",
-                "correlativo" => "3",
+                "correlativo" => "4",
                 "fechaEmision" => now(),
                 "formaPago" => ['tipo' => 'Contado'],
                 "tipoMoneda" => "PEN",

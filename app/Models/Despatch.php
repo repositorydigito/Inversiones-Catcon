@@ -65,6 +65,10 @@ class Despatch extends Model
         'variable_salary',
         'operations_manager',
         'security',
+
+        'sunat_ticket',
+        'xml_file_name',
+        'zip_hash',
     ];
 
     protected $casts = [
@@ -132,5 +136,60 @@ class Despatch extends Model
     public function getTotalOperationalExpensesAttribute(): float
     {
         return $this->tolls + $this->loading_expenses + $this->travel_allowances + $this->variable_salary;
+    }
+
+    // Métodos auxiliares para SUNAT
+    public function hasSunatTicket(): bool
+    {
+        return !empty($this->sunat_ticket);
+    }
+
+    public function isAcceptedBySunat(): bool
+    {
+        return $this->accepted_by_sunat === true;
+    }
+
+    public function isPendingInSunat(): bool
+    {
+        return $this->hasSunatTicket() && !$this->isAcceptedBySunat();
+    }
+
+    public function hasError(): bool
+    {
+        return !empty($this->sunat_soap_error);
+    }
+
+    public function getStatusBadge(): string
+    {
+        if ($this->isAcceptedBySunat()) {
+            return 'success';
+        }
+        
+        if ($this->isPendingInSunat()) {
+            return 'warning';
+        }
+        
+        if ($this->hasError()) {
+            return 'danger';
+        }
+        
+        return 'secondary';
+    }
+
+    public function getStatusText(): string
+    {
+        if ($this->isAcceptedBySunat()) {
+            return 'Aceptado por SUNAT';
+        }
+        
+        if ($this->isPendingInSunat()) {
+            return 'Pendiente en SUNAT';
+        }
+        
+        if ($this->hasError()) {
+            return 'Error en SUNAT';
+        }
+        
+        return 'No enviado';
     }
 }
