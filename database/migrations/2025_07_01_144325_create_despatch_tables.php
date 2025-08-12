@@ -16,7 +16,7 @@ return new class extends Migration
             $table->integer('number');
 
             // Para los campos client (En GRE Transportista se refiere al Remitente)
-            $table->foreignId('company_id')->constrained('companies');
+            $table->foreignId('company_id')->default(1)->constrained('companies');
 
             $table->date('emission_date');
             $table->text('observations')->nullable();
@@ -31,6 +31,7 @@ return new class extends Migration
 
             // Para los campos destinatario
             $table->foreignId('client_id')->constrained('clients');
+            $table->foreignId('sender_client_id')->constrained('clients');
 
             // Departure Point Information (Punto de Partida)
             $table->string('departure_ubigeo', 6);

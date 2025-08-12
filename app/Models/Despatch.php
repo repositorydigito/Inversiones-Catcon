@@ -21,6 +21,7 @@ class Despatch extends Model
         'vehicle_id', // Vehículo principal
         'driver_id',  // Conductor principal
         'client_id',  // Destinatario
+        'sender_client_id', // Remitente nuevo (puede ser igual a destinatario)
         'departure_ubigeo',
         'departure_address',
         'departure_sunat_establishment_code',
@@ -103,6 +104,11 @@ class Despatch extends Model
     public function client()
     {
         return $this->belongsTo(Client::class);
+    }
+    // NUEVA RELACIÓN: Cliente remitente
+    public function senderClient()
+    {
+        return $this->belongsTo(Client::class, 'sender_client_id');
     }
     // Relación con los ítems de la guía de remisión
     public function items()

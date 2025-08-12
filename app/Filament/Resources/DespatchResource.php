@@ -51,27 +51,34 @@ class DespatchResource extends Resource
                 Section::make('Datos del Remitente')
                     ->columns(4)
                     ->schema([
-                        Select::make('company_id')
+                        Select::make('sender_client_id')
                             ->label('Razón Social')
-                            ->options(Company::all()->pluck('name', 'id'))
+                            ->options(Client::all()->pluck('name', 'id'))
+                            ->searchable()
                             ->required()
-                            ->default(Company::first()?->id),
-                        TextInput::make('company_ruc')
+                            ->afterStateUpdated(function ($state, $set) {
+                                $client = \App\Models\Client::find($state);
+                                if ($client) {
+                                    $set('sender_document_number', $client->document_number);
+                                } else {
+                                    $set('sender_document_number', null);
+                                }
+                            })
+                            ->live(),
+                        TextInput::make('sender_document_number')
                             ->label('RUC')
-                            ->default(fn () => Company::first()?->ruc)
-                            ->required(),
+                            ->required()
+                            ->readOnly(),
                         TextInput::make('departure_address')
                             ->label('Punto de Partida')
                             ->required()
+                            ->columnSpan(2)
                             ->maxLength(255),
-                        TextInput::make('departure_sunat_establishment_code')
+                        /* TextInput::make('departure_sunat_establishment_code')
                             ->label('Código de Establecimiento (Partida)')
                             ->maxLength(4)
                             ->default('0000')
-                            ->required(),
-                        /* TextInput::make('loading_point')
-                            ->label('Punto 1')
-                            ->maxLength(255), */                        
+                            ->required(), */                                                
                         Forms\Components\Fieldset::make('Ubigeo de Partida')
                             ->schema([
                                 Select::make('departure_departamento')
@@ -132,6 +139,10 @@ class DespatchResource extends Resource
                             ->columnSpan(3)
                             ->columns(3),
                     ]),
+                // CAMPO OCULTO PARA COMPANY_ID
+                Forms\Components\Hidden::make('company_id')
+                    ->default(1) // ID de tu empresa por defecto
+                    ->dehydrated(true), // Importante: sí guardar en BD
                 Section::make('Datos del Destinatario')
                     ->columns(4)
                     ->schema([
@@ -156,15 +167,13 @@ class DespatchResource extends Resource
                         TextInput::make('arrival_address')
                             ->label('Punto de Llegada')
                             ->required()
+                            ->columnSpan(2)
                             ->maxLength(255),
-                        TextInput::make('arrival_sunat_establishment_code')
+                        /* TextInput::make('arrival_sunat_establishment_code')
                             ->label('Código de Establecimiento (Llegada)')
                             ->maxLength(4)
                             ->default('0000')
-                            ->required(),
-                        /* TextInput::make('unloading_point')
-                            ->label('Punto 4')
-                            ->maxLength(255), */                        
+                            ->required(),   */                                             
                         Forms\Components\Fieldset::make('Ubigeo de Llegada')
                             ->schema([
                                 Select::make('arrival_departamento')
@@ -225,6 +234,54 @@ class DespatchResource extends Resource
                             ->columnSpan(3)
                             ->columns(3),
                     ]),
+                Section::make('Documentos Relacionados')
+                    ->description('Guías de remisión del remitente u otros documentos que sustentan el traslado')
+                    ->schema([
+                        Repeater::make('relatedDocuments')
+                            ->relationship('relatedDocuments')
+                            ->label('')
+                            ->schema([
+                                Select::make('document_type')
+                                    ->label('Tipo de Documento')
+                                    ->options([
+                                        '09' => 'Guía de Remisión Remitente',
+                                        '31' => 'Guía de Remisión Transportista',
+                                        '01' => 'Factura',
+                                        '03' => 'Boleta de Venta',
+                                        '07' => 'Nota de Crédito',
+                                        '08' => 'Nota de Débito',
+                                    ])
+                                    ->required()
+                                    ->default('09')
+                                    ->columnSpan(2),
+
+                                TextInput::make('series')
+                                    ->label('Serie')
+                                    ->required()
+                                    ->maxLength(4)
+                                    ->minLength(4) 
+                                    ->rules(['size:4'])
+                                    ->columnSpan(1),
+
+                                TextInput::make('number')
+                                    ->label('Número')
+                                    ->required()
+                                    ->numeric()
+                                    ->columnSpan(1),                                
+                            ])
+                            ->columns(4)
+                            ->defaultItems(0)
+                            ->reorderableWithButtons()
+                            ->itemLabel(fn (array $state): ?string => 
+                                isset($state['series'], $state['number']) 
+                                    ? "{$state['series']}-{$state['number']}" 
+                                    : null
+                            )
+                            ->addActionLabel('Agregar')
+                            ->collapsible()
+                            ->helperText('⚠️ IMPORTANTE: Los documentos relacionados deben estar previamente registrados en SUNAT'),
+                    ])
+                    ->collapsible(),
                 Section::make('Información General')
                     ->columns(3)
                     ->schema([
@@ -729,7 +786,7 @@ class DespatchResource extends Resource
                 Tables\Columns\TextColumn::make('company.name')
                     ->searchable()
                     ->sortable()
-                    ->label('Remitente'),
+                    ->label('Transportista'),
                 Tables\Columns\TextColumn::make('client.name')
                     ->searchable()
                     ->sortable()
@@ -793,17 +850,45 @@ class DespatchResource extends Resource
                             $sunatService = app(\App\Services\SunatDespatchService::class);
                             $response = $sunatService->consultDespatchStatus($record);
 
-                            Notification::make()
-                                ->title('✅ Consulta de Estado Exitosa')
-                                ->body("Estado de la guía #{$record->series}-{$record->number}: " . ($record->accepted_by_sunat ? 'ACEPTADA' : 'PENDIENTE'))
-                                ->success()
-                                ->send();
+                            if ($response['success']) {
+                                $status = $record->accepted_by_sunat ? 'ACEPTADA' : 'PENDIENTE/RECHAZADA';
+                                
+                                Notification::make()
+                                    ->title('✅ Consulta Exitosa')
+                                    ->body("Estado: {$status}")
+                                    ->success()
+                                    ->send();
+                            } else {
+                                // Manejar respuestas con errores
+                                $sunatResponse = $response['sunat_response'] ?? [];
+                                
+                                if (isset($sunatResponse['error'])) {
+                                    $error = $sunatResponse['error'];
+                                    $errorMessage = "Error {$error['numError']}: {$error['desError']}";
+                                    
+                                    Notification::make()
+                                        ->title('❌ Error SUNAT')
+                                        ->body($errorMessage)
+                                        ->danger()
+                                        ->persistent() // Mantener visible hasta que el usuario la cierre
+                                        ->send();
+                                } else {
+                                    $codRespuesta = $sunatResponse['codRespuesta'] ?? 'Desconocido';
+                                    
+                                    Notification::make()
+                                        ->title('⚠️ Estado No Aceptado')
+                                        ->body("Código de respuesta: {$codRespuesta}")
+                                        ->warning()
+                                        ->send();
+                                }
+                            }
 
                         } catch (Exception $e) {
                             Notification::make()
-                                ->title('❌ Error al Consultar Estado')
+                                ->title('❌ Error de Conexión')
                                 ->body($e->getMessage())
                                 ->danger()
+                                ->persistent()
                                 ->send();
                         }
 

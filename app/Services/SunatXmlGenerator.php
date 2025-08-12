@@ -15,8 +15,7 @@ class SunatXmlGenerator
   <cbc:ID>{{SERIE}}-{{NUMERO}}</cbc:ID>
   <cbc:IssueDate>{{FECHA_EMISION}}</cbc:IssueDate>
   <cbc:IssueTime>{{HORA_EMISION}}</cbc:IssueTime>
-  <cbc:DespatchAdviceTypeCode>31</cbc:DespatchAdviceTypeCode>
-  {{OBSERVACIONES_BLOCK}}
+  <cbc:DespatchAdviceTypeCode>31</cbc:DespatchAdviceTypeCode>{{OBSERVACIONES_BLOCK}}{{DOCUMENTOS_RELACIONADOS_BLOCK}}
   <cac:Signature>
     <cbc:ID>{{TRANSPORTISTA_RUC}}</cbc:ID>
     <cac:SignatoryParty>
@@ -34,19 +33,19 @@ class SunatXmlGenerator
     </cac:DigitalSignatureAttachment>
   </cac:Signature>
 
-  <!-- DATOS DEL EMISOR (TRANSPORTISTA = REMITENTE DEL FORMULARIO) -->
+  <!-- DATOS DEL EMISOR (TRANSPORTISTA = TU EMPRESA CATCON) -->
   <cac:DespatchSupplierParty>
     <cac:Party>
       <cac:PartyIdentification>
-        <cbc:ID schemeID="{{REMITENTE_TIPO_DOC}}" schemeName="Documento de Identidad" schemeAgencyName="PE:SUNAT" schemeURI="urn:pe:gob:sunat:cpe:see:gem:catalogos:catalogo06">{{REMITENTE_RUC}}</cbc:ID>
+        <cbc:ID schemeID="{{TRANSPORTISTA_TIPO_DOC}}" schemeName="Documento de Identidad" schemeAgencyName="PE:SUNAT" schemeURI="urn:pe:gob:sunat:cpe:see:gem:catalogos:catalogo06">{{TRANSPORTISTA_RUC}}</cbc:ID>
       </cac:PartyIdentification>
       <cac:PartyLegalEntity>
-        <cbc:RegistrationName>{{REMITENTE_NOMBRE}}</cbc:RegistrationName>
+        <cbc:RegistrationName>{{TRANSPORTISTA_NOMBRE}}</cbc:RegistrationName>
       </cac:PartyLegalEntity>
     </cac:Party>
   </cac:DespatchSupplierParty>
   
-  <!-- DATOS DEL RECEPTOR (DESTINATARIO DEL FORMULARIO) -->
+  <!-- DATOS DEL RECEPTOR (DESTINATARIO DEL FORMULARIO - QUIEN RECIBE) -->
   <cac:DeliveryCustomerParty>
     <cac:Party>
       <cac:PartyIdentification>
@@ -58,14 +57,14 @@ class SunatXmlGenerator
     </cac:Party>
   </cac:DeliveryCustomerParty>
   
-  <!-- DATOS DE QUIEN PAGA EL SERVICIO (MISMO QUE DESTINATARIO) -->
+  <!-- DATOS DE QUIEN ENVÍA LA MERCANCÍA (REMITENTE DEL FORMULARIO) -->
   <cac:OriginatorCustomerParty>
     <cac:Party>
       <cac:PartyIdentification>
-        <cbc:ID schemeID="{{DESTINATARIO_TIPO_DOC}}" schemeName="Documento de Identidad" schemeAgencyName="PE:SUNAT" schemeURI="urn:pe:gob:sunat:cpe:see:gem:catalogos:catalogo06">{{DESTINATARIO_RUC}}</cbc:ID>
+        <cbc:ID schemeID="{{REMITENTE_TIPO_DOC}}" schemeName="Documento de Identidad" schemeAgencyName="PE:SUNAT" schemeURI="urn:pe:gob:sunat:cpe:see:gem:catalogos:catalogo06">{{REMITENTE_RUC}}</cbc:ID>
       </cac:PartyIdentification>
       <cac:PartyLegalEntity>
-        <cbc:RegistrationName>{{DESTINATARIO_NOMBRE}}</cbc:RegistrationName>
+        <cbc:RegistrationName>{{REMITENTE_NOMBRE}}</cbc:RegistrationName>
       </cac:PartyLegalEntity>
     </cac:Party>
   </cac:OriginatorCustomerParty>
@@ -117,10 +116,10 @@ class SunatXmlGenerator
         </cac:DespatchAddress>
         <cac:DespatchParty>
           <cac:PartyIdentification>
-            <cbc:ID schemeID="{{DESTINATARIO_TIPO_DOC}}" schemeName="Documento de Identidad" schemeAgencyName="PE:SUNAT" schemeURI="urn:pe:gob:sunat:cpe:see:gem:catalogos:catalogo06">{{DESTINATARIO_RUC}}</cbc:ID>
+            <cbc:ID schemeID="{{REMITENTE_TIPO_DOC}}" schemeName="Documento de Identidad" schemeAgencyName="PE:SUNAT" schemeURI="urn:pe:gob:sunat:cpe:see:gem:catalogos:catalogo06">{{REMITENTE_RUC}}</cbc:ID>
           </cac:PartyIdentification>
           <cac:PartyLegalEntity>
-            <cbc:RegistrationName>{{DESTINATARIO_NOMBRE}}</cbc:RegistrationName>
+            <cbc:RegistrationName>{{REMITENTE_NOMBRE}}</cbc:RegistrationName>
           </cac:PartyLegalEntity>
         </cac:DespatchParty>
       </cac:Despatch>
@@ -144,6 +143,7 @@ class SunatXmlGenerator
         $despatch->loadMissing([
             'company',
             'client',
+            'senderClient', // ✅ Nueva relación
             'vehicle',
             'driver',
             'items.unitOfMeasure',
@@ -163,18 +163,19 @@ class SunatXmlGenerator
             '{{FECHA_EMISION}}' => $despatch->emission_date->format('Y-m-d'),
             '{{HORA_EMISION}}' => $despatch->emission_date->format('H:i:s'),
             '{{OBSERVACIONES_BLOCK}}' => $this->generateObservationsBlock($despatch->observations),
+            '{{DOCUMENTOS_RELACIONADOS_BLOCK}}' => $this->generateRelatedDocumentsBlock($despatch),
 
-            // Transportista (tu empresa)
+            // Transportista (tu empresa Catcon)
             '{{TRANSPORTISTA_RUC}}' => $despatch->company->ruc,
             '{{TRANSPORTISTA_NOMBRE}}' => $despatch->company->name,
             '{{TRANSPORTISTA_TIPO_DOC}}' => '6', // RUC
 
-            // Remitente (No puede ser igual al transportista error 2560)
-            '{{REMITENTE_RUC}}' => $despatch->company->ruc,
-            '{{REMITENTE_NOMBRE}}' => $despatch->company->name,
+            // ✅ CORREGIDO: Remitente (quien envía la mercancía)
+            '{{REMITENTE_RUC}}' => $despatch->senderClient->document_number,
+            '{{REMITENTE_NOMBRE}}' => $despatch->senderClient->name,
             '{{REMITENTE_TIPO_DOC}}' => '6', // RUC
 
-            // Destinatario (cliente)
+            // Destinatario (cliente que recibe)
             '{{DESTINATARIO_RUC}}' => $despatch->client->document_number,
             '{{DESTINATARIO_NOMBRE}}' => $despatch->client->name,
             '{{DESTINATARIO_TIPO_DOC}}' => '6',
@@ -212,6 +213,46 @@ class SunatXmlGenerator
     }
 
     /**
+     * ✅ NUEVO: Genera el bloque de documentos relacionados
+     */
+    protected function generateRelatedDocumentsBlock(Despatch $despatch): string
+    {
+        if ($despatch->relatedDocuments->isEmpty()) {
+            return '';
+        }
+
+        $documentsXml = '';
+
+        foreach ($despatch->relatedDocuments as $document) {
+            // Mapear el tipo de documento a su descripción
+            $documentTypeDescriptions = [
+                '01' => 'Factura',
+                '03' => 'Boleta de Venta',
+                '07' => 'Nota de Crédito',
+                '08' => 'Nota de Débito',
+                '09' => 'Guía de Remisión Remitente',
+                '31' => 'Guía de Remisión Transportista',
+            ];
+
+            $documentDescription = $documentTypeDescriptions[$document->document_type] ?? 'Documento';
+
+            $documentsXml .= '
+  <cac:AdditionalDocumentReference>
+    <cbc:ID>' . htmlspecialchars($document->series . '-' . $document->number, ENT_XML1) . '</cbc:ID>
+    <cbc:DocumentTypeCode listAgencyName="PE:SUNAT" listName="Documento relacionado al transporte" listURI="urn:pe:gob:sunat:cpe:see:gem:catalogos:catalogo61">' . htmlspecialchars($document->document_type, ENT_XML1) . '</cbc:DocumentTypeCode>
+    <cbc:DocumentType>' . htmlspecialchars($documentDescription, ENT_XML1) . '</cbc:DocumentType>
+    <cac:IssuerParty>
+      <cac:PartyIdentification>
+        <cbc:ID schemeID="6" schemeAgencyName="PE:SUNAT" schemeURI="urn:pe:gob:sunat:cpe:see:gem:catalogos:catalogo06">' . htmlspecialchars($despatch->senderClient->document_number, ENT_XML1) . '</cbc:ID>
+      </cac:PartyIdentification>
+    </cac:IssuerParty>
+  </cac:AdditionalDocumentReference>';
+        }
+
+        return $documentsXml;
+    }
+
+    /**
      * Valida que el despatch tenga todos los datos necesarios
      */
     protected function validateDespatchData(Despatch $despatch): void
@@ -222,6 +263,16 @@ class SunatXmlGenerator
 
         if (!$despatch->client) {
             throw new Exception('La guía debe tener un cliente (destinatario) asociado');
+        }
+
+        // ✅ NUEVA VALIDACIÓN
+        if (!$despatch->senderClient) {
+            throw new Exception('La guía debe tener un remitente asociado');
+        }
+
+        // ✅ NUEVA VALIDACIÓN
+        if (!$despatch->senderClient) {
+            throw new Exception('La guía debe tener un remitente asociado');
         }
 
         if (!$despatch->vehicle) {
@@ -243,7 +294,7 @@ class SunatXmlGenerator
             }
         }
     }
-
+    
     /**
      * Genera el bloque de observaciones si existe
      */
@@ -383,6 +434,7 @@ class SunatXmlGenerator
             '//cbc:IssueDate',
             '//cac:DespatchSupplierParty',
             '//cac:DeliveryCustomerParty',
+            '//cac:OriginatorCustomerParty',
             '//cac:Shipment',
             '//cac:DespatchLine'
         ];

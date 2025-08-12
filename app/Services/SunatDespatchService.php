@@ -146,11 +146,18 @@ class SunatDespatchService
             // Actualizar registro con nueva información
             $this->updateDespatchWithStatusResponse($despatch, $responseData);
 
+            // CORREGIDO: Determinar éxito basado en codRespuesta
+            $codRespuesta = $responseData['codRespuesta'] ?? '99';
+            $isSuccess = $codRespuesta === '0'; // Solo '0' es éxito
+
             return [
-                'success' => true,
-                'status' => $this->interpretResponseCode($responseData['codRespuesta'] ?? '99'),
+                'success' => $isSuccess,
+                'status' => $this->interpretResponseCode($codRespuesta),
                 'sunat_response' => $responseData,
-                'message' => 'Estado consultado exitosamente'
+                'message' => $isSuccess 
+                    ? 'Guía aceptada por SUNAT' 
+                    : 'Guía no aceptada por SUNAT',
+                'cod_respuesta' => $codRespuesta,
             ];
 
         } catch (Exception $e) {
