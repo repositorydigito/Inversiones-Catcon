@@ -41,7 +41,7 @@ class DespatchResource extends Resource
     protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
     protected static ?string $navigationLabel = 'Guías de Remisión';
     protected static ?string $pluralModelLabel = 'Guías de Remisión';
-    protected static ?string $modelLabel = 'Guía';    
+    protected static ?string $modelLabel = 'Guía';
 
     public static function form(Form $form): Form
     {
@@ -95,7 +95,7 @@ class DespatchResource extends Resource
                             ->label('Código de Establecimiento (Partida)')
                             ->maxLength(4)
                             ->default('0000')
-                            ->required(), */                                                
+                            ->required(), */
                         Forms\Components\Fieldset::make('Ubigeo de Partida')
                             ->schema([
                                 Select::make('departure_departamento')
@@ -208,7 +208,7 @@ class DespatchResource extends Resource
                             ->label('Código de Establecimiento (Llegada)')
                             ->maxLength(4)
                             ->default('0000')
-                            ->required(),   */                                             
+                            ->required(),   */
                         Forms\Components\Fieldset::make('Ubigeo de Llegada')
                             ->schema([
                                 Select::make('arrival_departamento')
@@ -294,7 +294,7 @@ class DespatchResource extends Resource
                                     ->label('Serie')
                                     ->required()
                                     ->maxLength(4)
-                                    ->minLength(4) 
+                                    ->minLength(4)
                                     ->rules(['size:4'])
                                     ->columnSpan(1),
 
@@ -302,14 +302,14 @@ class DespatchResource extends Resource
                                     ->label('Número')
                                     ->required()
                                     ->numeric()
-                                    ->columnSpan(1),                                
+                                    ->columnSpan(1),
                             ])
                             ->columns(4)
                             ->defaultItems(0)
                             ->reorderableWithButtons()
-                            ->itemLabel(fn (array $state): ?string => 
-                                isset($state['series'], $state['number']) 
-                                    ? "{$state['series']}-{$state['number']}" 
+                            ->itemLabel(fn (array $state): ?string =>
+                                isset($state['series'], $state['number'])
+                                    ? "{$state['series']}-{$state['number']}"
                                     : null
                             )
                             ->addActionLabel('Agregar')
@@ -410,7 +410,7 @@ class DespatchResource extends Resource
                             ->afterStateUpdated(function ($state, callable $get, callable $set) {
                                 static::autoCompleteFromFourFields($get, $set);
                             }),
-                        
+
                         Select::make('arrival_location')
                             ->label('Punto de Llegada')
                             ->options(OperationalExpenseConfig::distinct()->pluck('arrival_location', 'arrival_location'))
@@ -427,7 +427,7 @@ class DespatchResource extends Resource
                             ->live()
                             ->afterStateUpdated(function ($state, callable $get, callable $set) {
                                 static::autoCompleteFromFourFields($get, $set);
-                            }),                        
+                            }),
                     ])
                     ->columns(4),
 
@@ -448,8 +448,8 @@ class DespatchResource extends Resource
                                     ->prefix('S/.')
                                     ->step(0.01)
                                     ->default(0)
-                                    ->disabled()  
-                                    ->dehydrated() 
+                                    ->disabled()
+                                    ->dehydrated()
                                     ->live(),
                                 Forms\Components\TextInput::make('loading_expenses')
                                     ->label('Gastos de Carga')
@@ -457,22 +457,22 @@ class DespatchResource extends Resource
                                     ->prefix('S/.')
                                     ->step(0.01)
                                     ->default(0)
-                                    ->disabled()  
-                                    ->dehydrated() 
+                                    ->disabled()
+                                    ->dehydrated()
                                     ->live(),
                             ])
                             ->columns(4),
 
                         Forms\Components\Group::make()
-                            ->schema([                               
+                            ->schema([
                                 Forms\Components\TextInput::make('travel_allowances')
                                     ->label('Viáticos')
                                     ->numeric()
                                     ->prefix('S/.')
                                     ->step(0.01)
-                                    ->disabled() 
-                                    ->dehydrated() 
-                                    ->live() 
+                                    ->disabled()
+                                    ->dehydrated()
+                                    ->live()
                                     ->afterStateHydrated(function (Forms\Components\TextInput $component, $state, $record, callable $get) {
                                         // Calcular valor inicial cuando se carga el formulario
                                         $calculatedValue = static::calculateTravelAllowances($get, $record);
@@ -485,8 +485,8 @@ class DespatchResource extends Resource
                                     ->prefix('S/.')
                                     ->step(0.01)
                                     ->default(0)
-                                    ->disabled()  
-                                    ->dehydrated() 
+                                    ->disabled()
+                                    ->dehydrated()
                                     ->live(),
 
                                 Forms\Components\TextInput::make('operations_manager')
@@ -495,8 +495,8 @@ class DespatchResource extends Resource
                                     ->prefix('S/.')
                                     ->step(0.01)
                                     ->default(0)
-                                    ->disabled() 
-                                    ->dehydrated() 
+                                    ->disabled()
+                                    ->dehydrated()
                                     ->live(),
 
                                 Forms\Components\TextInput::make('security')
@@ -505,8 +505,8 @@ class DespatchResource extends Resource
                                     ->prefix('S/.')
                                     ->step(0.01)
                                     ->default(0)
-                                    ->disabled()  
-                                    ->dehydrated() 
+                                    ->disabled()
+                                    ->dehydrated()
                                     ->live(),
                             ])
                             ->columns(4),
@@ -594,7 +594,7 @@ class DespatchResource extends Resource
                 Section::make('Ítems de la Guía')
                     ->schema([
                         Repeater::make('items')
-                            ->relationship('items') 
+                            ->relationship('items')
                             ->schema([
                                 Select::make('service_id')
                                     ->label('Servicio')
@@ -640,7 +640,7 @@ class DespatchResource extends Resource
                                 ->searchable()
                                 ->required()
                                 ->default(function () {
-                                    return MeasureUnit::where('code', 'ZZ')->first()->id;  
+                                    return MeasureUnit::where('code', 'ZZ')->first()->id;
                                 }),
                             ])
                             ->columns(6)
@@ -890,7 +890,7 @@ class DespatchResource extends Resource
 
                             if ($response['success']) {
                                 $status = $record->accepted_by_sunat ? 'ACEPTADA' : 'PENDIENTE/RECHAZADA';
-                                
+
                                 Notification::make()
                                     ->title('✅ Consulta Exitosa')
                                     ->body("Estado: {$status}")
@@ -899,11 +899,11 @@ class DespatchResource extends Resource
                             } else {
                                 // Manejar respuestas con errores
                                 $sunatResponse = $response['sunat_response'] ?? [];
-                                
+
                                 if (isset($sunatResponse['error'])) {
                                     $error = $sunatResponse['error'];
                                     $errorMessage = "Error {$error['numError']}: {$error['desError']}";
-                                    
+
                                     Notification::make()
                                         ->title('❌ Error SUNAT')
                                         ->body($errorMessage)
@@ -912,7 +912,7 @@ class DespatchResource extends Resource
                                         ->send();
                                 } else {
                                     $codRespuesta = $sunatResponse['codRespuesta'] ?? 'Desconocido';
-                                    
+
                                     Notification::make()
                                         ->title('⚠️ Estado No Aceptado')
                                         ->body("Código de respuesta: {$codRespuesta}")
@@ -964,9 +964,9 @@ class DespatchResource extends Resource
                     })
                     ->visible(fn (Despatch $record): bool => !$record->accepted_by_sunat && (is_null($record->sunat_ticket) || !empty($record->sunat_soap_error)))
                     ->requiresConfirmation()
-                    ->modalDescription('¿Está seguro de reenviar esta guía a SUNAT?'),                
+                    ->modalDescription('¿Está seguro de reenviar esta guía a SUNAT?'),
 
-                Tables\Actions\Action::make('downloadPdf')
+                /* Tables\Actions\Action::make('downloadPdf')
                     ->label('PDF')
                     ->icon('heroicon-o-document-arrow-down')
                     ->color('gray')
@@ -988,7 +988,7 @@ class DespatchResource extends Resource
                     ->color('gray')
                     ->url(fn (Despatch $record): string => $record->enlace_del_cdr ?? '#')
                     ->openUrlInNewTab()
-                    ->visible(fn (Despatch $record): bool => !is_null($record->enlace_del_cdr)),
+                    ->visible(fn (Despatch $record): bool => !is_null($record->enlace_del_cdr)), */
 
             ])
             ->bulkActions([
@@ -1081,5 +1081,5 @@ class DespatchResource extends Resource
                 $set('travel_allowances', $calculatedValue);
             }
         }
-    }    
+    }
 }

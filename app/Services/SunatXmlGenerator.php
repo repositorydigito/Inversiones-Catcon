@@ -33,7 +33,7 @@ class SunatXmlGenerator
     </cac:DigitalSignatureAttachment>
   </cac:Signature>
 
-  <!-- DATOS DEL EMISOR (TRANSPORTISTA = TU EMPRESA CATCON) -->
+  <!-- DATOS DEL EMISOR -->
   <cac:DespatchSupplierParty>
     <cac:Party>
       <cac:PartyIdentification>
@@ -44,8 +44,8 @@ class SunatXmlGenerator
       </cac:PartyLegalEntity>
     </cac:Party>
   </cac:DespatchSupplierParty>
-  
-  <!-- DATOS DEL RECEPTOR (DESTINATARIO DEL FORMULARIO - QUIEN RECIBE) -->
+
+  <!-- DATOS DEL RECEPTOR -->
   <cac:DeliveryCustomerParty>
     <cac:Party>
       <cac:PartyIdentification>
@@ -56,8 +56,8 @@ class SunatXmlGenerator
       </cac:PartyLegalEntity>
     </cac:Party>
   </cac:DeliveryCustomerParty>
-  
-  <!-- DATOS DE QUIEN ENVÍA LA MERCANCÍA (REMITENTE DEL FORMULARIO) -->
+
+  <!-- DATOS DE QUIEN ENVÍA LA MERCANCÍA -->
   <cac:OriginatorCustomerParty>
     <cac:Party>
       <cac:PartyIdentification>
@@ -294,7 +294,7 @@ class SunatXmlGenerator
             }
         }
     }
-    
+
     /**
      * Genera el bloque de observaciones si existe
      */
