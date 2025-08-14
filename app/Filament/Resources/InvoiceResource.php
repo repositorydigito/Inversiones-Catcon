@@ -45,7 +45,6 @@ class InvoiceResource extends Resource
         return $form
             ->schema([
                 Section::make('Seleccionar Guías de Remisión')
-                    ->description('Selecciona las guías de remisión para generar la factura automáticamente.')
                     ->columns(1)
                     ->schema([
                         Select::make('selected_despatches')
@@ -53,7 +52,6 @@ class InvoiceResource extends Resource
                             ->multiple()
                             ->options(function () {
                                 return Despatch::with('client')
-                                    ->whereDoesntHave('invoices') // Solo guías que no tienen factura
                                     ->where('accepted_by_sunat', true) // Solo guías aceptadas por SUNAT
                                     ->get()
                                     ->mapWithKeys(function ($despatch) {
@@ -66,75 +64,11 @@ class InvoiceResource extends Resource
                             })
                             ->searchable()
                             ->preload()
-                            ->live()
-                            ->afterStateUpdated(function ($state, $set, $get) {
-                                if (!empty($state) && !$get('manual_mode')) {
-                                    static::fillFromDespatches($state, $set, $get);
-                                }
-                            })
-                            ->helperText('Selecciona una o más guías de remisión. Los datos se cargarán automáticamente.')
-                            ->columnSpanFull(),
-                        
-                        /* Checkbox::make('manual_mode')
-                            ->label('Modo Manual')
-                            ->helperText('Activa esta opción si quieres llenar los campos manualmente sin usar guías.')
-                            ->live()
-                            ->afterStateUpdated(function ($state, $set) {
-                                if ($state) {
-                                    // Limpiar selección de guías si se activa modo manual
-                                    $set('selected_despatches', []);
-                                    // Limpiar items
-                                    $set('items', []);
-                                    // Limpiar datos del cliente
-                                    $set('client_id', null);
-                                    $set('client_document_type', null);
-                                    $set('client_document_number', null);
-                                    $set('client_name', null);
-                                    $set('client_address', null);
-                                    $set('client_email', null);
-                                }
-                            }), */
+                            ->live()                            
+                            ->helperText('Selecciona una o más guías de remisión.')
+                            ->columnSpanFull(),                       
                     ])
-                    ->visible(fn (string $operation): bool => $operation === 'create'),
-
-                /* Section::make('Guías Seleccionadas')
-                    ->description('Resumen de las guías que serán incluidas en esta factura.')
-                    ->schema([
-                        Placeholder::make('despatch_summary')
-                            ->label('')
-                            ->content(function ($get) {
-                                $selectedDespatches = $get('selected_despatches');
-                                if (empty($selectedDespatches)) {
-                                    return 'No hay guías seleccionadas.';
-                                }
-                                
-                                $despatches = Despatch::whereIn('id', $selectedDespatches)
-                                    ->with(['client', 'items'])
-                                    ->get();
-                                
-                                $content = "📋 **Guías seleccionadas:**\n\n";
-                                $totalItems = 0;
-                                $totalQuantity = 0;
-                                
-                                foreach ($despatches as $despatch) {
-                                    $itemsCount = $despatch->items->count();
-                                    $quantity = $despatch->items->sum('quantity');
-                                    $totalItems += $itemsCount;
-                                    $totalQuantity += $quantity;
-                                    
-                                    $content .= "• **GR {$despatch->series}-{$despatch->number}** - {$despatch->client->name}\n";
-                                    $content .= "  📅 {$despatch->emission_date->format('d/m/Y')} | 📦 {$itemsCount} item(s) | 🔢 {$quantity} unidades\n\n";
-                                }
-                                
-                                $content .= "---\n";
-                                $content .= "**Total: {$totalItems} items, {$totalQuantity} unidades**";
-                                
-                                return $content;
-                            })
-                            ->columnSpanFull(),
-                    ])
-                    ->visible(fn ($get) => !empty($get('selected_despatches')))
-                    ->collapsible(), */
+                    ->visible(fn (string $operation): bool => $operation === 'create'),               
 
                 Section::make('Datos de la Factura')
                     ->description('Información general del comprobante.')
@@ -164,12 +98,12 @@ class InvoiceResource extends Resource
                         Select::make('transaction_type')
                             ->label('Tipo de Transacción SUNAT')
                             ->options([
-                                '01' => 'Venta Interna',
-                                '02' => 'Venta - Exportación',
-                                '03' => 'Venta - NO DOMICILIADO',
+                                /* '01' => 'Venta Interna',
+                                '10' => 'Factura - Guía remitente', */
+                                '11' => 'Factura - Guía transportista',
                             ])
                             ->required()
-                            ->default('01')
+                            ->default('11')
                             ->columnSpan(1),
                         DatePicker::make('emission_date')
                             ->label('Fecha de Emisión')
@@ -425,86 +359,159 @@ class InvoiceResource extends Resource
                             ->default(0.00)
                             ->dehydrated(),
                     ]),
+
+                // NUEVA SECCIÓN: Configuración de Pago
+                Section::make('Configuración de Pago')
+                    ->description('Define si es pago contado o crédito, y configuración de detracción.')
+                    ->columns(2)
+                    ->schema([
+                        Toggle::make('is_credit_payment')
+                            ->label('¿Pago a Crédito?')
+                            ->default(false)
+                            ->live()
+                            ->helperText('Activa para configurar fecha de vencimiento')
+                            ->columnSpan(1),
+
+                        DatePicker::make('due_date')
+                            ->label('Fecha de Vencimiento')
+                            ->native(false)
+                            ->afterOrEqual('emission_date')
+                            ->visible(fn ($get) => $get('is_credit_payment'))
+                            ->required(fn ($get) => $get('is_credit_payment'))
+                            ->helperText('Para calcular días de crédito')
+                            ->columnSpan(1),
+
+                        Toggle::make('detraction')
+                            ->label('¿Aplica Detracción?')
+                            ->default(true)
+                            ->live()
+                            ->helperText('Servicios de transporte están sujetos a detracción del 4%')
+                            ->columnSpan(1),
+
+                        TextInput::make('detraction_percentage')
+                            ->label('% Detracción')
+                            ->numeric()
+                            ->step(0.01)
+                            ->default(4.00)
+                            ->suffix('%')
+                            ->visible(fn ($get) => $get('detraction'))
+                            ->required(fn ($get) => $get('detraction'))
+                            ->columnSpan(1),
+
+                        // Información calculada de pago
+                        Placeholder::make('payment_summary')
+                            ->label('Resumen de Pago')
+                            ->content(function ($get) {
+                                $total = (float) ($get('total') ?? 0);
+                                $dueDate = $get('due_date');
+                                $isCredit = $get('is_credit_payment');
+                                $hasDetraction = $get('detraction');
+                                $detractionPercentage = (float) ($get('detraction_percentage') ?? 4.00);
+                                
+                                if ($total <= 0) {
+                                    return 'Complete los items para ver el resumen de pago.';
+                                }
+
+                                $content = '';
+                                
+                                // Tipo de pago
+                                if ($isCredit && $dueDate) {
+                                    $daysCredit = now()->diffInDays(\Carbon\Carbon::parse($dueDate), false);
+                                    $content .= "**Pago:** CRÉDITO a {$daysCredit} días\n";
+                                    $content .= "**Vence:** " . \Carbon\Carbon::parse($dueDate)->format('d/m/Y') . "\n\n";
+                                } else {
+                                    $content .= "**Pago:** CONTADO\n\n";
+                                }
+                                
+                                // Información financiera
+                                $content .= "**Información Financiera:**\n";
+                                $content .= "• Total factura: S/ " . number_format($total, 2) . "\n";
+                                
+                                if ($hasDetraction && $total > 0) {
+                                    $detractionAmount = $total * ($detractionPercentage / 100);
+                                    $netPayable = $total - $detractionAmount;
+                                    $content .= "• Detracción ({$detractionPercentage}%): S/ " . number_format($detractionAmount, 2) . "\n";
+                                    $content .= "• **Monto neto a pagar: S/ " . number_format($netPayable, 2) . "**\n";
+                                } else {
+                                    $content .= "• **Monto a pagar: S/ " . number_format($total, 2) . "**\n";
+                                }
+                                
+                                return $content;
+                            })
+                            ->columnSpanFull(),
+                    ]),
+
+                // NUEVA SECCIÓN: Información de Detracción
+                Section::make('Información de Detracción')
+                    ->description('Configuración específica para el sistema de detracciones de SUNAT.')
+                    ->visible(fn ($get) => $get('detraction'))
+                    ->columns(2)
+                    ->schema([
+                        Select::make('detraction_service_code')
+                            ->label('Código de Bien/Servicio')
+                            ->options([
+                                '027' => '027 - Servicio de transporte de carga',
+                                '001' => '001 - Azúcar',
+                                '003' => '003 - Alcohol Etílico',
+                                '004' => '004 - Recursos Hidrobiológicos',
+                                '005' => '005 - Maíz amarillo duro',
+                                '006' => '006 - Algodón',
+                                '007' => '007 - Caña de azúcar',
+                                '008' => '008 - Madera',
+                                '009' => '009 - Arena y piedra',
+                            ])
+                            ->default('027')
+                            ->required()
+                            ->columnSpan(1),
+
+                        Select::make('detraction_payment_method')
+                            ->label('Medio de Pago')
+                            ->options([
+                                '001' => '001 - Depósito en cuenta',
+                                '002' => '002 - Giro',
+                                '003' => '003 - Transferencia',
+                            ])
+                            ->default('001')
+                            ->required()
+                            ->columnSpan(1),
+
+                        TextInput::make('detraction_bank_account')
+                            ->label('Nro. Cuenta Banco de la Nación')
+                            ->helperText('Cuenta de detracciones del proveedor')
+                            ->maxLength(15)
+                            ->columnSpan(1),
+
+                        Placeholder::make('detraction_info')
+                            ->label(' Información de Detracción')
+                            ->content(function ($get) {
+                                $total = (float) ($get('total') ?? 0);
+                                $percentage = (float) ($get('detraction_percentage') ?? 4.00);
+                                $serviceCode = $get('detraction_service_code') ?? '027';
+                                $paymentMethod = $get('detraction_payment_method') ?? '001';
+                                $bankAccount = $get('detraction_bank_account') ?? '';
+                                
+                                if ($total <= 0) {
+                                    return '⏳ Complete los montos para calcular la detracción.';
+                                }
+                                
+                                $detractionAmount = $total * ($percentage / 100);
+                                
+                                $content = "** Cálculo de Detracción:**\n";
+                                $content .= "• Código: {$serviceCode}\n";
+                                $content .= "• Porcentaje: {$percentage}%\n";
+                                $content .= "• Base imponible: S/ " . number_format($total, 2) . "\n";
+                                $content .= "• **Monto detracción: S/ " . number_format($detractionAmount, 2) . "**\n";
+                                
+                                if ($bankAccount) {
+                                    $content .= "• Cuenta BN: {$bankAccount}\n";
+                                }
+                                
+                                return $content;
+                            })
+                            ->columnSpan(1),
+                    ]),
             ]);
-    }
-
-    /**
-     * Llena los campos de la factura basándose en las guías seleccionadas
-     */
-    protected static function fillFromDespatches(array $despatchIds, $set, $get): void
-    {
-        if (empty($despatchIds)) {
-            return;
-        }
-
-        $despatches = Despatch::whereIn('id', $despatchIds)
-            ->with(['client', 'items.unitOfMeasure'])
-            ->get();
-
-        if ($despatches->isEmpty()) {
-            return;
-        }
-
-        // Verificar que todas las guías pertenezcan al mismo cliente
-        $clientIds = $despatches->pluck('client_id')->unique();
-        if ($clientIds->count() > 1) {
-            // Mostrar error y limpiar selección
-            $set('selected_despatches', []);
-            return;
-        }
-
-        // Tomar el cliente del primer despatch
-        $firstDespatch = $despatches->first();
-        $client = $firstDespatch->client;
-
-        // Llenar datos del cliente
-        $set('client_id', $client->id);
-        $set('client_document_type', $client->document_type);
-        $set('client_document_number', $client->document_number);
-        $set('client_name', $client->name);
-        $set('client_address', $client->address);
-        $set('client_email', $client->email);
-
-        // Combinar todos los items de todas las guías
-        $allItems = [];
-        foreach ($despatches as $despatch) {
-            foreach ($despatch->items as $item) {
-                $allItems[] = [
-                    'unit_of_measure_id' => $item->unit_of_measure_id,
-                    'code' => $item->code,
-                    'description' => $item->description,
-                    'quantity' => $item->quantity,
-                    'unit_value' => 10.00, // Valor por defecto, el usuario puede modificar
-                    'unit_price' => 11.80, // Precio con IGV por defecto
-                    'discount' => 0.00,
-                    'igv_type' => '1', // Gravado por defecto
-                    'subtotal' => $item->quantity * 10.00,
-                    'igv' => $item->quantity * 1.80,
-                    'total' => $item->quantity * 11.80,
-                ];
-            }
-        }
-
-        // Agrupar items similares (mismo código y descripción)
-        $groupedItems = [];
-        foreach ($allItems as $item) {
-            $key = ($item['code'] ?? '') . '|' . $item['description'];
-            if (isset($groupedItems[$key])) {
-                $groupedItems[$key]['quantity'] += $item['quantity'];
-                // Recalcular totales para el item agrupado
-                $groupedItems[$key]['subtotal'] = $groupedItems[$key]['quantity'] * $groupedItems[$key]['unit_value'];
-                $groupedItems[$key]['total'] = $groupedItems[$key]['quantity'] * $groupedItems[$key]['unit_price'];
-                $groupedItems[$key]['igv'] = $groupedItems[$key]['total'] - $groupedItems[$key]['subtotal'];
-            } else {
-                $groupedItems[$key] = $item;
-            }
-        }
-
-        $set('items', array_values($groupedItems));
-
-        // Calcular totales de la factura
-        static::calculateInvoiceTotals($set, $get);
-    }
+    }    
 
     protected static function calculateItemTotals($set, $get): void
     {
@@ -662,6 +669,13 @@ class InvoiceResource extends Resource
                     ->modalSubmitAction(false)
                     ->modalCancelActionLabel('Cerrar')
                     ->visible(fn (Invoice $record): bool => $record->despatches->count() > 0),
+                
+                Tables\Actions\Action::make('enviar_nubefact')
+                    ->label('Enviar a Nubefact')
+                    ->icon('heroicon-o-paper-airplane')
+                    ->action(fn (Invoice $record) => app(\App\Services\InvoiceService::class)->sendToNubefact($record))
+                    ->requiresConfirmation()
+                    ->color('primary'),
                 
                 Tables\Actions\Action::make('download_pdf')
                     ->label('PDF')

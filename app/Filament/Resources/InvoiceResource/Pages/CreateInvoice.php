@@ -5,12 +5,12 @@ namespace App\Filament\Resources\InvoiceResource\Pages;
 use App\Filament\Resources\InvoiceResource;
 use App\Models\Invoice;
 use App\Models\Client;
-use App\Models\MeasureUnit;
 use App\Models\Despatch;
-use App\Services\NubefactService;
+use App\Services\InvoiceService;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\CreateRecord;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class CreateInvoice extends CreateRecord
 {
@@ -18,28 +18,37 @@ class CreateInvoice extends CreateRecord
 
     protected function handleRecordCreation(array $data): Invoice
     {
-        // Obtener las guías seleccionadas
-        $selectedDespatches = $data['selected_despatches'] ?? [];
-        
-        // Verificar que el cliente sea consistente en todas las guías
-        if (!empty($selectedDespatches)) {
-            $this->validateDespatchesClient($selectedDespatches);
-        }
+        Log::info('=== INICIANDO CREACIÓN DE FACTURA ===', [
+            'series' => $data['series'] ?? 'N/A',
+            'number' => $data['number'] ?? 'N/A'
+        ]);
 
-        // Crear o actualizar cliente si es necesario
+        // Crear o actualizar cliente
         $client = $this->handleClientCreation($data);
         $data['client_id'] = $client->id;
 
-        // Calcular totales de items
-        $this->calculateItemTotals($data);
+        // Procesar guías seleccionadas (opcional)
+        $selectedDespatches = $data['selected_despatches'] ?? [];
+
+        // Calcular totales finales
+        $this->calculateFinalTotals($data);
 
         // Crear la factura en una transacción
         $invoice = DB::transaction(function () use ($data, $selectedDespatches) {
-            // Preparar datos de la factura (excluir campos que no van en la tabla)
-            $invoiceData = collect($data)->except(['items', 'selected_despatches', 'manual_mode'])->toArray();
             
-            // Asegurar que todos los campos requeridos estén presentes
+            // Limpiar campos que no van en la tabla
+            $invoiceData = collect($data)->except([
+                'items', 
+                'selected_despatches',
+                'is_credit_payment', // Campo auxiliar del form
+                'detraction_service_name', // Campo auxiliar
+                'detraction_payment_method_name', // Campo auxiliar
+            ])->toArray();
+            
+            // Asegurar campos requeridos
             $invoiceData = $this->ensureRequiredFields($invoiceData);
+            
+            Log::info('Creando factura con datos:', array_keys($invoiceData));
             
             // Crear la factura
             $invoice = Invoice::create($invoiceData);
@@ -49,45 +58,26 @@ class CreateInvoice extends CreateRecord
                 foreach ($data['items'] as $itemData) {
                     $invoice->items()->create($itemData);
                 }
+                Log::info('Items creados:', ['count' => count($data['items'])]);
             }
 
-            // Relacionar con las guías de remisión
+            // Relacionar guías (si las hay)
             if (!empty($selectedDespatches)) {
                 $invoice->despatches()->attach($selectedDespatches);
+                Log::info('Guías relacionadas:', ['count' => count($selectedDespatches)]);
             }
 
-            $invoice->refresh();
-            return $invoice;
+            return $invoice->refresh();
         });
 
+        Log::info('Factura creada exitosamente:', [
+            'id' => $invoice->id,
+            'series' => $invoice->series,
+            'number' => $invoice->number,
+            'total' => $invoice->total
+        ]);
+
         return $invoice;
-    }
-
-    /**
-     * Valida que todas las guías pertenezcan al mismo cliente
-     */
-    protected function validateDespatchesClient(array $despatchIds): void
-    {
-        $clients = Despatch::whereIn('id', $despatchIds)
-            ->distinct()
-            ->pluck('client_id')
-            ->toArray();
-
-        if (count($clients) > 1) {
-            throw new \Exception('Todas las guías de remisión deben pertenecer al mismo cliente.');
-        }
-
-        // Verificar que las guías estén disponibles para facturar
-        $unavailableDespatches = Despatch::whereIn('id', $despatchIds)
-            ->where(function ($query) {
-                $query->where('accepted_by_sunat', '!=', true)
-                    ->orWhereHas('invoices');
-            })
-            ->count();
-
-        if ($unavailableDespatches > 0) {
-            throw new \Exception('Alguna de las guías seleccionadas no está disponible para facturar (no aceptada por SUNAT o ya facturada).');
-        }
     }
 
     /**
@@ -95,6 +85,11 @@ class CreateInvoice extends CreateRecord
      */
     protected function handleClientCreation(array $data): Client
     {
+        Log::info('Procesando cliente:', [
+            'document_number' => $data['client_document_number'] ?? 'N/A',
+            'name' => $data['client_name'] ?? 'N/A'
+        ]);
+
         return Client::firstOrCreate(
             ['document_number' => $data['client_document_number']],
             [
@@ -107,71 +102,61 @@ class CreateInvoice extends CreateRecord
     }
 
     /**
-     * Calcula los totales de los items y de la factura
+     * Calcula los totales finales de la factura
      */
-    protected function calculateItemTotals(array &$data): void
+    protected function calculateFinalTotals(array &$data): void
     {
-        $calculatedTotalTaxable = 0;
-        $calculatedTotalUnaffected = 0;
-        $calculatedTotalExonerated = 0;
-        $calculatedTotalIgv = 0;
-        $calculatedTotalItems = 0;
-        $calculatedItemsDiscount = 0;
-
+        $items = $data['items'] ?? [];
         $globalDiscount = (float) ($data['global_discount'] ?? 0.00);
-        $globalIgvPercentage = (float) ($data['igv_percentage'] ?? 18.00);
+        
+        $totalTaxable = 0;
+        $totalUnaffected = 0;
+        $totalExonerated = 0;
+        $totalIgv = 0;
+        $totalItems = 0;
+        $totalItemsDiscount = 0;
 
-        if (isset($data['items']) && is_array($data['items'])) {
-            foreach ($data['items'] as $index => $itemData) {
-                $quantity = (float) ($itemData['quantity'] ?? 0.00);
-                $unitValue = (float) ($itemData['unit_value'] ?? 0.00);
-                $unitPrice = (float) ($itemData['unit_price'] ?? 0.00);
-                $discount = (float) ($itemData['discount'] ?? 0.00);
-                $igvType = $itemData['igv_type'] ?? '1';
+        foreach ($items as $item) {
+            $itemTotal = (float) ($item['total'] ?? 0);
+            $itemSubtotal = (float) ($item['subtotal'] ?? 0);
+            $itemIgv = (float) ($item['igv'] ?? 0);
+            $itemDiscount = (float) ($item['discount'] ?? 0);
+            $itemIgvType = $item['igv_type'] ?? '1';
 
-                $itemSubtotal = ($quantity * $unitValue) - $discount;
-                $itemIgv = 0;
-                $itemTotal = ($quantity * $unitPrice) - $discount;
+            $totalItems += $itemTotal;
+            $totalIgv += $itemIgv;
+            $totalItemsDiscount += $itemDiscount;
 
-                if ($igvType === '1' && $globalIgvPercentage > 0) {
-                    $itemIgv = $itemTotal - $itemSubtotal;
-                }
-
-                // Actualizar el array con los valores calculados
-                $data['items'][$index]['subtotal'] = round($itemSubtotal, 2);
-                $data['items'][$index]['igv'] = round($itemIgv, 2);
-                $data['items'][$index]['total'] = round($itemTotal, 2);
-
-                // Acumular totales
-                $calculatedTotalItems += $itemTotal;
-                $calculatedTotalIgv += $itemIgv;
-                $calculatedItemsDiscount += $discount;
-
-                switch ($igvType) {
-                    case '1': // Gravado
-                        $calculatedTotalTaxable += $itemSubtotal;
-                        break;
-                    case '8': // Exonerado
-                        $calculatedTotalExonerated += $itemSubtotal;
-                        break;
-                    case '9': // Inafecto
-                        $calculatedTotalUnaffected += $itemSubtotal;
-                        break;
-                }
+            switch ($itemIgvType) {
+                case '1':
+                    $totalTaxable += $itemSubtotal;
+                    break;
+                case '8':
+                    $totalExonerated += $itemSubtotal;
+                    break;
+                case '9':
+                    $totalUnaffected += $itemSubtotal;
+                    break;
             }
         }
 
-        // Actualizar totales en el array de datos
-        $data['total_taxable'] = round($calculatedTotalTaxable, 2);
-        $data['total_unaffected'] = round($calculatedTotalUnaffected, 2);
-        $data['total_exonerated'] = round($calculatedTotalExonerated, 2);
-        $data['total_igv'] = round($calculatedTotalIgv, 2);
-        $data['total_discount'] = round($globalDiscount + $calculatedItemsDiscount, 2);
-        $data['total'] = round($calculatedTotalItems - $globalDiscount, 2);
+        // Actualizar totales
+        $data['total_taxable'] = round($totalTaxable, 2);
+        $data['total_unaffected'] = round($totalUnaffected, 2);
+        $data['total_exonerated'] = round($totalExonerated, 2);
+        $data['total_igv'] = round($totalIgv, 2);
+        $data['total_discount'] = round($globalDiscount + $totalItemsDiscount, 2);
+        $data['total'] = round($totalItems - $globalDiscount, 2);
+
+        Log::info('Totales calculados:', [
+            'total_taxable' => $data['total_taxable'],
+            'total_igv' => $data['total_igv'],
+            'total' => $data['total']
+        ]);
     }
 
     /**
-     * Asegura que todos los campos requeridos estén presentes con valores por defecto
+     * Asegura que todos los campos requeridos estén presentes
      */
     protected function ensureRequiredFields(array $data): array
     {
@@ -183,10 +168,15 @@ class CreateInvoice extends CreateRecord
             'perception_taxable_base' => 0.00,
             'total_perception' => 0.00,
             'total_included_perception' => 0.00,
-            'detraction' => false,
+            'detraction' => $data['detraction'] ?? false,
             'send_automatically_to_sunat' => true,
             'send_automatically_to_client' => false,
             'exchange_rate' => null,
+            // Campos de detracción con valores por defecto
+            'detraction_service_code' => $data['detraction_service_code'] ?? '027',
+            'detraction_payment_method' => $data['detraction_payment_method'] ?? '001',
+            'detraction_percentage' => $data['detraction_percentage'] ?? 4.00,
+            'detraction_bank_account' => $data['detraction_bank_account'] ?? null,
         ];
 
         foreach ($defaults as $key => $defaultValue) {
@@ -200,220 +190,202 @@ class CreateInvoice extends CreateRecord
 
     protected function afterCreate(): void
     {
+        Log::info('=== POST-CREACIÓN DE FACTURA ===', [
+            'invoice_id' => $this->record->id
+        ]);
+
         // Recargar la factura con sus relaciones
         $this->record->load(['items', 'client', 'despatches']);
 
-        // Recalcular y actualizar totales (por si acaso)
-        $this->recalculateAndUpdateTotals();
-
-        // Enviar a Nubefact
+        // Enviar a Nubefact OSE
         $this->sendToNubefact();
 
-        // Mostrar notificación de éxito
+        // Mostrar notificación
         $this->showSuccessNotification();
     }
 
     /**
-     * Recalcula y actualiza los totales de la factura
-     */
-    protected function recalculateAndUpdateTotals(): void
-    {
-        $igvPercentage = (float) ($this->record->igv_percentage ?? 18.00);
-        $globalDiscount = (float) ($this->record->global_discount ?? 0.00);
-
-        $totalTaxable = 0;
-        $totalUnaffected = 0;
-        $totalExonerated = 0;
-        $totalIgv = 0;
-        $totalItems = 0;
-        $itemsDiscount = 0;
-
-        // Recalcular cada ítem
-        foreach ($this->record->items as $item) {
-            $quantity = (float) ($item->quantity ?? 0.00);
-            $unitValue = (float) ($item->unit_value ?? 0.00);
-            $unitPrice = (float) ($item->unit_price ?? 0.00);
-            $discount = (float) ($item->discount ?? 0.00);
-            $igvType = $item->igv_type ?? '1';
-
-            $itemSubtotal = ($quantity * $unitValue) - $discount;
-            $itemTotal = ($quantity * $unitPrice) - $discount;
-            $itemIgv = 0;
-
-            if ($igvType === '1' && $igvPercentage > 0) {
-                $itemIgv = $itemTotal - $itemSubtotal;
-            }
-
-            // Acumular totales
-            $totalItems += $itemTotal;
-            $totalIgv += $itemIgv;
-            $itemsDiscount += $discount;
-
-            switch ($igvType) {
-                case '1':
-                    $totalTaxable += $itemSubtotal;
-                    break;
-                case '8':
-                    $totalExonerated += $itemSubtotal;
-                    break;
-                case '9':
-                    $totalUnaffected += $itemSubtotal;
-                    break;
-            }
-
-            // Actualizar el ítem en la BD
-            $item->update([
-                'subtotal' => round($itemSubtotal, 2),
-                'igv' => round($itemIgv, 2),
-                'total' => round($itemTotal, 2),
-            ]);
-        }
-
-        // Actualizar totales de la factura
-        $this->record->update([
-            'total_taxable' => round($totalTaxable, 2),
-            'total_unaffected' => round($totalUnaffected, 2),
-            'total_exonerated' => round($totalExonerated, 2),
-            'total_igv' => round($totalIgv, 2),
-            'total_discount' => round($globalDiscount + $itemsDiscount, 2),
-            'total' => round($totalItems - $globalDiscount, 2),
-        ]);
-    }
-
-    /**
-     * Envía la factura a Nubefact
+     * Envía la factura a Nubefact OSE
      */
     protected function sendToNubefact(): void
     {
         try {
-            $nubefactService = new NubefactService();
+            Log::info('Iniciando envío a Nubefact OSE:', [
+                'invoice_id' => $this->record->id,
+                'series' => $this->record->series,
+                'number' => $this->record->number
+            ]);
+
+            $invoiceService = new InvoiceService();
             
-            // Construir el payload usando tu servicio existente
-            $payload = $nubefactService->buildInvoicePayload($this->record);
+            // Enviar a Nubefact usando Laravel Greenter
+            $result = $invoiceService->sendToNubefact($this->record);
 
-            // Enviar a Nubefact usando tu servicio existente
-            $response = $nubefactService->sendInvoice($payload);
+            Log::info('Resultado del envío a Nubefact:', $result);
 
-            // Actualizar la factura con la respuesta de SUNAT
-            $this->updateInvoiceWithSunatResponse($response);
+            if ($result['success']) {
+                Log::info('Factura enviada exitosamente a Nubefact OSE', [
+                    'invoice_id' => $this->record->id,
+                    'sunat_accepted' => $result['sunat_accepted'] ?? null,
+                    'sunat_response_code' => $result['sunat_response_code'] ?? null
+                ]);
+            } else {
+                Log::error('Error en el envío a Nubefact OSE:', [
+                    'invoice_id' => $this->record->id,
+                    'error' => $result['error'] ?? 'Error desconocido'
+                ]);
+
+                Notification::make()
+                    ->title('Error al enviar a Nubefact')
+                    ->body($result['error'] ?? 'Error desconocido al procesar la factura')
+                    ->danger()
+                    ->persistent()
+                    ->send();
+            }
 
         } catch (\Exception $e) {
+            Log::error('Excepción enviando factura a Nubefact:', [
+                'invoice_id' => $this->record->id,
+                'exception' => $e->getMessage(),
+                'line' => $e->getLine(),
+                'file' => $e->getFile()
+            ]);
+
             Notification::make()
-                ->title('Error al enviar a Nubefact')
-                ->body('Error: ' . $e->getMessage())
+                ->title('Error crítico al enviar a Nubefact')
+                ->body('Excepción: ' . $e->getMessage())
                 ->danger()
                 ->persistent()
                 ->send();
 
-            // Log del error para debugging
-            \Log::error('Error enviando factura a Nubefact: ' . $e->getMessage(), [
-                'invoice_id' => $this->record->id,
-                'exception' => $e,
+            // Marcar como error en la factura
+            $this->record->update([
+                'sunat_accepted' => false,
+                'sunat_description' => 'Error del sistema: ' . $e->getMessage(),
             ]);
         }
     }
 
-    /**
-     * Actualiza la factura con la respuesta de SUNAT
-     */
-    protected function updateInvoiceWithSunatResponse(array $response): void
-    {
-        $updateData = [];
-
-        // Mapear campos de respuesta según la estructura de Nubefact
-        if (isset($response['aceptada_por_sunat'])) {
-            $updateData['sunat_accepted'] = $response['aceptada_por_sunat'];
-        }
-
-        if (isset($response['sunat_description'])) {
-            $updateData['sunat_description'] = $response['sunat_description'];
-        }
-
-        if (isset($response['sunat_note'])) {
-            $updateData['sunat_note'] = $response['sunat_note'];
-        }
-
-        if (isset($response['sunat_responsecode'])) {
-            $updateData['sunat_response_code'] = $response['sunat_responsecode'];
-        }
-
-        if (isset($response['sunat_soap_error'])) {
-            $updateData['sunat_soap_error'] = $response['sunat_soap_error'];
-        }
-
-        if (isset($response['pdf_zip_base64'])) {
-            $updateData['pdf_zip_base64'] = $response['pdf_zip_base64'];
-        }
-
-        if (isset($response['xml_zip_base64'])) {
-            $updateData['xml_zip_base64'] = $response['xml_zip_base64'];
-        }
-
-        if (isset($response['cdr_zip_base64'])) {
-            $updateData['cdr_zip_base64'] = $response['cdr_zip_base64'];
-        }
-
-        if (isset($response['cadena_para_codigo_qr'])) {
-            $updateData['qr_code_string'] = $response['cadena_para_codigo_qr'];
-        }
-
-        if (isset($response['enlace_del_pdf'])) {
-            $updateData['pdf_link'] = $response['enlace_del_pdf'];
-        }
-
-        if (isset($response['enlace_del_xml'])) {
-            $updateData['xml_link'] = $response['enlace_del_xml'];
-        }
-
-        if (isset($response['enlace_del_cdr'])) {
-            $updateData['cdr_link'] = $response['enlace_del_cdr'];
-        }
-
-        if (isset($response['codigo_de_barras'])) {
-            $updateData['barcode_string'] = $response['codigo_de_barras'];
-        }        
-
-        if (isset($response['hash'])) {
-            $updateData['hash_code'] = $response['hash'];
-        }
-
-        if (isset($response['enlace_del_pdf'])) {
-            $updateData['sunat_link'] = $response['enlace_del_pdf'];
-        }
-
-        if (!empty($updateData)) {
-            $this->record->update($updateData);
-        }
-    }
-    
     protected function showSuccessNotification(): void
     {
-        $message = 'Factura creada exitosamente.';
+        $this->record->refresh();
+
+        $title = 'Factura Creada y Enviada';
+        $body = "Factura {$this->record->series}-{$this->record->number} ";
         
-        if ($this->record->despatches->isNotEmpty()) {
-            $despatchNumbers = $this->record->despatches
-                ->map(fn($d) => "GR {$d->series}-{$d->number}")
-                ->join(', ');
-            
-            $message .= " Guías relacionadas: {$despatchNumbers}";
+        // Estado del envío
+        if ($this->record->sunat_accepted === true) {
+            $body .= 'ACEPTADA por SUNAT/Nubefact';
+            $color = 'success';
+        } elseif ($this->record->sunat_accepted === false) {
+            $body .= 'RECHAZADA por SUNAT/Nubefact';
+            $color = 'danger';
+        } else {
+            $body .= 'Enviada a Nubefact OSE (procesando...)';
+            $color = 'info';
         }
 
-        if ($this->record->sunat_accepted === true) {
-            $message .= ' ✅ Aceptada por SUNAT.';
-        } elseif ($this->record->sunat_accepted === false) {
-            $message .= ' ❌ Rechazada por SUNAT.';
+        // Información del total
+        $body .= " | Total: S/ " . number_format($this->record->total, 2);
+
+        // Información de detracción
+        if ($this->record->detraction) {
+            $detractionAmount = $this->record->total * ($this->record->detraction_percentage / 100);
+            $netPayable = $this->record->total - $detractionAmount;
+            $body .= " | Detracción: S/ " . number_format($detractionAmount, 2);
+            $body .= " | Neto: S/ " . number_format($netPayable, 2);
+        }
+
+        // Información de pago
+        if ($this->record->due_date) {
+            $daysUntilDue = now()->diffInDays($this->record->due_date, false);
+            $body .= " | Crédito a {$daysUntilDue} días";
+        } else {
+            $body .= " | Contado";
+        }
+
+        // Guías relacionadas
+        if ($this->record->despatches->isNotEmpty()) {
+            $despatchCount = $this->record->despatches->count();
+            $body .= " | {$despatchCount} GRE(s) adjuntas";
         }
 
         Notification::make()
-            ->title('Factura Creada')
-            ->body($message)
-            ->success()
-            ->duration(5000)
+            ->title($title)
+            ->body($body)
+            ->color($color ?? 'info')
+            ->duration(8000)
+            ->actions([
+                \Filament\Notifications\Actions\Action::make('view')
+                    ->label('Ver Factura')
+                    ->url(InvoiceResource::getUrl('index'))
+                    ->button(),
+                \Filament\Notifications\Actions\Action::make('nubefact')
+                    ->label(' Panel Nubefact')
+                    ->url('https://demo.nubefact.com/login')
+                    ->openUrlInNewTab()
+                    ->button(),
+            ])
             ->send();
+
+        // Log de éxito
+        Log::info('=== FACTURA COMPLETADA ===', [
+            'invoice_id' => $this->record->id,
+            'series' => $this->record->series,
+            'number' => $this->record->number,
+            'total' => $this->record->total,
+            'sunat_accepted' => $this->record->sunat_accepted,
+            'sunat_response_code' => $this->record->sunat_response_code,
+            'detraction' => $this->record->detraction,
+            'payment_type' => $this->record->due_date ? 'Crédito' : 'Contado',
+            'despatches_count' => $this->record->despatches->count(),
+        ]);
     }
 
     protected function getRedirectUrl(): string
     {
         return $this->getResource()::getUrl('index');
-    }    
+    }
+
+    protected function mutateFormDataBeforeCreate(array $data): array
+    {
+        // Validaciones básicas antes de crear
+        if (empty($data['series']) || empty($data['number'])) {
+            throw new \Exception('Serie y número son requeridos.');
+        }
+
+        if (empty($data['client_name']) || empty($data['client_document_number'])) {
+            throw new \Exception('Datos del cliente son requeridos.');
+        }
+
+        if (empty($data['items']) || !is_array($data['items'])) {
+            throw new \Exception('Debe incluir al menos un item en la factura.');
+        }
+
+        // Verificar unicidad de serie-número
+        $existingInvoice = Invoice::where('series', $data['series'])
+            ->where('number', $data['number'])
+            ->first();
+
+        if ($existingInvoice) {
+            throw new \Exception("Ya existe una factura con serie {$data['series']} y número {$data['number']}.");
+        }
+
+        // Mapear el campo auxiliar is_credit_payment
+        if (isset($data['is_credit_payment']) && !$data['is_credit_payment']) {
+            $data['due_date'] = null; // Si no es crédito, limpiar fecha de vencimiento
+        }
+
+        Log::info('Datos validados antes de crear:', [
+            'series' => $data['series'],
+            'number' => $data['number'],
+            'total' => $data['total'] ?? 'N/A',
+            'client_name' => $data['client_name'] ?? 'N/A',
+            'items_count' => count($data['items'] ?? []),
+            'detraction' => $data['detraction'] ?? false,
+            'due_date' => $data['due_date'] ?? null,
+        ]);
+
+        return $data;
+    }
 }

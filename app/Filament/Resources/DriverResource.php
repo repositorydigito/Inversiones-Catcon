@@ -31,28 +31,48 @@ class DriverResource extends Resource
             ->schema([
                 Forms\Components\TextInput::make('first_name')
                     ->label('Nombres')
-                    ->required(),
+                    ->regex('/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/')
+                    ->required()
+                    ->validationMessages([
+                        'regex' => 'El campo Nombres no permite caracteres especiales.',
+                    ]),
                 Forms\Components\TextInput::make('last_name')
                     ->label('Apellidos')
-                    ->required(),
+                    ->regex('/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/')
+                    ->required()
+                    ->validationMessages([
+                        'regex' => 'El campo Apellidos no permite caracteres especiales.',
+                    ]),
                 Forms\Components\Select::make('document_type')
                     ->label('Tipo de Documento')
                     ->options([
                         'DNI' => 'DNI',
-                        'RUC' => 'RUC',
                     ])
                     ->default('DNI')
                     ->required(),
                 Forms\Components\TextInput::make('document_number')
                     ->label('Número de Documento')
-                    ->required(),
+                    ->numeric()
+                    ->minLength(8)
+                    ->maxLength(8)
+                    ->required()
+                    ->validationMessages([
+                        'numeric' => 'El DNI solo puede contener números.',
+                        'min_digits' => 'El DNI debe tener exactamente 8 dígitos.',
+                        'max_digits' => 'El DNI debe tener exactamente 8 dígitos.',
+                        'required' => 'El número de documento es obligatorio.',
+                    ]),
                 Forms\Components\TextInput::make('license_number')
                     ->label('Número de Licencia')
                     ->minLength(9)
                     ->required(),
                 Forms\Components\TextInput::make('phone')
                     ->label('Teléfono')
-                    ->nullable(),
+                    ->tel()
+                    ->nullable()
+                    ->validationMessages([
+                        'regex' => 'Ingrese un teléfono válido.',
+                    ]),
 
                 Forms\Components\Section::make('Fotos de Papeletas (Conductor)')
                     ->description('Adjunte aquí las fotos de papeletas asociadas a este conductor.')

@@ -8,6 +8,7 @@ use App\Models\Client;
 use App\Models\Company;
 use App\Models\Despatch;
 use App\Models\Driver;
+use App\Models\FrequentLocation;
 use App\Models\Vehicle;
 use App\Models\MeasureUnit;
 use App\Models\Service;
@@ -40,9 +41,7 @@ class DespatchResource extends Resource
     protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
     protected static ?string $navigationLabel = 'Guías de Remisión';
     protected static ?string $pluralModelLabel = 'Guías de Remisión';
-    protected static ?string $modelLabel = 'Guía';
-    //protected static ?int $navigationSort = 3;
-    //protected static ?string $navigationGroup = 'Entidades';
+    protected static ?string $modelLabel = 'Guía';    
 
     public static function form(Form $form): Form
     {
@@ -57,7 +56,7 @@ class DespatchResource extends Resource
                             ->searchable()
                             ->required()
                             ->afterStateUpdated(function ($state, $set) {
-                                $client = \App\Models\Client::find($state);
+                                $client = Client::find($state);
                                 if ($client) {
                                     $set('sender_document_number', $client->document_number);
                                 } else {
@@ -69,11 +68,29 @@ class DespatchResource extends Resource
                             ->label('RUC')
                             ->required()
                             ->readOnly(),
-                        TextInput::make('departure_address')
+                        /* TextInput::make('departure_address')
                             ->label('Punto de Partida')
                             ->required()
                             ->columnSpan(2)
-                            ->maxLength(255),
+                            ->maxLength(255), */
+                        Select::make('departure_address')
+                            ->label('Punto de Partida')
+                            ->required()
+                            ->columnSpan(2)
+                            ->searchable()
+                            ->options(FrequentLocation::where('is_active', true)->orderBy('name')->pluck('name', 'name'))
+                            ->allowHtml(false)
+                            ->createOptionForm([
+                                TextInput::make('manual_address')
+                                    ->label('Dirección Manual')
+                                    ->required()
+                                    ->maxLength(255)
+                                    ->helperText('Esta dirección NO se guardará como frecuente'),
+                            ])
+                            ->createOptionUsing(function (array $data) {
+                                return $data['manual_address']; // Solo retorna el valor, no lo guarda en BD
+                            })
+                            ->helperText('Selecciona una ubicación frecuente o usa "Crear nueva opción" para escribir manualmente'),
                         /* TextInput::make('departure_sunat_establishment_code')
                             ->label('Código de Establecimiento (Partida)')
                             ->maxLength(4)
@@ -152,7 +169,7 @@ class DespatchResource extends Resource
                             ->searchable()
                             ->required()
                             ->afterStateUpdated(function ($state, $set) {
-                                $client = \App\Models\Client::find($state);
+                                $client = Client::find($state);
                                 if ($client) {
                                     $set('client_document_number', $client->document_number);
                                 } else {
@@ -164,11 +181,29 @@ class DespatchResource extends Resource
                             ->label('RUC')
                             ->required()
                             ->readOnly(),
-                        TextInput::make('arrival_address')
+                        Select::make('arrival_address')
                             ->label('Punto de Llegada')
                             ->required()
                             ->columnSpan(2)
-                            ->maxLength(255),
+                            ->searchable()
+                            ->options(FrequentLocation::where('is_active', true)->orderBy('name')->pluck('name', 'name'))
+                            ->allowHtml(false)
+                            ->createOptionForm([
+                                TextInput::make('manual_address')
+                                    ->label('Dirección Manual')
+                                    ->required()
+                                    ->maxLength(255)
+                                    ->helperText('Esta dirección NO se guardará como frecuente'),
+                            ])
+                            ->createOptionUsing(function (array $data) {
+                                return $data['manual_address']; // Solo retorna el valor, no lo guarda en BD
+                            })
+                            ->helperText('Selecciona una ubicación frecuente o usa "Crear nueva opción" para escribir manualmente'),
+                        /* TextInput::make('arrival_address')
+                            ->label('Punto de Llegada')
+                            ->required()
+                            ->columnSpan(2)
+                            ->maxLength(255), */
                         /* TextInput::make('arrival_sunat_establishment_code')
                             ->label('Código de Establecimiento (Llegada)')
                             ->maxLength(4)
@@ -603,7 +638,10 @@ class DespatchResource extends Resource
                                 ->label('Unidad de Medida')
                                 ->options(MeasureUnit::all()->pluck('description', 'id'))
                                 ->searchable()
-                                ->required(),
+                                ->required()
+                                ->default(function () {
+                                    return MeasureUnit::where('code', 'ZZ')->first()->id;  
+                                }),
                             ])
                             ->columns(6)
                             ->defaultItems(1)
@@ -894,7 +932,7 @@ class DespatchResource extends Resource
 
                         $record->refresh();
                     })
-                    ->visible(fn (Despatch $record): bool => !is_null($record->sunat_ticket)),
+                    ->visible(fn (Despatch $record): bool => !$record->accepted_by_sunat && !is_null($record->sunat_ticket)),
 
                 // Acción para reenviar a SUNAT (si falló el envío inicial)
                 Tables\Actions\Action::make('resendToSunat')
@@ -924,37 +962,9 @@ class DespatchResource extends Resource
 
                         $record->refresh();
                     })
-                    ->visible(fn (Despatch $record): bool => is_null($record->sunat_ticket) || !empty($record->sunat_soap_error))
+                    ->visible(fn (Despatch $record): bool => !$record->accepted_by_sunat && (is_null($record->sunat_ticket) || !empty($record->sunat_soap_error)))
                     ->requiresConfirmation()
-                    ->modalDescription('¿Está seguro de reenviar esta guía a SUNAT?'),
-
-                /* Tables\Actions\Action::make('consultDespatchStatus')
-                    ->label('SUNAT')
-                    ->icon('heroicon-o-arrow-path')
-                    ->color('info')
-                    ->action(function (Despatch $record, DespatchService $nubefactService) {
-                        try {
-                            $response = $nubefactService->consultDespatchStatus($record); // Llama al nuevo método consultDespatchStatus
-
-                            Notification::make()
-                                ->title('Consulta de Estado Exitosa')
-                                ->body("Estado de la guía #{$record->series}-{$record->number}: " . ($record->accepted_by_sunat ? 'ACEPTADA' : 'RECHAZADA / PENDIENTE'))
-                                ->success()
-                                ->send();
-
-                        } catch (Exception $e) {
-                            Notification::make()
-                                ->title('Error al Consultar Estado')
-                                ->body($e->getMessage())
-                                ->danger()
-                                ->send();
-                        }
-
-                        $record->refresh(); // ¡MUY IMPORTANTE! Recarga el modelo para que la tabla muestre el nuevo estado y URLs
-                    }), */
-                    // Muestra si la guía fue generada (tiene un response code, o al menos no ha sido aceptada)
-                    // y no ha sido aceptada por SUNAT (para seguir consultando hasta que se acepte o rechace).
-                    //->visible(fn (Despatch $record): bool => !is_null($record->sunat_response_code) && !$record->accepted_by_sunat), // Ajusta la visibilidad según tu flujo exacto.
+                    ->modalDescription('¿Está seguro de reenviar esta guía a SUNAT?'),                
 
                 Tables\Actions\Action::make('downloadPdf')
                     ->label('PDF')

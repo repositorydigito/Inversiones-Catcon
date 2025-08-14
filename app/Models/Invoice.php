@@ -63,6 +63,12 @@ class Invoice extends Model
         'barcode_string',
         'hash_code',
         'sunat_link',
+
+        // Campos de detracción
+        'detraction_service_code',
+        'detraction_payment_method',
+        'detraction_percentage',
+        'detraction_bank_account',
     ];
 
     protected $casts = [
@@ -72,6 +78,8 @@ class Invoice extends Model
         'send_automatically_to_sunat' => 'boolean',
         'send_automatically_to_client' => 'boolean',
         'sunat_accepted' => 'boolean',
+        'detraction_percentage' => 'decimal:2',
+        'detraction' => 'boolean',
     ];
 
     public function items()

@@ -79,7 +79,13 @@ class OperationalExpenseResource extends Resource
                             ->label('Monto')
                             ->numeric()
                             ->prefix('S/.')
-                            ->required(),
+                            ->minValue(0.01)
+                            ->required()
+                            ->validationMessages([
+                                'numeric' => 'El monto solo puede contener números.',
+                                'minValue' => 'El monto debe ser mayor que 0.',
+                                'required' => 'El monto es obligatorio.',
+                            ]),
 
                         Forms\Components\TextInput::make('supplier')
                             ->label('Proveedor'),

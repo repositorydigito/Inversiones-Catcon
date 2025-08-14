@@ -10,6 +10,7 @@ use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Illuminate\Validation\Rule;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 
@@ -41,20 +42,55 @@ class ClientResource extends Resource
                         'RUC' => 'RUC',
                     ])
                     ->default('RUC')
+                    ->reactive()
                     ->required(),
                 Forms\Components\TextInput::make('document_number')
                     ->label('Número de Documento')
-                    ->regex('/^\d{11}$/', 'El RUC debe tener exactamente 11 dígitos.')
                     ->required()
+                    ->numeric()
+                    ->rules(function (callable $get, ?string $operation, $record) {
+                        $documentType = $get('document_type');
+                        $rules = ['numeric'];
+                        
+                        // Validación de longitud según tipo de documento
+                        if ($documentType === 'DNI') {
+                            $rules[] = 'digits:8';
+                        } elseif ($documentType === 'RUC') {
+                            $rules[] = 'digits:11';
+                        }
+                        
+                        // Validación de unicidad
+                        $uniqueRule = Rule::unique('clients', 'document_number');
+                        if ($operation === 'edit' && $record) {
+                            $uniqueRule->ignore($record->id);
+                        }
+                        $rules[] = $uniqueRule;
+                        
+                        return $rules;
+                    })                    
                     ->validationMessages([
-                        'regex' => 'El RUC debe tener exactamente 11 dígitos numéricos.',
+                        'numeric' => 'El documento solo puede contener números.',
+                        'digits' => function (callable $get) {
+                            $documentType = $get('document_type');
+                            if ($documentType === 'DNI') {
+                                return 'El DNI debe tener exactamente 8 dígitos.';
+                            } elseif ($documentType === 'RUC') {
+                                return 'El RUC debe tener exactamente 11 dígitos.';
+                            }
+                            return 'Número de dígitos incorrecto.';
+                        },
+                        'unique' => 'Este número de documento ya existe en el sistema.',
                     ]),
                 Forms\Components\TextInput::make('phone')
                     ->label('Teléfono')
+                    ->tel()
                     ->nullable(),
                 Forms\Components\TextInput::make('address')
                     ->label('Dirección')
-                    ->nullable(),
+                    ->nullable()
+                    ->validationMessages([
+                        'regex' => 'Ingrese un teléfono válido.',
+                    ]),
                 Forms\Components\TextInput::make('email')
                     ->label('Correo Electrónico')
                     ->email()
