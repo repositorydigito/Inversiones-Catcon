@@ -53,6 +53,8 @@ return [
         ],
     ], */
 
+
+
     'endpoints' => [
         'fe' => [
             'beta' => 'https://demo-ose.nubefact.com/ol-ti-itcpe/billService?wsdl',

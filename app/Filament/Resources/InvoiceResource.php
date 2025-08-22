@@ -77,7 +77,7 @@ class InvoiceResource extends Resource
                         TextInput::make('series')
                             ->required()
                             ->maxLength(4)
-                            ->default('FFF1')
+                            ->default('F001')
                             ->label('Serie')
                             ->columnSpan(1),
                         TextInput::make('number')
@@ -98,12 +98,19 @@ class InvoiceResource extends Resource
                         Select::make('transaction_type')
                             ->label('Tipo de Transacción SUNAT')
                             ->options([
-                                /* '01' => 'Venta Interna',
-                                '10' => 'Factura - Guía remitente', */
-                                '11' => 'Factura - Guía transportista',
+                                '0101' => '0101 - Venta Interna',
+                                '0102' => '0102 - Exportación',
+                                '0103' => '0103 - No Domiciliados',
+                                '0104' => '0104 - Venta Interna – Anticipos',
+                                '0105' => '0105 - Venta Itinerante',
+                                '0106' => '0106 - Factura Guía',
+                                '0107' => '0107 - Venta Arroz Pilado',
+                                '0108' => '0108 - Factura - Comprobante de Percepción',
+                                '0110' => '0110 - Factura - Guía remitente',
+                                '0111' => '0111 - Factura - Guía transportista',
                             ])
                             ->required()
-                            ->default('11')
+                            ->default('0101')
                             ->columnSpan(1),
                         DatePicker::make('emission_date')
                             ->label('Fecha de Emisión')
@@ -131,6 +138,36 @@ class InvoiceResource extends Resource
                             ->numeric()
                             ->step(0.01)
                             ->default(18.00)
+                            ->live()
+                            ->afterStateUpdated(function ($state, $set, $get) {
+                                // Recalcular todos los items cuando cambie el porcentaje de IGV
+                                $items = $get('items') ?? [];
+                                foreach ($items as $index => $item) {
+                                    $quantity = (float) ($item['quantity'] ?? 0);
+                                    $unitValue = (float) ($item['unit_value'] ?? 0);
+                                    $discount = (float) ($item['discount'] ?? 0);
+                                    $igvType = $item['igv_type'] ?? '1';
+                                    $igvPercentage = (float) ($state ?? 18.00);
+
+                                    $subtotal = ($quantity * $unitValue) - $discount;
+                                    $igv = 0;
+                                    $unitPrice = 0;
+                                    
+                                    if ($igvType === '1' && $igvPercentage > 0) {
+                                        $igv = $subtotal * ($igvPercentage / 100);
+                                        $unitPrice = $unitValue * (1 + ($igvPercentage / 100));
+                                    } else {
+                                        $unitPrice = $unitValue;
+                                    }
+                                    
+                                    $total = $subtotal + $igv;
+
+                                    $set("items.{$index}.subtotal", round($subtotal, 2));
+                                    $set("items.{$index}.igv", round($igv, 2));
+                                    $set("items.{$index}.total", round($total, 2));
+                                    $set("items.{$index}.unit_price", round($unitPrice, 2));
+                                }
+                            })
                             ->columnSpan(1),
                         TextInput::make('global_discount')
                             ->label('Descuento Global')
@@ -517,22 +554,34 @@ class InvoiceResource extends Resource
     {
         $quantity = (float) ($get('quantity') ?? 0);
         $unitValue = (float) ($get('unit_value') ?? 0);
-        $unitPrice = (float) ($get('unit_price') ?? 0);
         $discount = (float) ($get('discount') ?? 0);
         $igvType = $get('igv_type') ?? '1';
         $igvPercentage = (float) ($get('../../igv_percentage') ?? 18.00);
 
+        // Calcular subtotal (sin IGV)
         $subtotal = ($quantity * $unitValue) - $discount;
+        
+        // Calcular IGV usando la fórmula: Subtotal * Porcentaje IGV
         $igv = 0;
-        $total = ($quantity * $unitPrice) - $discount;
-
         if ($igvType === '1' && $igvPercentage > 0) {
-            $igv = $total - $subtotal;
+            $igv = $subtotal * ($igvPercentage / 100);
+        }
+        
+        // Calcular total (subtotal + IGV)
+        $total = $subtotal + $igv;
+        
+        // Calcular precio unitario con IGV: (Valor Unitario * (1 + IGV%))
+        $unitPrice = 0;
+        if ($igvType === '1' && $igvPercentage > 0) {
+            $unitPrice = $unitValue * (1 + ($igvPercentage / 100));
+        } else {
+            $unitPrice = $unitValue;
         }
 
         $set('subtotal', round($subtotal, 2));
         $set('igv', round($igv, 2));
         $set('total', round($total, 2));
+        $set('unit_price', round($unitPrice, 2));
     }
 
     protected static function calculateInvoiceTotals($set, $get): void
