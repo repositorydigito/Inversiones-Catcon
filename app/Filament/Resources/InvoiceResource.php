@@ -1111,19 +1111,48 @@ class InvoiceResource extends Resource
                     ->modalCancelActionLabel('Cerrar')
                     ->visible(fn (Invoice $record): bool => $record->despatches->count() > 0),
                 
+                // ✅ MANTENER: Acción de enviar a Nubefact OSE
                 Tables\Actions\Action::make('enviar_nubefact')
                     ->label('Enviar a Nubefact')
                     ->icon('heroicon-o-paper-airplane')
-                    ->action(fn (Invoice $record) => app(\App\Services\InvoiceService::class)->sendToNubefact($record))
+                    ->action(function (Invoice $record) {
+                        try {
+                            app(\App\Services\InvoiceService::class)->sendToNubefact($record);
+                            \Filament\Notifications\Notification::make()
+                                ->title('Factura enviada a Nubefact')
+                                ->body("La factura {$record->series}-{$record->number} se envió correctamente.")
+                                ->success()
+                                ->send();
+                        } catch (\Exception $e) {
+                            \Filament\Notifications\Notification::make()
+                                ->title('Error al enviar a Nubefact')
+                                ->body('Error: ' . $e->getMessage())
+                                ->danger()
+                                ->send();
+                        }
+                    })
                     ->requiresConfirmation()
+                    ->modalHeading('Confirmar envío a Nubefact')
+                    ->modalDescription('¿Está seguro de que desea enviar esta factura a Nubefact OSE?')
                     ->color('primary'),
                 
-                Tables\Actions\Action::make('download_pdf')
-                    ->label('PDF')
-                    ->icon('heroicon-o-document-text')
+                // 🆕 NUEVA: Acción de generar PDF local (siempre disponible)
+                Tables\Actions\Action::make('generate_pdf')
+                    ->label('Generar PDF')
+                    ->icon('heroicon-o-document-arrow-down')
+                    ->url(fn (Invoice $record): string => route('invoice.pdf', $record))
+                    ->openUrlInNewTab()
                     ->color('danger')
+                    ->tooltip('Generar y descargar PDF local de la factura'),
+                
+                // ✅ MEJORADA: Descargar PDF de Nubefact (solo si existe)
+                Tables\Actions\Action::make('download_nubefact_pdf')
+                    ->label('PDF Nubefact')
+                    ->icon('heroicon-o-document-text')
+                    ->color('orange')
                     ->url(fn (Invoice $record): string => $record->pdf_link ?: $record->sunat_link ?: '#')
                     ->openUrlInNewTab()
+                    ->tooltip('Descargar PDF generado por Nubefact')
                     ->visible(fn (Invoice $record): bool => !empty($record->pdf_link) || !empty($record->sunat_link)),
 
                 Tables\Actions\Action::make('download_xml')
@@ -1132,6 +1161,7 @@ class InvoiceResource extends Resource
                     ->color('success')
                     ->url(fn (Invoice $record): string => $record->xml_link)                    
                     ->openUrlInNewTab()
+                    ->tooltip('Descargar XML de la factura')
                     ->visible(fn (Invoice $record): bool => !empty($record->xml_link) || !empty($record->xml_zip_base64)),                                               
 
                 Tables\Actions\Action::make('download_cdr')
@@ -1140,6 +1170,7 @@ class InvoiceResource extends Resource
                     ->color('warning')
                     ->url(fn (Invoice $record): string => $record->cdr_link)                     
                     ->openUrlInNewTab()
+                    ->tooltip('Descargar CDR (Constancia de Recepción)')
                     ->visible(fn (Invoice $record): bool => !empty($record->cdr_link) || !empty($record->cdr_zip_base64)),
             ])
             ->bulkActions([                

@@ -1,10 +1,17 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use App\Services\InvoicePdfService;
+use App\Models\Invoice;
 
 Route::get('/', function () {
     return redirect('/admin/login');
 });
+
+// Nueva ruta para generar PDF de facturas
+Route::get('/invoice/{invoice}/pdf', function (Invoice $invoice) {
+    return app(InvoicePdfService::class)->generateInvoicePdf($invoice);
+})->name('invoice.pdf');
 
 Route::get('/test-gre', [App\Http\Controllers\GreenterTestController::class, 'testGRE']);
 

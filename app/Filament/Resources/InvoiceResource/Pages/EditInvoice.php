@@ -29,6 +29,41 @@ class EditInvoice extends EditRecord
     protected function getHeaderActions(): array
     {
         return [
+            // Acción para generar PDF local
+            Actions\Action::make('generate_pdf')
+                ->label('Generar PDF')
+                ->icon('heroicon-o-document-arrow-down')
+                ->url(fn (): string => route('invoice.pdf', $this->record))
+                ->openUrlInNewTab()
+                ->color('danger')
+                ->tooltip('Generar y descargar PDF local de la factura'),
+            
+            // Acción para enviar a Nubefact
+            Actions\Action::make('send_to_nubefact')
+                ->label('Enviar a Nubefact')
+                ->icon('heroicon-o-paper-airplane')
+                ->action(function () {
+                    try {
+                        app(\App\Services\InvoiceService::class)->sendToNubefact($this->record);
+                        \Filament\Notifications\Notification::make()
+                            ->title('Factura enviada a Nubefact')
+                            ->body("La factura {$this->record->series}-{$this->record->number} se envió correctamente.")
+                            ->success()
+                            ->send();
+                    } catch (\Exception $e) {
+                        \Filament\Notifications\Notification::make()
+                            ->title('Error al enviar a Nubefact')
+                            ->body('Error: ' . $e->getMessage())
+                            ->danger()
+                            ->send();
+                    }
+                })
+                ->requiresConfirmation()
+                ->modalHeading('Confirmar envío a Nubefact')
+                ->modalDescription('¿Está seguro de que desea enviar esta factura a Nubefact OSE?')
+                ->color('primary'),
+            
+            // Acción de eliminar
             Actions\DeleteAction::make(),
         ];
     }
