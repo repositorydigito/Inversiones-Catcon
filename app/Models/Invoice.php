@@ -86,6 +86,12 @@ class Invoice extends Model
     {
         return $this->hasMany(InvoiceItem::class);
     }
+    
+    public function installments()
+    {
+        return $this->hasMany(InvoiceInstallment::class)->ordered();
+    }
+    
     public function client()
     {
         return $this->belongsTo(Client::class);

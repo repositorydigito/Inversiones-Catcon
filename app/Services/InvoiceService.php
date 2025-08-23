@@ -4,84 +4,76 @@ namespace App\Services;
 
 use CodersFree\LaravelGreenter\Facades\Greenter;
 use App\Models\Invoice;
+use App\Services\Invoice\Builders\{
+    AbstractInvoiceBuilder,
+    NormalInvoiceBuilder,
+    CreditInvoiceBuilder, 
+    DetractionInvoiceBuilder,
+    CreditDetractionInvoiceBuilder
+};
 use Illuminate\Support\Facades\Log;
 
 class InvoiceService
 {
+    /**
+     * Envía la factura a Nubefact usando la arquitectura de builders extensible
+     */
     public function sendToNubefact(Invoice $invoice): array
     {
         $invoice->load('client', 'items');
         
-        $currencyMap = [
-            '1' => 'PEN',
-            '2' => 'USD'
-        ];
-        
-        $paymentType = is_null($invoice->due_date) ? 'Contado' : 'Crédito';
-        
-        $details = [];
-        foreach ($invoice->items as $item) {
-            $details[] = [
-                "codProducto" => $item->code ?? '',
-                "unidad" => "NIU",
-                "cantidad" => (float) $item->quantity,
-                "mtoValorUnitario" => (float) $item->unit_value,
-                "descripcion" => $item->description,
-                "mtoBaseIgv" => (float) ($item->quantity * $item->unit_value),
-                "porcentajeIgv" => (float) $invoice->igv_percentage,
-                "igv" => (float) $item->igv,
-                "tipAfeIgv" => "10",
-                "totalImpuestos" => (float) $item->igv,
-                "mtoValorVenta" => (float) $item->subtotal,
-                "mtoPrecioUnitario" => (float) $item->unit_price,
-            ];
-        }
-        
-        $amountInWords = $this->convertAmountToWords((float) $invoice->total, $currencyMap[$invoice->currency] ?? 'PEN');
-
-        $data = [
-            "ublVersion" => "2.1",
-            "tipoOperacion" => $invoice->transaction_type,
-            "tipoDoc" => $invoice->invoice_type,
-            "serie" => $invoice->series,
-            "correlativo" => (string) $invoice->number,
-            "fechaEmision" => $invoice->emission_date->format('Y-m-d'),
-            "formaPago" => [
-                'tipo' => $paymentType,
-            ],
-            "tipoMoneda" => $currencyMap[$invoice->currency] ?? 'PEN',
-            "client" => [
-                "tipoDoc" => ($invoice->client->document_type === 'DNI') ? '1' : '6',
-                "numDoc" => $invoice->client->document_number,
-                "rznSocial" => $invoice->client->name,
-            ],
-            "mtoOperGravadas" => (float) $invoice->total_taxable,
-            "mtoIGV" => (float) $invoice->total_igv,
-            "totalImpuestos" => (float) $invoice->total_igv,
-            "valorVenta" => (float) $invoice->total_taxable,
-            "subTotal" => (float) ($invoice->total_taxable + $invoice->total_igv),
-            "mtoImpVenta" => (float) $invoice->total,
-            "details" => $details,
-            "legends" => [
-                [
-                    "code" => "1000",
-                    "value" => $amountInWords,
-                ],
-            ],
-        ];
-
         try {
+            // Obtener el builder apropiado según el tipo de factura
+            $builder = $this->getInvoiceBuilder($invoice);
+            
+            // Construir los datos de la factura
+            $data = $builder->buildInvoiceData();
+            
+            // Enviar a Greenter/Nubefact
             $response = Greenter::send('invoice', $data);
+            
+            return [
+                'success' => true,
+                'response' => $response,
+            ];
+            
         } catch (\Exception $e) {
+            Log::error('Error enviando factura a Nubefact:', [
+                'invoice_id' => $invoice->id,
+                'error' => $e->getMessage()
+            ]);
             throw $e;
         }
-
-        return [
-            'success' => true,
-            'response' => $response,
-        ];
     }
-
+    
+    /**
+     * Obtiene el builder apropiado según las características de la factura
+     */
+    public function getInvoiceBuilder(Invoice $invoice): AbstractInvoiceBuilder
+    {
+        $isCredit = !is_null($invoice->due_date);
+        $hasDetraction = $invoice->detraction;
+        
+        // Determinar el tipo de builder según las características de la factura
+        if ($isCredit && $hasDetraction) {
+            return new CreditDetractionInvoiceBuilder($invoice);
+        }
+        
+        if ($isCredit) {
+            return new CreditInvoiceBuilder($invoice);
+        }
+        
+        if ($hasDetraction) {
+            return new DetractionInvoiceBuilder($invoice);
+        }
+        
+        return new NormalInvoiceBuilder($invoice);
+    }
+    
+    /**
+     * Métodos auxiliares mantenidos para compatibilidad
+     * (estos ahora se usan principalmente en AbstractInvoiceBuilder)
+     */
     private function convertAmountToWords(float $amount, string $currency): string
     {
         $integerPart = (int) $amount;

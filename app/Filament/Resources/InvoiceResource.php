@@ -8,6 +8,7 @@ use App\Models\Invoice;
 use App\Models\Client;
 use App\Models\MeasureUnit;
 use App\Models\Despatch;
+use App\Models\Service;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
@@ -16,7 +17,6 @@ use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 
-// Componentes de Filament Forms
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
@@ -25,8 +25,9 @@ use Filament\Forms\Components\Toggle;
 use Filament\Forms\Components\Section;
 use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Checkbox;
-
-// Componentes de Filament Tables
+use Filament\Forms\Components\Hidden;
+use Filament\Forms\Components\Actions\Action;
+use Filament\Forms\Components\Actions;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\Filter;
@@ -52,7 +53,7 @@ class InvoiceResource extends Resource
                             ->multiple()
                             ->options(function () {
                                 return Despatch::with('client')
-                                    ->where('accepted_by_sunat', true) // Solo guías aceptadas por SUNAT
+                                    ->where('accepted_by_sunat', true)
                                     ->get()
                                     ->mapWithKeys(function ($despatch) {
                                         $itemsCount = $despatch->items->count();
@@ -75,15 +76,36 @@ class InvoiceResource extends Resource
                     ->columns(3)
                     ->schema([
                         TextInput::make('series')
-                            ->required()
+                            ->readOnly()
                             ->maxLength(4)
-                            ->default('F001')
+                            ->helperText('por defecto F001')
+                            ->default(function () {
+                                return 'F001';
+                            })
                             ->label('Serie')
+                            ->live()
+                            ->disabled(fn (string $operation): bool => $operation !== 'create')
+                            ->dehydrated()
+                            ->afterStateHydrated(function ($state, $set) {
+                                if ($state) {
+
+                                    $nextNumber = static::getNextCorrelativeNumber($state);
+                                    $set('number', $nextNumber);
+                                }
+                            })
+                            ->afterStateUpdated(function ($state, $set, $get) {
+                                if ($state) {
+                                    $nextNumber = static::getNextCorrelativeNumber($state);
+                                    $set('number', $nextNumber);
+                                }
+                            })
                             ->columnSpan(1),
                         TextInput::make('number')
-                            ->required()
-                            ->numeric()
+                            ->readOnly()
                             ->label('Número')
+                            ->disabled(fn (string $operation): bool => $operation !== 'create')
+                            ->dehydrated()
+                            ->helperText('Se genera automáticamente según la serie')
                             ->columnSpan(1),
                         Select::make('invoice_type')
                             ->label('Tipo de Comprobante')
@@ -140,7 +162,6 @@ class InvoiceResource extends Resource
                             ->default(18.00)
                             ->live()
                             ->afterStateUpdated(function ($state, $set, $get) {
-                                // Recalcular todos los items cuando cambie el porcentaje de IGV
                                 $items = $get('items') ?? [];
                                 foreach ($items as $index => $item) {
                                     $quantity = (float) ($item['quantity'] ?? 0);
@@ -215,7 +236,7 @@ class InvoiceResource extends Resource
                             ->disabled(fn ($get) => !empty($get('selected_despatches')) && !$get('manual_mode'))
                             ->columnSpanFull(),
 
-                        // Campos que se llenan automáticamente desde el cliente
+
                         TextInput::make('client_document_type')
                             ->label('Tipo Doc. Cliente (SUNAT)')
                             ->readOnly()
@@ -255,6 +276,29 @@ class InvoiceResource extends Resource
                         Repeater::make('items')
                             ->label('')
                             ->schema([
+                                Select::make('service_id')
+                                    ->label('Seleccionar Servicio/Producto')
+                                    ->options(\App\Models\Service::active()->orderBy('code')->get()->pluck('full_name', 'id'))
+                                    ->searchable()
+                                    ->preload()
+                                    ->nullable()
+                                    ->placeholder('Buscar servicio...')
+                                    ->live()
+                                    ->afterStateUpdated(function ($state, $set) {
+                                        if ($state) {
+                                            $service = \App\Models\Service::find($state);
+                                            if ($service) {
+                                                $set('code', $service->code);
+                                                $set('description', $service->name);
+                
+                                                $defaultUnit = \App\Models\MeasureUnit::where('code', 'ZZ')->first();
+                                                if ($defaultUnit) {
+                                                    $set('unit_of_measure_id', $defaultUnit->id);
+                                                }
+                                            }
+                                        }
+                                    })
+                                    ->columnSpan(3),
                                 Select::make('unit_of_measure_id')
                                     ->label('Unidad de Medida')
                                     ->options(MeasureUnit::all()->pluck('description', 'id'))
@@ -269,14 +313,14 @@ class InvoiceResource extends Resource
                                     ->label('Descripción')
                                     ->required()
                                     ->maxLength(255)
-                                    ->columnSpan(2),
+                                    ->columnSpan(1),
                                 TextInput::make('quantity')
                                     ->label('Cantidad')
                                     ->required()
                                     ->numeric()
                                     ->step(0.01)
                                     ->default(1)
-                                    ->live()
+                                    ->lazy()
                                     ->afterStateUpdated(function ($state, $set, $get) {
                                         static::calculateItemTotals($set, $get);
                                     })
@@ -286,7 +330,7 @@ class InvoiceResource extends Resource
                                     ->required()
                                     ->numeric()
                                     ->step(0.01)
-                                    ->live()
+                                    ->lazy()
                                     ->afterStateUpdated(function ($state, $set, $get) {
                                         static::calculateItemTotals($set, $get);
                                     })
@@ -296,7 +340,7 @@ class InvoiceResource extends Resource
                                     ->required()
                                     ->numeric()
                                     ->step(0.01)
-                                    ->live()
+                                    ->lazy()
                                     ->afterStateUpdated(function ($state, $set, $get) {
                                         static::calculateItemTotals($set, $get);
                                     })
@@ -306,7 +350,7 @@ class InvoiceResource extends Resource
                                     ->numeric()
                                     ->step(0.01)
                                     ->default(0.00)
-                                    ->live()
+                                    ->lazy()
                                     ->afterStateUpdated(function ($state, $set, $get) {
                                         static::calculateItemTotals($set, $get);
                                     })
@@ -325,7 +369,7 @@ class InvoiceResource extends Resource
                                         static::calculateItemTotals($set, $get);
                                     })
                                     ->columnSpan(1),
-                                // Campos calculados (readonly)
+
                                 TextInput::make('subtotal')
                                     ->label('Subtotal')
                                     ->numeric()
@@ -345,13 +389,16 @@ class InvoiceResource extends Resource
                                     ->dehydrated()
                                     ->columnSpan(1),
                             ])
-                            ->columns(4)
+                            ->columns(6)
                             ->defaultItems(1)
                             ->minItems(1)
                             ->reorderable()
                             ->collapsible()
                             ->cloneable()
                             ->addActionLabel('Añadir Nuevo Ítem')
+                            ->itemLabel(fn (array $state): ?string => 
+                                $state['description'] ?? 'Nuevo ítem'
+                            )
                             ->columnSpanFull(),
                     ]),
 
@@ -394,10 +441,40 @@ class InvoiceResource extends Resource
                             ->numeric()
                             ->readOnly()
                             ->default(0.00)
-                            ->dehydrated(),
+                            ->dehydrated()
+                            ->live()
+                            ->afterStateUpdated(function ($state, $set, $get) {
+                                $newTotal = (float) ($state ?? 0);
+                                $numberOfInstallments = (int) ($get('number_of_installments') ?? 1);
+                                $emissionDate = $get('emission_date');
+                                $isCreditPayment = $get('is_credit_payment');
+                                $existingInstallments = $get('installments') ?? [];
+                                
+
+                                if ($isCreditPayment && $newTotal > 0 && $emissionDate && !empty($existingInstallments)) {
+                                    // Calcular montos en partes iguales
+                                    $amountPerInstallment = round($newTotal / $numberOfInstallments, 2);
+                                    $lastInstallmentAmount = $newTotal - ($amountPerInstallment * ($numberOfInstallments - 1));
+                                    
+
+                                    $updatedInstallments = [];
+                                    for ($i = 0; $i < $numberOfInstallments && $i < count($existingInstallments); $i++) {
+                                        $amount = ($i === $numberOfInstallments - 1) ? $lastInstallmentAmount : $amountPerInstallment;
+                                        
+                                        $updatedInstallments[] = [
+                                            'installment_number' => $existingInstallments[$i]['installment_number'] ?? 'Cuota' . str_pad($i + 1, 3, '0', STR_PAD_LEFT),
+                                            'amount' => $amount,
+                                            'due_date' => $existingInstallments[$i]['due_date'] ?? null,
+                                            'order' => $existingInstallments[$i]['order'] ?? ($i + 1),
+                                        ];
+                                    }
+                                    
+                                    $set('installments', $updatedInstallments);
+                                }
+                            }),
                     ]),
 
-                // NUEVA SECCIÓN: Configuración de Pago
+
                 Section::make('Configuración de Pago')
                     ->description('Define si es pago contado o crédito, y configuración de detracción.')
                     ->columns(2)
@@ -478,7 +555,7 @@ class InvoiceResource extends Resource
                             ->columnSpanFull(),
                     ]),
 
-                // NUEVA SECCIÓN: Información de Detracción
+
                 Section::make('Información de Detracción')
                     ->description('Configuración específica para el sistema de detracciones de SUNAT.')
                     ->visible(fn ($get) => $get('detraction'))
@@ -547,6 +624,318 @@ class InvoiceResource extends Resource
                             })
                             ->columnSpan(1),
                     ]),
+
+
+                Section::make('Configuración de Cuotas')
+                    ->description('Configure las cuotas de pago para facturas a crédito.')
+                    ->visible(fn ($get) => $get('is_credit_payment'))
+                    ->columns(1)
+                    ->schema([
+
+                        Select::make('number_of_installments')
+                            ->label('Número de Cuotas')
+                            ->options([
+                                1 => '1 cuota (pago único)',
+                                2 => '2 cuotas',
+                                3 => '3 cuotas',
+                                4 => '4 cuotas',
+                                6 => '6 cuotas',
+                                12 => '12 cuotas',
+                            ])
+                            ->default(1)
+                            ->live()
+                            ->afterStateUpdated(function ($state, $set, $get) {
+                                $numberOfInstallments = (int) $state;
+                                $total = (float) ($get('total') ?? 0);
+                                $emissionDate = $get('emission_date');
+                                
+                                if ($total <= 0 || !$emissionDate) {
+                                    return;
+                                }
+                                
+                                // Calcular montos en partes iguales
+                                $amountPerInstallment = round($total / $numberOfInstallments, 2);
+                                $lastInstallmentAmount = $total - ($amountPerInstallment * ($numberOfInstallments - 1));
+                                
+                                // Generar cuotas con fechas válidas
+                                $installments = [];
+                                $baseDate = \Carbon\Carbon::parse($emissionDate);
+                                
+                                for ($i = 0; $i < $numberOfInstallments; $i++) {
+                                    $amount = ($i === $numberOfInstallments - 1) ? $lastInstallmentAmount : $amountPerInstallment;
+                                    
+                                    // CRITICAL FIX: Asegurar fechas POSTERIORES a emission_date para evitar SUNAT 3267
+                                    if ($numberOfInstallments === 1) {
+                                        // Para pago único, usar +7 días (mínimo seguro)
+                                        $daysToAdd = 7;
+                                    } else {
+                                        // Para múltiples cuotas, usar patrón +7, +14, +21, etc.
+                                        $daysToAdd = ($i + 1) * 7;
+                                    }
+                                    
+                                    $dueDate = $baseDate->copy()->addDays($daysToAdd);
+                                    
+                                    $installments[] = [
+                                        'installment_number' => 'Cuota' . str_pad($i + 1, 3, '0', STR_PAD_LEFT),
+                                        'amount' => $amount,
+                                        'due_date' => $dueDate->format('Y-m-d'),
+                                        'order' => $i + 1,
+                                    ];
+                                }
+                                
+                                $set('installments', $installments);
+                                
+
+                                $set('due_date', end($installments)['due_date']);
+                            })
+                            ->helperText('Al cambiar el número de cuotas se auto-calculará la división del monto total')
+                            ->columnSpanFull(),
+                            
+                        // NUEVO: Botón para recalcular cuotas cuando el total haya cambiado
+                        Actions::make([
+                            Action::make('recalculate_installments')
+                                ->label('Recalcular Cuotas con Total Actual')
+                                ->icon('heroicon-o-calculator')
+                                ->color('warning')
+                                ->action(function ($set, $get) {
+                                    $numberOfInstallments = (int) ($get('number_of_installments') ?? 1);
+                                    $total = (float) ($get('total') ?? 0);
+                                    $emissionDate = $get('emission_date');
+                                    
+                                    if ($total <= 0) {
+                                        \Filament\Notifications\Notification::make()
+                                            ->title('Error')
+                                            ->body('No hay total para calcular. Primero configure los items de la factura.')
+                                            ->danger()
+                                            ->send();
+                                        return;
+                                    }
+                                    
+                                    if (!$emissionDate) {
+                                        \Filament\Notifications\Notification::make()
+                                            ->title('Error')
+                                            ->body('Defina la fecha de emisión primero.')
+                                            ->danger()
+                                            ->send();
+                                        return;
+                                    }
+                                    
+                                    // Calcular montos en partes iguales
+                                    $amountPerInstallment = round($total / $numberOfInstallments, 2);
+                                    $lastInstallmentAmount = $total - ($amountPerInstallment * ($numberOfInstallments - 1));
+                                    
+                                    // Generar cuotas con fechas válidas
+                                    $installments = [];
+                                    $baseDate = \Carbon\Carbon::parse($emissionDate);
+                                    
+                                    for ($i = 0; $i < $numberOfInstallments; $i++) {
+                                        $amount = ($i === $numberOfInstallments - 1) ? $lastInstallmentAmount : $amountPerInstallment;
+                                        
+                                        // Siguiendo patrón Greenter: +7 días por cuota
+                                        if ($numberOfInstallments === 1) {
+                                            $daysToAdd = 7; // Pago único a +7 días
+                                        } else {
+                                            $daysToAdd = ($i + 1) * 7; // Múltiples cuotas: +7, +14, +21, etc.
+                                        }
+                                        
+                                        $dueDate = $baseDate->copy()->addDays($daysToAdd);
+                                        
+                                        $installments[] = [
+                                            'installment_number' => 'Cuota' . str_pad($i + 1, 3, '0', STR_PAD_LEFT),
+                                            'amount' => $amount,
+                                            'due_date' => $dueDate->format('Y-m-d'),
+                                            'order' => $i + 1,
+                                        ];
+                                    }
+                                    
+                                    $set('installments', $installments);
+                                    $set('due_date', end($installments)['due_date']);
+                                    
+                                    \Filament\Notifications\Notification::make()
+                                        ->title('Cuotas Recalculadas')
+                                        ->body('Las cuotas han sido recalculadas con el total actual de S/ ' . number_format($total, 2))
+                                        ->success()
+                                        ->send();
+                                })
+                                ->visible(fn ($get) => (float) ($get('total') ?? 0) > 0)
+                        ])->columnSpanFull(),
+                            
+                        Repeater::make('installments')
+                            ->label('Cuotas de Pago')
+                            // ->relationship('installments') // REMOVIDO: En CREATE no existe la relación aún
+                            ->schema([
+                                Hidden::make('installment_number'),
+                                Hidden::make('order'),
+                                
+                                TextInput::make('amount')
+                                    ->label('Monto')
+                                    ->numeric()
+                                    ->step(0.01)
+                                    ->prefix('S/')
+                                    ->required()
+                                    ->live()
+                                    ->afterStateUpdated(function ($state, $set, $get) {
+                                        // Auto-calcular el número de cuota y orden
+                                        $installments = $get('../../installments') ?? [];
+                                        $currentIndex = 0;
+                                        foreach ($installments as $index => $installment) {
+                                            if ($installment === $get('../')) {
+                                                $currentIndex = $index;
+                                                break;
+                                            }
+                                        }
+                                        $cuotaNumber = str_pad($currentIndex + 1, 3, '0', STR_PAD_LEFT);
+                                        $set('installment_number', 'Cuota' . $cuotaNumber);
+                                        $set('order', $currentIndex + 1);
+                                    })
+                                    ->helperText('Monto editable - se calculó automáticamente pero puedes ajustarlo')
+                                    ->columnSpan(1),
+                                    
+                                DatePicker::make('due_date')
+                                    ->label('Fecha de Vencimiento')
+                                    ->native(false)
+                                    ->after('../../emission_date') // CRITICAL: Debe ser POSTERIOR a emission_date
+                                    ->required()
+                                    ->helperText('Debe ser posterior a la fecha de emisión para cumplir con SUNAT')
+                                    ->columnSpan(1),
+                            ])
+                            ->columns(2)
+                            ->defaultItems(1)
+                            ->minItems(1)
+                            ->maxItems(12)
+                            ->reorderable(false)
+                            ->addActionLabel('Agregar Cuota')
+                            ->deleteAction(
+                                fn (Action $action) => $action->requiresConfirmation()
+                            )
+                            ->itemLabel(fn (array $state): ?string => 
+                                ($state['installment_number'] ?? 'Nueva cuota') . ': S/ ' . number_format($state['amount'] ?? 0, 2)
+                            ),
+                            
+                        Placeholder::make('installments_summary')
+                            ->label('Resumen de Cuotas')
+                            ->content(function ($get) {
+                                try {
+                                    $installments = $get('installments') ?? [];
+                                    $rawTotal = $get('total') ?? 0;
+                                    
+                                    // ENHANCED VALIDATION: Validación más robusta del total
+                                    if (!is_numeric($rawTotal) || $rawTotal === '' || $rawTotal === null || is_array($rawTotal) || is_object($rawTotal)) {
+                                        $invoiceTotal = 0.0;
+                                    } else {
+                                        $invoiceTotal = (float) $rawTotal;
+                                    }
+                                    
+                                    if (empty($installments) || $invoiceTotal <= 0) {
+                                        return '⏳ Configure las cuotas para ver el resumen.';
+                                    }
+                                    
+                                    $totalCuotas = 0.0; // EXPLICIT FLOAT INITIALIZATION
+                                    $content = "**📋 Cuotas configuradas:**\n";
+                                    
+                                    foreach ($installments as $index => $installment) {
+                                        // ENHANCED VALIDATION: Validación más robusta del monto de cuota
+                                        $rawAmount = $installment['amount'] ?? 0;
+                                        $dueDate = $installment['due_date'] ?? '';
+                                        
+                                        // VALIDATION: Verificar que no sea array, object y que sea numérico válido
+                                        if (!is_numeric($rawAmount) || $rawAmount === '' || $rawAmount === null || is_array($rawAmount) || is_object($rawAmount)) {
+                                            $amount = 0.0;
+                                        } else {
+                                            $amount = (float) $rawAmount;
+                                        }
+                                        
+                                        // SAFE ACCUMULATION: Asegurar que siempre se sume un float
+                                        $totalCuotas = (float) $totalCuotas + (float) $amount;
+                                        
+                                        // FIX: Asegurar que $index sea entero antes de sumar
+                                        $cuotaNum = (int) $index + 1;
+                                        $content .= "• Cuota {$cuotaNum}: S/ " . number_format($amount, 2);
+                                        
+                                        if ($dueDate && !empty($dueDate)) {
+                                            try {
+                                                $parsedDate = \Carbon\Carbon::parse($dueDate);
+                                                $content .= " (Vence: " . $parsedDate->format('d/m/Y') . ")";
+                                                
+                                                // Validar fecha
+                                                $emissionDate = $get('emission_date');
+                                                if ($emissionDate && $parsedDate->lte(\Carbon\Carbon::parse($emissionDate))) {
+                                                    $content .= " ⚠️ **FECHA INVÁLIDA**";
+                                                }
+                                            } catch (\Exception $e) {
+                                                $content .= " (Fecha inválida)";
+                                            }
+                                        }
+                                        $content .= "\n";
+                                    }
+                                    
+                                    // SAFE NUMBER FORMATTING: Asegurar que ambos valores sean float válidos
+                                    $totalCuotas = (float) $totalCuotas;
+                                    $invoiceTotal = (float) $invoiceTotal;
+                                    
+                                    $content .= "\n**💰 Total cuotas:** S/ " . number_format($totalCuotas, 2) . "\n";
+                                    $content .= "**🧾 Total factura:** S/ " . number_format($invoiceTotal, 2) . "\n";
+                                    
+                                    // TRIPLE VALIDATION: Verificar que ambos valores sean numéricos válidos
+                                    if (is_numeric($totalCuotas) && is_numeric($invoiceTotal) && is_float($totalCuotas) && is_float($invoiceTotal)) {
+                                        $difference = $totalCuotas - $invoiceTotal;
+                                    } else {
+                                        $difference = 0.0; // Valor seguro por defecto
+                                    }
+                                    
+                                    // SAFE DIFFERENCE FORMATTING
+                                    $difference = (float) $difference;
+                                    
+                                    if (abs($difference) > 0.01) {
+                                        $content .= "\n\n🚨 **ALERTA: CUOTAS DESINCRONIZADAS**";
+                                        $content .= "\n⚠️ **Diferencia:** S/ " . number_format($difference, 2);
+                                        if ($difference > 0) {
+                                            $content .= " (Las cuotas exceden el total)";
+                                        } else {
+                                            $content .= " (Las cuotas son menores al total)";
+                                        }
+                                        $content .= "\n\n🔄 **SOLUCIÓN:** Use el botón 'Recalcular Cuotas' para sincronizar con el total actual.";
+                                        $content .= "\n📝 **CAUSA:** El total de la factura cambió después de configurar las cuotas.";
+                                    } else {
+                                        $content .= "\n\n✅ **Las cuotas coinciden con el total de la factura**";
+                                    }
+                                    
+                                    // Validación de fechas SUNAT
+                                    $emissionDate = $get('emission_date');
+                                    if ($emissionDate) {
+                                        $invalidDates = false;
+                                        foreach ($installments as $installment) {
+                                            if (isset($installment['due_date'])) {
+                                                try {
+                                                    $dueDate = \Carbon\Carbon::parse($installment['due_date']);
+                                                    if ($dueDate->lte(\Carbon\Carbon::parse($emissionDate))) {
+                                                        $invalidDates = true;
+                                                        break;
+                                                    }
+                                                } catch (\Exception $e) {
+                                                    // Error de parsing de fecha - continuar con la siguiente
+                                                    continue;
+                                                }
+                                            }
+                                        }
+                                        
+                                        if ($invalidDates) {
+                                            $content .= "\n\n🚨 **ERROR SUNAT**: Hay fechas de vencimiento iguales o anteriores a la fecha de emisión.";
+                                            $content .= "\n   Esto causará el error 3267 al enviar a SUNAT.";
+                                        } else {
+                                            $content .= "\n\n✅ **Fechas válidas para SUNAT** (todas posteriores a emisión)";
+                                        }
+                                    }
+                                    
+                                    return $content;
+                                    
+                                } catch (\Exception $e) {
+                                    // FALLBACK SEGURO: En caso de cualquier error no previsto
+                                    return '⚠️ Error al generar resumen de cuotas. Verifique que los valores sean numéricos válidos.';
+                                }
+                            })
+                            ->columnSpanFull(),
+                    ]),
             ]);
     }    
 
@@ -582,17 +971,20 @@ class InvoiceResource extends Resource
         $set('igv', round($igv, 2));
         $set('total', round($total, 2));
         $set('unit_price', round($unitPrice, 2));
+        
+        // NUEVO: Recalcular automáticamente el total general de la factura
+        static::calculateInvoiceTotals($set, $get);
     }
 
     protected static function calculateInvoiceTotals($set, $get): void
     {
-        $items = $get('items') ?? [];
+        $items = $get('../../items') ?? []; // Acceder a todos los items del formulario
         $totalTaxable = 0;
         $totalUnaffected = 0;
         $totalExonerated = 0;
         $totalIgv = 0;
         $totalGeneral = 0;
-        $totalDiscount = (float) ($get('global_discount') ?? 0);
+        $totalDiscount = (float) ($get('../../global_discount') ?? 0);
 
         foreach ($items as $item) {
             $itemTotal = (float) ($item['total'] ?? 0);
@@ -618,12 +1010,12 @@ class InvoiceResource extends Resource
             }
         }
 
-        $set('total_taxable', round($totalTaxable, 2));
-        $set('total_unaffected', round($totalUnaffected, 2));
-        $set('total_exonerated', round($totalExonerated, 2));
-        $set('total_igv', round($totalIgv, 2));
-        $set('total_discount', round($totalDiscount, 2));
-        $set('total', round($totalGeneral - $totalDiscount, 2));
+        $set('../../total_taxable', round($totalTaxable, 2));
+        $set('../../total_unaffected', round($totalUnaffected, 2));
+        $set('../../total_exonerated', round($totalExonerated, 2));
+        $set('../../total_igv', round($totalIgv, 2));
+        $set('../../total_discount', round($totalDiscount, 2));
+        $set('../../total', round($totalGeneral - $totalDiscount, 2)); // CRITICAL: Esto disparará el afterStateUpdated del total
     }
 
     public static function table(Table $table): Table
@@ -768,5 +1160,17 @@ class InvoiceResource extends Resource
             'create' => Pages\CreateInvoice::route('/create'),
             'edit' => Pages\EditInvoice::route('/{record}/edit'),
         ];
+    }
+
+    /**
+     * Genera el siguiente número correlativo para una serie dada
+     */
+    public static function getNextCorrelativeNumber(string $series): int
+    {
+        $lastInvoice = Invoice::where('series', $series)
+            ->orderBy('number', 'desc')
+            ->first();
+        
+        return $lastInvoice ? $lastInvoice->number + 1 : 1;
     }
 }
