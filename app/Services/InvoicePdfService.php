@@ -10,9 +10,7 @@ use Carbon\Carbon;
 
 class InvoicePdfService
 {
-    /**
-     * Genera un PDF de la factura y lo retorna como respuesta de descarga
-     */
+   
     public function generateInvoicePdf(Invoice $invoice)
     {
         // Cargar relaciones necesarias
@@ -38,9 +36,7 @@ class InvoicePdfService
         return $pdf->download($filename);
     }
     
-    /**
-     * Genera un PDF y lo guarda en el storage
-     */
+   
     public function generateAndStorePdf(Invoice $invoice): string
     {
         $invoice->load(['client', 'items.unitOfMeasure', 'installments']);
@@ -58,9 +54,7 @@ class InvoicePdfService
         return Storage::disk('public')->url($path);
     }
     
-    /**
-     * Prepara los datos de la factura para la vista del PDF
-     */
+ 
     private function prepareInvoiceData(Invoice $invoice): array
     {
         // Información de la empresa (debería venir de configuración o base de datos)
@@ -105,9 +99,7 @@ class InvoicePdfService
         ];
     }
     
-    /**
-     * Genera el nombre del archivo PDF
-     */
+ 
     private function generateFileName(Invoice $invoice): string
     {
         $clientName = $this->sanitizeFileName($invoice->client->name ?? 'Cliente');
@@ -116,9 +108,7 @@ class InvoicePdfService
         return "Factura-{$invoice->series}-{$invoice->number}-{$clientName}-{$date}.pdf";
     }
     
-    /**
-     * Limpia el nombre del archivo
-     */
+  
     private function sanitizeFileName(string $filename): string
     {
         // Remover caracteres especiales y espacios
@@ -127,9 +117,7 @@ class InvoicePdfService
         return trim($filename, '_');
     }
     
-    /**
-     * Convierte un monto numérico a palabras
-     */
+ 
     private function convertAmountToWords(float $amount, string $currency): string
     {
         $integerPart = (int) $amount;
@@ -142,9 +130,7 @@ class InvoicePdfService
         return strtoupper($words) . ' CON ' . str_pad($decimalPart, 2, '0', STR_PAD_LEFT) . '/100 ' . $currencyName;
     }
     
-    /**
-     * Convierte números a palabras (implementación básica)
-     */
+  
     private function numberToWords(int $number): string
     {
         if ($number === 0) return 'CERO';
@@ -177,9 +163,7 @@ class InvoicePdfService
         return 'NÚMERO DEMASIADO GRANDE';
     }
     
-    /**
-     * Genera código QR para la factura (implementación básica)
-     */
+  
     private function generateQRCode(Invoice $invoice): ?string
     {
         // Si ya tiene QR code almacenado, lo usa

@@ -1111,7 +1111,7 @@ class InvoiceResource extends Resource
                     ->modalCancelActionLabel('Cerrar')
                     ->visible(fn (Invoice $record): bool => $record->despatches->count() > 0),
                 
-                // ✅ MANTENER: Acción de enviar a Nubefact OSE
+                //Acción de enviar a Nubefact OSE
                 Tables\Actions\Action::make('enviar_nubefact')
                     ->label('Enviar a Nubefact')
                     ->icon('heroicon-o-paper-airplane')
@@ -1136,7 +1136,7 @@ class InvoiceResource extends Resource
                     ->modalDescription('¿Está seguro de que desea enviar esta factura a Nubefact OSE?')
                     ->color('primary'),
                 
-                // 🆕 NUEVA: Acción de generar PDF local (siempre disponible)
+                
                 Tables\Actions\Action::make('generate_pdf')
                     ->label('Generar PDF')
                     ->icon('heroicon-o-document-arrow-down')
@@ -1145,7 +1145,7 @@ class InvoiceResource extends Resource
                     ->color('danger')
                     ->tooltip('Generar y descargar PDF local de la factura'),
                 
-                // ✅ MEJORADA: Descargar PDF de Nubefact (solo si existe)
+               
                 Tables\Actions\Action::make('download_nubefact_pdf')
                     ->label('PDF Nubefact')
                     ->icon('heroicon-o-document-text')
