@@ -14,7 +14,7 @@ class InvoicePdfService
     public function generateInvoicePdf(Invoice $invoice)
     {
         // Cargar relaciones necesarias
-        $invoice->load(['client', 'items.unitOfMeasure', 'installments']);
+        $invoice->load(['client', 'items.unitOfMeasure', 'installments', 'despatches']);
         
         // Datos para la vista
         $data = $this->prepareInvoiceData($invoice);
@@ -39,7 +39,7 @@ class InvoicePdfService
    
     public function generateAndStorePdf(Invoice $invoice): string
     {
-        $invoice->load(['client', 'items.unitOfMeasure', 'installments']);
+        $invoice->load(['client', 'items.unitOfMeasure', 'installments', 'despatches']);
         $data = $this->prepareInvoiceData($invoice);
         
         $pdf = PDF::loadView('pdfs.invoice', $data);

@@ -318,6 +318,39 @@
     </table>
     @endif
 
+    <!-- Despatch Guides -->
+    @if($invoice->despatches && $invoice->despatches->count() > 0)
+    <div class="section-title">GUÍAS DE REMISIÓN RELACIONADAS</div>
+    <table>
+        <thead>
+            <tr>
+                <th>TIPO</th>
+                <th>SERIE-NÚMERO</th>
+                <th>FECHA EMISIÓN</th>
+                <th>CLIENTE</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach($invoice->despatches as $despatch)
+            <tr>
+                <td class="text-center">
+                    @if($despatch->document_type === '7')
+                        GRE REMITENTE
+                    @elseif($despatch->document_type === '8')
+                        GRE TRANSPORTISTA
+                    @else
+                        GRE TIPO {{ $despatch->document_type }}
+                    @endif
+                </td>
+                <td class="text-center">{{ $despatch->series }}-{{ str_pad($despatch->number, 8, '0', STR_PAD_LEFT) }}</td>
+                <td class="text-center">{{ $despatch->emission_date->format('d/m/Y') }}</td>
+                <td>{{ $despatch->client->name ?? 'N/A' }}</td>
+            </tr>
+            @endforeach
+        </tbody>
+    </table>
+    @endif
+
     <!-- Footer -->
     <div class="footer">
         <strong>COMPROBANTE ELECTRÓNICO - {{ $company['name'] }}</strong><br>

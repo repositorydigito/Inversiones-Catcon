@@ -52,21 +52,26 @@ class InvoiceResource extends Resource
                             ->label('Guías de Remisión Disponibles')
                             ->multiple()
                             ->options(function () {
-                                return Despatch::with('client')
-                                    ->where('accepted_by_sunat', true)
+                                return Despatch::with(['client', 'company'])
+                                    ->orderBy('series')
+                                    ->orderBy('number')
                                     ->get()
                                     ->mapWithKeys(function ($despatch) {
-                                        $itemsCount = $despatch->items->count();
-                                        $totalQty = $despatch->items->sum('quantity');
+                                        $statusIcon = match($despatch->accepted_by_sunat) {
+                                            true => '✅',
+                                            false => '❌',
+                                            null => '⏳'
+                                        };
+                                        $clientName = $despatch->client ? $despatch->client->name : 'Sin cliente';
                                         return [
-                                            $despatch->id => "GR {$despatch->series}-{$despatch->number}"
+                                            $despatch->id => "{$statusIcon} GR {$despatch->series}-{$despatch->number} - {$clientName}"
                                         ];
                                     });
                             })
                             ->searchable()
                             ->preload()
                             ->live()                            
-                            ->helperText('Selecciona una o más guías de remisión.')
+                            ->helperText('Selecciona una o más guías de remisión. ✅ = Aceptada por SUNAT, ❌ = Rechazada, ⏳ = Pendiente')
                             ->columnSpanFull(),                       
                     ])
                     ->visible(fn (string $operation): bool => $operation === 'create'),               
