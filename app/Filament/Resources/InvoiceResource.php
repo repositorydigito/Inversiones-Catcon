@@ -201,10 +201,10 @@ class InvoiceResource extends Resource
                             ->step(0.01)
                             ->default(0.00)
                             ->columnSpan(1),
-                        Toggle::make('detraction')
+                        /* Toggle::make('detraction')
                             ->label('¿Aplica Detracción?')
                             ->default(false)
-                            ->columnSpan(1),
+                            ->columnSpan(1), */
                         TextInput::make('observations')
                             ->label('Observaciones')
                             ->maxLength(255)
@@ -213,7 +213,6 @@ class InvoiceResource extends Resource
                     ]),
 
                 Section::make('Datos del Cliente')
-                    ->description('Información del cliente (se llena automáticamente desde las guías).')
                     ->columns(2)
                     ->schema([
                         Select::make('client_id')
@@ -238,7 +237,7 @@ class InvoiceResource extends Resource
                                 }
                             })
                             ->live()
-                            ->disabled(fn ($get) => !empty($get('selected_despatches')) && !$get('manual_mode'))
+                            // ->disabled(fn ($get) => !empty($get('selected_despatches')) && !$get('manual_mode'))
                             ->columnSpanFull(),
 
 
@@ -260,12 +259,12 @@ class InvoiceResource extends Resource
                             ->required()
                             ->disabled(fn (string $operation): bool => $operation !== 'create')
                             ->dehydrated(fn ($state) => filled($state)),
-                        TextInput::make('client_address')
+                        /* TextInput::make('client_address')
                             ->label('Dirección Cliente (SUNAT)')
                             ->readOnly()
                             ->nullable()
                             ->disabled(fn (string $operation): bool => $operation !== 'create')
-                            ->dehydrated(fn ($state) => filled($state)),
+                            ->dehydrated(fn ($state) => filled($state)), */
                         TextInput::make('client_email')
                             ->label('Email Cliente (SUNAT)')
                             ->readOnly()
@@ -1179,7 +1178,8 @@ class InvoiceResource extends Resource
                     ->visible(fn (Invoice $record): bool => !empty($record->cdr_link) || !empty($record->cdr_zip_base64)),
             ])
             ->bulkActions([                
-            ]);
+            ])
+            ->defaultSort('created_at', 'desc');
     }
 
     public static function getRelations(): array
