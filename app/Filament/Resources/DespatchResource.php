@@ -395,6 +395,7 @@ class DespatchResource extends Resource
                     ->schema([
                         Select::make('loading_point')
                             ->label('Punto 1')
+                            ->required()
                             ->options(OperationalExpenseConfig::distinct()->pluck('departure_point', 'departure_point'))
                             ->searchable()
                             ->live()
@@ -404,6 +405,7 @@ class DespatchResource extends Resource
 
                         Select::make('departure_location')
                             ->label('Punto de Partida')
+                            ->required()
                             ->options(OperationalExpenseConfig::distinct()->pluck('departure_location', 'departure_location'))
                             ->searchable()
                             ->live()
@@ -413,6 +415,7 @@ class DespatchResource extends Resource
 
                         Select::make('arrival_location')
                             ->label('Punto de Llegada')
+                            ->required()
                             ->options(OperationalExpenseConfig::distinct()->pluck('arrival_location', 'arrival_location'))
                             ->searchable()
                             ->live()
@@ -422,6 +425,7 @@ class DespatchResource extends Resource
 
                         Select::make('unloading_point')
                             ->label('Punto 4')
+                            ->required()
                             ->options(OperationalExpenseConfig::distinct()->pluck('destination_point', 'destination_point'))
                             ->searchable()
                             ->live()
@@ -431,17 +435,14 @@ class DespatchResource extends Resource
                     ])
                     ->columns(4),
 
-                Section::make('Gastos Operativos')
+                /* Section::make('Gastos Operativos')
                     ->description('Información autogenerada en función a los puntos de ruta para el control de gastos operativos.')
                     ->schema([
                         Forms\Components\Group::make()
                             ->schema([
                                 Forms\Components\TextInput::make('product')
                                     ->label('Producto')
-                                    ->maxLength(255),
-                                /* Forms\Components\TextInput::make('supplier')
-                                    ->label('Proveedor')
-                                    ->maxLength(255), */
+                                    ->maxLength(255),                                
                                 Forms\Components\TextInput::make('tolls')
                                     ->label('Peajes')
                                     ->numeric()
@@ -510,7 +511,7 @@ class DespatchResource extends Resource
                                     ->live(),
                             ])
                             ->columns(4),
-                    ]),
+                    ]), */
 
                 Section::make('Datos de Pagador del Flete')
                     ->description(new HtmlString('<p class="text-sm">Selecciona el indicador de envío para mostrar campos adicionales si aplica.</p>'))
@@ -966,29 +967,29 @@ class DespatchResource extends Resource
                     ->requiresConfirmation()
                     ->modalDescription('¿Está seguro de reenviar esta guía a SUNAT?'),
 
-                /* Tables\Actions\Action::make('downloadPdf')
+                Tables\Actions\Action::make('downloadPdf')
                     ->label('PDF')
                     ->icon('heroicon-o-document-arrow-down')
                     ->color('gray')
-                    ->url(fn (Despatch $record): string => $record->enlace_del_pdf ?? '#')
+                    ->url(fn (Despatch $record): ?string => $record->cdr_pdf_url ?: $record->enlace_del_pdf)
                     ->openUrlInNewTab()
-                    ->visible(fn (Despatch $record): bool => !is_null($record->enlace_del_pdf)),
+                    ->visible(fn (Despatch $record): bool => $record->accepted_by_sunat && ($record->cdr_pdf_url || $record->enlace_del_pdf)),
 
                 Tables\Actions\Action::make('downloadXml')
                     ->label('XML')
                     ->icon('heroicon-o-document-text')
                     ->color('gray')
-                    ->url(fn (Despatch $record): string => $record->enlace_del_xml ?? '#')
+                    ->url(fn (Despatch $record): string => $record->enlace_del_xml)
                     ->openUrlInNewTab()
-                    ->visible(fn (Despatch $record): bool => !is_null($record->enlace_del_xml)),
+                    ->visible(fn (Despatch $record): bool => $record->accepted_by_sunat && $record->enlace_del_xml),
 
                 Tables\Actions\Action::make('downloadCdr')
                     ->label('CDR')
                     ->icon('heroicon-o-document-duplicate')
                     ->color('gray')
-                    ->url(fn (Despatch $record): string => $record->enlace_del_cdr ?? '#')
+                    ->url(fn (Despatch $record): string => $record->enlace_del_cdr)
                     ->openUrlInNewTab()
-                    ->visible(fn (Despatch $record): bool => !is_null($record->enlace_del_cdr)), */
+                    ->visible(fn (Despatch $record): bool => $record->accepted_by_sunat && $record->enlace_del_cdr),
 
             ])
             ->bulkActions([

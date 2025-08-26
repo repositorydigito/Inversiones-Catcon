@@ -52,6 +52,16 @@ class Despatch extends Model
         'enlace_del_pdf',
         'enlace_del_xml',
         'enlace_del_cdr',
+        'cdr_pdf_url',
+        'cdr_status', 
+        'cdr_description',
+        'cdr_notes_count',
+        'cdr_has_errors',
+        'cdr_has_warnings',
+        'cdr_issue_datetime',
+        'cdr_error_codes',
+        'cdr_base64_content',
+        'cdr_metadata',
 
         //Gastos operativos
         'loading_point',
