@@ -139,7 +139,7 @@ class SunatDespatchService
             // Realizar consulta
             $response = $this->httpClient->get($endpoint);
             $this->httpClient->handleErrorResponse($response);
-            
+
             $responseData = $response->json();
 
             Log::info("Estado consultado exitosamente", [
@@ -158,8 +158,8 @@ class SunatDespatchService
                 'success' => $isSuccess,
                 'status' => $this->interpretResponseCode($codRespuesta),
                 'sunat_response' => $responseData,
-                'message' => $isSuccess 
-                    ? 'Guía aceptada por SUNAT' 
+                'message' => $isSuccess
+                    ? 'Guía aceptada por SUNAT'
                     : 'Guía no aceptada por SUNAT',
                 'cod_respuesta' => $codRespuesta,
             ];
@@ -196,26 +196,40 @@ class SunatDespatchService
     protected function saveXmlFile(Despatch $despatch, string $xmlContent): ?string
     {
         try {
-            // Crear directorio para XMLs
-            $xmlDir = "sunat/xml/{$despatch->company->ruc}";
-            Storage::makeDirectory($xmlDir);
+            // Crear estructura de directorios por fecha
+            $year = $despatch->emission_date->format('Y');
+            $month = $despatch->emission_date->format('m');
+            $xmlDir = "sunat/{$despatch->company->ruc}/xml/{$year}/{$month}";
+
+            \Storage::disk('public')->makeDirectory($xmlDir);
 
             // Generar nombre del archivo XML
             $xmlFileName = "{$despatch->company->ruc}-31-{$despatch->series}-{$despatch->number}.xml";
             $xmlPath = $xmlDir . '/' . $xmlFileName;
-            
-            // Guardar XML
-            if (Storage::put($xmlPath, $xmlContent)) {
-                return Storage::url($xmlPath); // URL pública para descarga
+
+            // Guardar XML en disco público
+            if (\Storage::disk('public')->put($xmlPath, $xmlContent)) {
+                Log::info("XML guardado exitosamente", [
+                    'despatch_id' => $despatch->id,
+                    'xml_path' => $xmlPath,
+                    'xml_size' => strlen($xmlContent)
+                ]);
+
+                return \Storage::disk('public')->url($xmlPath);
             }
-            
-        } catch (Exception $e) {
+
             Log::warning("No se pudo guardar XML", [
+                'despatch_id' => $despatch->id,
+                'xml_path' => $xmlPath
+            ]);
+
+        } catch (Exception $e) {
+            Log::error("Error guardando XML", [
                 'despatch_id' => $despatch->id,
                 'error' => $e->getMessage()
             ]);
         }
-        
+
         return null;
     }
 
@@ -225,7 +239,7 @@ class SunatDespatchService
     protected function updateDespatchWithStatusResponse(Despatch $despatch, array $responseData): void
     {
         $codRespuesta = $responseData['codRespuesta'] ?? '99';
-        
+
         $updateData = [
             'sunat_response_code' => $codRespuesta,
             'accepted_by_sunat' => $codRespuesta === '0',
@@ -258,23 +272,38 @@ class SunatDespatchService
         if (isset($responseData['arcCdr']) && $responseData['indCdrGenerado'] === '1') {
             // Guardar el CDR base64 directamente
             $updateData['cdr_base64_content'] = $responseData['arcCdr'];
-            
-            $cdrData = $this->processCdrContent($responseData['arcCdr'], $despatch);
-            
-            if (!empty($cdrData)) {
+
+            $cdrResult = $this->cdrService->processCdrBase64($responseData['arcCdr'], $despatch);
+
+            if ($cdrResult['success']) {
+                $cdrInfo = $cdrResult['cdr_info'];
+                $summary = $this->cdrService->getCdrSummary($cdrInfo);
+
                 // Información del CDR procesado
-                $updateData['cdr_pdf_url'] = $cdrData['pdf_url'];
-                $updateData['cdr_status'] = $cdrData['cdr_status'];
-                $updateData['cdr_notes_count'] = $cdrData['cdr_notes_count'];
-                $updateData['cdr_has_errors'] = $cdrData['cdr_has_errors'];
-                $updateData['cdr_has_warnings'] = $cdrData['cdr_has_warnings'];
-                $updateData['cdr_issue_datetime'] = $cdrData['cdr_issue_datetime'];
-                
-                // Códigos de error
-                if (!empty($cdrData['error_codes'])) {
-                    $errorCodesStr = implode(', ', $cdrData['error_codes']);
-                    $updateData['cdr_error_codes'] = $errorCodesStr;
+                $updateData['cdr_pdf_url'] = $summary['pdf_url'];
+                $updateData['cdr_status'] = $summary['status'];
+                $updateData['cdr_description'] = $summary['description'];
+                $updateData['cdr_notes_count'] = $summary['total_notes'];
+                $updateData['cdr_has_errors'] = $cdrResult['analysis']['has_errors'] ?? false;
+                $updateData['cdr_has_warnings'] = $cdrResult['analysis']['has_warnings'] ?? false;
+                $updateData['cdr_issue_datetime'] = $summary['issue_datetime'];
+
+                // URLs de archivos guardados
+                if (!empty($cdrResult['saved_files']['zip']['url'])) {
+                    $updateData['enlace_del_cdr'] = $cdrResult['saved_files']['zip']['url'];
                 }
+
+                // Códigos de error
+                if (!empty($cdrResult['analysis']['error_codes'])) {
+                    $updateData['cdr_error_codes'] = implode(', ', $cdrResult['analysis']['error_codes']);
+                }
+
+                // Metadatos completos en JSON
+                $updateData['cdr_metadata'] = json_encode([
+                    'processed_at' => now()->toISOString(),
+                    'analysis' => $cdrResult['analysis'],
+                    'saved_files' => $cdrResult['saved_files']
+                ]);
             }
         }
 
@@ -282,7 +311,7 @@ class SunatDespatchService
         if (isset($responseData['indCdrGenerado'])) {
             $cdrStatus = $responseData['indCdrGenerado'] === '1' ? 'CDR generado' : 'CDR no generado';
             $updateData['sunat_note'] = ($despatch->sunat_note ?? '') . " | {$cdrStatus}";
-            
+
             if (isset($updateData['cdr_notes_count']) && $updateData['cdr_notes_count'] > 0) {
                 $updateData['sunat_note'] .= " | {$updateData['cdr_notes_count']} observaciones";
             }
@@ -302,57 +331,6 @@ class SunatDespatchService
             '99' => 'RECHAZADO',
             default => 'DESCONOCIDO'
         };
-    }
-
-    /**
-     * Procesa el contenido CDR y retorna URL o path
-     */
-    protected function processCdrContent(string $base64Cdr, Despatch $despatch): array
-    {
-        try {
-            // Usar el nuevo servicio especializado para procesar el CDR
-            $cdrResult = $this->cdrService->processCdrBase64($base64Cdr, $despatch);
-            
-            if (!$cdrResult['success']) {
-                Log::error("Error procesando CDR", [
-                    'despatch_id' => $despatch->id,
-                    'error' => $cdrResult['error']
-                ]);
-                return [];
-            }
-
-            $cdrInfo = $cdrResult['cdr_info'];
-            $summary = $this->cdrService->getCdrSummary($cdrInfo);
-
-            /* Log::info("CDR procesado exitosamente", [
-                'despatch_id' => $despatch->id,
-                'status' => $summary['status'],
-                'has_pdf' => $summary['has_pdf'],
-                'total_notes' => $summary['total_notes']
-            ]); */
-
-            // Retornar información completa para actualizar el registro
-            return [
-                'pdf_url' => $summary['pdf_url'], // La URL del QR/PDF
-                'cdr_status' => $summary['status'],
-                'cdr_description' => $summary['description'],
-                'cdr_notes_count' => $summary['total_notes'],
-                'cdr_has_errors' => $cdrResult['analysis']['has_errors'] ?? false,
-                'cdr_has_warnings' => $cdrResult['analysis']['has_warnings'] ?? false,
-                'cdr_issue_datetime' => $summary['issue_datetime'],
-                'saved_files' => $cdrResult['saved_files'] ?? [],
-                'error_codes' => $cdrResult['analysis']['error_codes'] ?? [],
-                'full_analysis' => $cdrResult['analysis'] ?? []
-            ];
-
-        } catch (Exception $e) {
-            Log::error("Error procesando CDR", [
-                'despatch_id' => $despatch->id,
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
-            ]);
-            return [];
-        }
     }
 
     /**
@@ -404,9 +382,9 @@ class SunatDespatchService
             $errors[] = 'La GRE debe tener un conductor principal';
         }
 
-        if ($despatch->items()->count() === 0) {
+        /* if ($despatch->items()->count() === 0) {
             $errors[] = 'La GRE debe tener al menos un ítem';
-        }
+        } */
 
         // Validar ubicaciones
         if (empty($despatch->departure_ubigeo)) {
@@ -485,9 +463,6 @@ class SunatDespatchService
      */
     public function reprocessCdr(Despatch $despatch): array
     {
-        // Esto sería útil si necesitas reprocesar un CDR guardado
-        // Por ejemplo, si guardaste el base64 en una columna de la BD
-        
         if (empty($despatch->cdr_base64_content)) {
             return [
                 'success' => false,
@@ -497,17 +472,27 @@ class SunatDespatchService
 
         try {
             $result = $this->cdrService->processCdrBase64($despatch->cdr_base64_content, $despatch);
-            
+
             if ($result['success']) {
-                // Actualizar información del despatch con nueva data
-                $cdrData = $this->processCdrContent($despatch->cdr_base64_content, $despatch);
-                
-                // Aquí podrías actualizar el registro si es necesario
-                // $despatch->update(['cdr_pdf_url' => $cdrData['pdf_url'], ...]);
+                $cdrInfo = $result['cdr_info'];
+                $summary = $this->cdrService->getCdrSummary($cdrInfo);
+
+                // Actualizar solo los campos que pueden cambiar en reprocesamiento
+                $updateData = [
+                    'cdr_pdf_url' => $summary['pdf_url'],
+                    'enlace_del_cdr' => $result['saved_files']['zip']['url'] ?? null,
+                    'cdr_metadata' => json_encode([
+                        'reprocessed_at' => now()->toISOString(),
+                        'analysis' => $result['analysis'],
+                        'saved_files' => $result['saved_files']
+                    ])
+                ];
+
+                $despatch->update($updateData);
             }
-            
+
             return $result;
-            
+
         } catch (Exception $e) {
             return [
                 'success' => false,
@@ -532,6 +517,58 @@ class SunatDespatchService
             'today_sent' => Despatch::whereNotNull('sunat_ticket')
                                   ->whereDate('created_at', today())
                                   ->count(),
+        ];
+    }
+
+    public function getDocumentUrls(Despatch $despatch): array
+    {
+        return [
+            'xml_url' => $despatch->enlace_del_xml,
+            'cdr_zip_url' => $despatch->enlace_del_cdr,
+            'pdf_url' => $despatch->cdr_pdf_url,
+            'has_xml' => !empty($despatch->enlace_del_xml),
+            'has_cdr' => !empty($despatch->enlace_del_cdr),
+            'has_pdf' => !empty($despatch->cdr_pdf_url)
+        ];
+    }
+
+    /**
+     * Verifica si los archivos físicos existen
+     */
+    public function checkFileIntegrity(Despatch $despatch): array
+    {
+        $results = [];
+
+        // Verificar XML
+        if ($despatch->enlace_del_xml) {
+            $xmlPath = str_replace('/storage/', '', parse_url($despatch->enlace_del_xml, PHP_URL_PATH));
+            $results['xml_exists'] = Storage::exists($xmlPath);
+            $results['xml_path'] = $xmlPath;
+        }
+
+        // Verificar CDR ZIP
+        if ($despatch->enlace_del_cdr) {
+            $cdrPath = str_replace('/storage/', '', parse_url($despatch->enlace_del_cdr, PHP_URL_PATH));
+            $results['cdr_exists'] = Storage::exists($cdrPath);
+            $results['cdr_path'] = $cdrPath;
+        }
+
+        // Verificar integridad del CDR base64
+        if ($despatch->cdr_base64_content) {
+            $results['cdr_base64_valid'] = $this->zipService->validateBase64Zip($despatch->cdr_base64_content);
+        }
+
+        return $results;
+    }
+
+    /**
+     * Limpia archivos temporales y optimiza almacenamiento
+     */
+    public function cleanupOldFiles(int $daysOld = 7): array
+    {
+        return [
+            'temp_files_cleaned' => $this->zipService->cleanupOldTempFiles($daysOld * 24),
+            'cleanup_date' => now()->format('Y-m-d H:i:s')
         ];
     }
 }

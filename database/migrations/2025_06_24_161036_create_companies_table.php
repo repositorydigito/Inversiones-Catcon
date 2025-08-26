@@ -15,6 +15,7 @@ return new class extends Migration
             $table->string('name')->default('Inversiones Catcon S.A.C.');
             $table->string('commercial_name')->nullable();
             $table->string('logo_path')->nullable();
+            $table->string('mtc_registration_number')->nullable();
 
             // Sección de campos para guias de remisión
             $table->string('document_type')->default('6');

@@ -28,9 +28,9 @@ class CreateInvoice extends CreateRecord
         $this->validateInstallments($data);
 
         $invoice = DB::transaction(function () use ($data, $selectedDespatches) {
-            
+
             $invoiceData = collect($data)->except([
-                'items', 
+                'items',
                 'installments',
                 'selected_despatches',
                 'number_of_installments',
@@ -38,9 +38,9 @@ class CreateInvoice extends CreateRecord
                 'detraction_service_name',
                 'detraction_payment_method_name',
             ])->toArray();
-            
+
             $invoiceData = $this->ensureRequiredFields($invoiceData);
-            
+
             $invoice = Invoice::create($invoiceData);
 
             // Crear los items
@@ -109,13 +109,13 @@ class CreateInvoice extends CreateRecord
     {
         $items = $data['items'] ?? [];
         $globalDiscount = (float) ($data['global_discount'] ?? 0.00);
-        
+
         Log::info('=== INICIO CÁLCULO DE TOTALES ===', [
             'items_count' => count($items),
             'global_discount' => $globalDiscount,
             'items_data' => $items
         ]);
-        
+
         $totalTaxable = 0;
         $totalUnaffected = 0;
         $totalExonerated = 0;
@@ -129,7 +129,7 @@ class CreateInvoice extends CreateRecord
             $itemIgv = (float) ($item['igv'] ?? 0);
             $itemDiscount = (float) ($item['discount'] ?? 0);
             $itemIgvType = $item['igv_type'] ?? '1';
-            
+
             Log::info('Item ' . ($index + 1), [
                 'total' => $itemTotal,
                 'subtotal' => $itemSubtotal,
@@ -224,24 +224,24 @@ class CreateInvoice extends CreateRecord
             'installments_count' => count($data['installments'] ?? []),
             'emission_date' => $data['emission_date'] ?? 'NO DEFINIDO'
         ]);
-        
+
         // Solo validar si es factura a crédito
         if (empty($data['due_date'])) {
             Log::info('Factura de CONTADO detectada - sin validación de cuotas');
             return;
         }
-        
+
         $installments = $data['installments'] ?? [];
         $invoiceTotal = (float) ($data['total'] ?? 0);
         $emissionDate = \Carbon\Carbon::parse($data['emission_date']);
         $totalInstallments = 0; // Definir variable al inicio para evitar scope issues
-        
+
         // Si no hay cuotas, generar una por defecto con fecha VÁLIDA
         if (empty($installments) && $invoiceTotal > 0) {
             // CRITICAL FIX: Asegurar que la fecha sea POSTERIOR a emission_date
             // Para facturas de contado convertidas a crédito, usar +7 días (estándar Greenter)
             $validDueDate = $emissionDate->copy()->addDays(7);
-            
+
             $data['installments'] = [
                 [
                     'installment_number' => 'Cuota001',
@@ -250,10 +250,10 @@ class CreateInvoice extends CreateRecord
                     'order' => 1,
                 ]
             ];
-            
+
             // Actualizar due_date principal con la fecha válida
             $data['due_date'] = $validDueDate->format('Y-m-d');
-            
+
             Log::info('Generada cuota automática con fecha válida para SUNAT:', [
                 'emission_date' => $emissionDate->format('Y-m-d'),
                 'due_date' => $validDueDate->format('Y-m-d'),
@@ -261,24 +261,24 @@ class CreateInvoice extends CreateRecord
             ]);
             return;
         }
-        
+
         // Validar que todas las fechas sean POSTERIORES a emission_date
         foreach ($installments as $index => &$installment) {
             $dueDate = \Carbon\Carbon::parse($installment['due_date']);
-            
+
             Log::info('Validando cuota ' . ($index + 1), [
                 'due_date_string' => $installment['due_date'],
                 'due_date_parsed' => $dueDate->format('Y-m-d H:i:s'),
                 'emission_date_parsed' => $emissionDate->format('Y-m-d H:i:s'),
                 'es_posterior' => $dueDate->gt($emissionDate)
             ]);
-            
+
             // CRITICAL VALIDATION: Error SUNAT 3267
             if ($dueDate->lte($emissionDate)) {
                 // AUTO-CORREGIR fecha inválida agregando días suficientes
                 $correctedDate = $emissionDate->copy()->addDays(($index + 1) * 7); // +7, +14, +21 días según cuota
                 $installment['due_date'] = $correctedDate->format('Y-m-d');
-                
+
                 Log::warning('FECHA CORREGIDA AUTOMÁTICAMENTE - SUNAT 3267:', [
                     'cuota' => $index + 1,
                     'fecha_original' => $dueDate->format('Y-m-d'),
@@ -286,37 +286,37 @@ class CreateInvoice extends CreateRecord
                     'emission_date' => $emissionDate->format('Y-m-d'),
                     'razon' => 'Fecha era igual o anterior a emisión - corregida automáticamente'
                 ]);
-                
+
                 // Actualizar la variable local para continuar validaciones
                 $dueDate = $correctedDate;
             }
-            
+
             // Asegurar que tenga número de cuota y orden
             if (empty($installment['installment_number'])) {
                 $installment['installment_number'] = 'Cuota' . str_pad($installment['order'] ?? ($index + 1), 3, '0', STR_PAD_LEFT);
             }
-            
+
             if (empty($installment['order'])) {
                 $installment['order'] = $index + 1;
             }
         }
-        
+
         // Validar que la suma de cuotas coincida con el total (solo si el total > 0)
         if ($invoiceTotal > 0) {
             // Calcular total de cuotas
             foreach ($installments as $installment) {
                 $totalInstallments += (float) ($installment['amount'] ?? 0);
             }
-            
+
             $difference = abs($totalInstallments - $invoiceTotal);
             if ($difference > 0.01) {
                 throw new \Exception(
-                    "La suma de las cuotas (S/ " . number_format($totalInstallments, 2) . 
+                    "La suma de las cuotas (S/ " . number_format($totalInstallments, 2) .
                     ") no coincide con el total de la factura (S/ " . number_format($invoiceTotal, 2) . "). " .
                     "Diferencia: S/ " . number_format($difference, 2)
                 );
             }
-            
+
             Log::info('Validación de montos exitosa:', [
                 'total_cuotas' => $totalInstallments,
                 'total_factura' => $invoiceTotal,
@@ -325,7 +325,7 @@ class CreateInvoice extends CreateRecord
         } else {
             Log::warning('Omitiendo validación de montos - total de factura es 0.00');
         }
-        
+
         Log::info('Cuotas validadas correctamente para SUNAT:', [
             'total_cuotas' => $totalInstallments,
             'total_factura' => $invoiceTotal,
@@ -364,7 +364,7 @@ class CreateInvoice extends CreateRecord
             ]);
 
             $invoiceService = new InvoiceService();
-            
+
             // Enviar a Nubefact usando Laravel Greenter
             $result = $invoiceService->sendToNubefact($this->record);
 
@@ -419,7 +419,7 @@ class CreateInvoice extends CreateRecord
 
         $title = 'Factura Creada y Enviada';
         $body = "Factura {$this->record->series}-{$this->record->number} ";
-        
+
         // Estado del envío
         if ($this->record->sunat_accepted === true) {
             $body .= 'ACEPTADA por SUNAT/Nubefact';
@@ -469,7 +469,7 @@ class CreateInvoice extends CreateRecord
                     ->button(),
                 \Filament\Notifications\Actions\Action::make('nubefact')
                     ->label(' Panel Nubefact')
-                    ->url('https://demo.nubefact.com/login')
+                    ->url('https://www.operador.pe/ingresar')
                     ->openUrlInNewTab()
                     ->button(),
             ])
@@ -513,7 +513,7 @@ class CreateInvoice extends CreateRecord
             $data['series'] = 'F001'; // Serie por defecto
             Log::info('Serie no presente o vacía, asignando por defecto: F001');
         }
-        
+
         if (empty($data['number'])) {
             $data['number'] = InvoiceResource::getNextCorrelativeNumber($data['series']);
             Log::info('Número no presente o vacío, generando automáticamente:', [
@@ -554,7 +554,7 @@ class CreateInvoice extends CreateRecord
         if (isset($data['is_credit_payment']) && !$data['is_credit_payment']) {
             $data['due_date'] = null; // Si no es crédito, limpiar fecha de vencimiento
         }
-        
+
         // NOTA: La validación de cuotas se ejecuta en handleRecordCreation() después de calcular totales
 
         Log::info('Datos validados antes de crear:', [

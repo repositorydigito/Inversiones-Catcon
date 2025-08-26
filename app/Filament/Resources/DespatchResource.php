@@ -442,7 +442,7 @@ class DespatchResource extends Resource
                             ->schema([
                                 Forms\Components\TextInput::make('product')
                                     ->label('Producto')
-                                    ->maxLength(255),                                
+                                    ->maxLength(255),
                                 Forms\Components\TextInput::make('tolls')
                                     ->label('Peajes')
                                     ->numeric()
@@ -527,7 +527,7 @@ class DespatchResource extends Resource
                                 '05' => 'Retorno Vehículo Vacío',
                                 '06' => 'Traslado Vehículo M1L',
                             ])
-                            ->default('')
+                            ->default('01')
                             ->live()
                             ->nullable()
                             ->columnSpanFull()
@@ -619,6 +619,7 @@ class DespatchResource extends Resource
                                         }
                                     })
                                     ->placeholder('Seleccionar servicio...')
+                                    ->nullable()
                                     ->columnSpan(2),
                                 TextInput::make('code')
                                     ->label('Código')
@@ -632,20 +633,20 @@ class DespatchResource extends Resource
                                 TextInput::make('quantity')
                                     ->label('Cantidad')
                                     ->numeric()
-                                    ->required()
+                                    ->nullable()
                                     ->minValue(0.01)
                                     ->step(0.01),
                                 Select::make('unit_of_measure_id')
                                 ->label('Unidad de Medida')
                                 ->options(MeasureUnit::all()->pluck('description', 'id'))
                                 ->searchable()
-                                ->required()
+                                ->nullable()
                                 ->default(function () {
                                     return MeasureUnit::where('code', 'ZZ')->first()->id;
                                 }),
                             ])
                             ->columns(6)
-                            ->defaultItems(1)
+                            ->defaultItems(0)
                             ->reorderableWithButtons()
                             ->itemLabel(fn (array $state): ?string => $state['description'] ?? null)
                             ->addActionLabel('Agregar Ítem'),
@@ -979,17 +980,17 @@ class DespatchResource extends Resource
                     ->label('XML')
                     ->icon('heroicon-o-document-text')
                     ->color('gray')
-                    ->url(fn (Despatch $record): string => $record->enlace_del_xml)
+                    ->url(fn (Despatch $record): ?string => $record->enlace_del_xml)
                     ->openUrlInNewTab()
-                    ->visible(fn (Despatch $record): bool => $record->accepted_by_sunat && $record->enlace_del_xml),
+                    ->visible(fn (Despatch $record): bool => !empty($record->enlace_del_xml)),
 
                 Tables\Actions\Action::make('downloadCdr')
                     ->label('CDR')
                     ->icon('heroicon-o-document-duplicate')
                     ->color('gray')
-                    ->url(fn (Despatch $record): string => $record->enlace_del_cdr)
+                    ->url(fn (Despatch $record): ?string => $record->enlace_del_cdr)
                     ->openUrlInNewTab()
-                    ->visible(fn (Despatch $record): bool => $record->accepted_by_sunat && $record->enlace_del_cdr),
+                    ->visible(fn (Despatch $record): bool => !empty($record->enlace_del_cdr)),
 
             ])
             ->bulkActions([

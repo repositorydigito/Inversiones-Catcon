@@ -38,14 +38,14 @@ class SunatCdrService
 
             // 1. Decodificar y extraer el ZIP
             $extractedData = $this->extractCdrFromBase64($base64Cdr);
-            
+
             if (!$extractedData['success']) {
                 return $extractedData;
             }
 
             // 2. Encontrar y procesar el XML del CDR
             $xmlFileName = $this->findCdrXmlFile($extractedData['files']);
-            
+
             if (!$xmlFileName) {
                 return [
                     'success' => false,
@@ -115,7 +115,7 @@ class SunatCdrService
             }
 
             $tempZipFile = $tempDir . '/cdr_' . uniqid() . '.zip';
-            
+
             if (file_put_contents($tempZipFile, $zipContent) === false) {
                 return [
                     'success' => false,
@@ -137,7 +137,7 @@ class SunatCdrService
             for ($i = 0; $i < $zip->numFiles; $i++) {
                 $fileName = $zip->getNameIndex($i);
                 $fileContent = $zip->getFromIndex($i);
-                
+
                 if ($fileContent !== false) {
                     $files[$fileName] = $fileContent;
                 }
@@ -257,37 +257,47 @@ class SunatCdrService
     protected function saveCdrFiles(Despatch $despatch, string $base64Content, array $extractedFiles): array
     {
         try {
-            // Crear directorio para CDRs
-            $cdrDir = "sunat/cdr/{$despatch->company->ruc}";
-            Storage::makeDirectory($cdrDir);
+            // Crear estructura de directorios por fecha
+            $year = $despatch->emission_date->format('Y');
+            $month = $despatch->emission_date->format('m');
+            $cdrDir = "sunat/{$despatch->company->ruc}/cdr/{$year}/{$month}";
+
+            // Usar disco 'public' para que sea accesible por URL
+            \Storage::disk('public')->makeDirectory($cdrDir);
 
             $savedFiles = [];
 
             // Guardar ZIP original del CDR
             $zipFileName = "R-{$despatch->company->ruc}-31-{$despatch->series}-{$despatch->number}.zip";
             $zipPath = $cdrDir . '/' . $zipFileName;
-            
-            if (Storage::put($zipPath, base64_decode($base64Content))) {
+
+            if (\Storage::disk('public')->put($zipPath, base64_decode($base64Content))) {
                 $savedFiles['zip'] = [
                     'path' => $zipPath,
-                    'url' => Storage::url($zipPath), // ⭐ URL pública para descarga del ZIP
+                    'url' => \Storage::disk('public')->url($zipPath),
                     'size' => strlen(base64_decode($base64Content))
                 ];
             }
 
-            // Guardar XML del CDR extraído (si quieres acceso individual al XML del CDR)
+            // Guardar XML del CDR extraído
             foreach ($extractedFiles as $fileName => $content) {
                 if (pathinfo($fileName, PATHINFO_EXTENSION) === 'xml') {
                     $xmlPath = $cdrDir . '/' . $fileName;
-                    if (Storage::put($xmlPath, $content)) {
+                    if (\Storage::disk('public')->put($xmlPath, $content)) {
                         $savedFiles['xml'] = [
                             'path' => $xmlPath,
-                            'url' => Storage::url($xmlPath), // URL del XML extraído del CDR
+                            'url' => \Storage::disk('public')->url($xmlPath),
                             'size' => strlen($content)
                         ];
                     }
                 }
             }
+
+            Log::info("Archivos CDR guardados exitosamente", [
+                'despatch_id' => $despatch->id,
+                'saved_files' => array_keys($savedFiles),
+                'cdr_dir' => $cdrDir
+            ]);
 
             return $savedFiles;
 
@@ -318,10 +328,10 @@ class SunatCdrService
             if (preg_match('/(\d{4})\s*-/', $note, $matches)) {
                 $errorCode = $matches[1];
                 $analysis['error_codes'][] = $errorCode;
-                
+
                 // Clasificar por tipo de error
                 $errorInfo = $this->getErrorInfo($errorCode);
-                
+
                 switch ($errorInfo['severity']) {
                     case 'error':
                         $analysis['errors'][] = [
@@ -405,7 +415,7 @@ class SunatCdrService
             ]);
 
             $pdfContent = file_get_contents($qrUrl, false, $context);
-            
+
             if ($pdfContent === false) {
                 return [
                     'success' => false,
@@ -434,7 +444,7 @@ class SunatCdrService
     public function getCdrSummary(array $cdrInfo): array
     {
         $responseCode = $cdrInfo['response_code'] ?? '99';
-        
+
         return [
             'status' => $this->interpretResponseCode($responseCode),
             'is_accepted' => $responseCode === '0',
@@ -442,8 +452,8 @@ class SunatCdrService
             'pdf_url' => $cdrInfo['qr_url'] ?? null,
             'document_id' => $cdrInfo['document_id'] ?? null,
             'description' => $cdrInfo['description'] ?? null,
-            'issue_datetime' => isset($cdrInfo['issue_date'], $cdrInfo['issue_time']) 
-                ? $cdrInfo['issue_date'] . ' ' . $cdrInfo['issue_time'] 
+            'issue_datetime' => isset($cdrInfo['issue_date'], $cdrInfo['issue_time'])
+                ? $cdrInfo['issue_date'] . ' ' . $cdrInfo['issue_time']
                 : null,
             'total_notes' => count($cdrInfo['notes'] ?? [])
         ];
