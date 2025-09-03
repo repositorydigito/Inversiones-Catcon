@@ -104,7 +104,7 @@ class OperationalExpenseResource extends Resource
                 // 1. Conductor
                 Tables\Columns\TextColumn::make('driver.full_name')
                     ->label('Conductor')
-                    ->searchable()
+                    ->searchable(['first_name', 'last_name'])
                     ->sortable()
                     ->wrap(),
 
@@ -144,26 +144,26 @@ class OperationalExpenseResource extends Resource
                     ->sortable(false),
 
                 // 5. Punto de Partida
-                Tables\Columns\TextColumn::make('departure_address')
+                Tables\Columns\TextColumn::make('departure_location')
                     ->label('Punto de Partida')
                     ->getStateUsing(function (OperationalExpense $record): ?string {
-                        return $record->despatch?->departure_address;
+                        return $record->despatch?->departure_location;
                     })
                     ->limit(30)
                     ->tooltip(function (OperationalExpense $record): ?string {
-                        return $record->despatch?->departure_address;
+                        return $record->despatch?->departure_location;
                     })
                     ->toggleable(isToggledHiddenByDefault: true),
 
                 // 6. Punto de Llegada
-                Tables\Columns\TextColumn::make('arrival_address')
+                Tables\Columns\TextColumn::make('arrival_location')
                     ->label('Punto de Llegada')
                     ->getStateUsing(function (OperationalExpense $record): ?string {
-                        return $record->despatch?->arrival_address;
+                        return $record->despatch?->arrival_location;
                     })
                     ->limit(30)
                     ->tooltip(function (OperationalExpense $record): ?string {
-                        return $record->despatch?->arrival_address;
+                        return $record->despatch?->arrival_location;
                     })
                     ->toggleable(isToggledHiddenByDefault: true),
 
