@@ -132,9 +132,10 @@ class SunatXmlGenerator
         <cac:ApplicableTransportMeans>
             <cbc:RegistrationNationalityID>{{VEHICULO_TUC}}</cbc:RegistrationNationalityID>
         </cac:ApplicableTransportMeans>
+        {{VEHICULOS_SECUNDARIOS_BLOCK}}
       </cac:TransportEquipment>
     </cac:TransportHandlingUnit>
-    {{VEHICULOS_SECUNDARIOS_BLOCK}}
+    
   </cac:Shipment>
   {{DETALLE_ITEMS}}
 </DespatchAdvice>';
@@ -166,7 +167,7 @@ class SunatXmlGenerator
             '{{SERIE}}' => $despatch->series,
             '{{NUMERO}}' => $despatch->number,
             '{{FECHA_EMISION}}' => $despatch->emission_date->format('Y-m-d'),
-            '{{HORA_EMISION}}' => $despatch->emission_date->format('H:i:s'),
+            '{{HORA_EMISION}}' => $despatch->created_at->format('H:i:s'),
             '{{OBSERVACIONES_BLOCK}}' => $this->generateObservationsBlock($despatch->observations),
             '{{DOCUMENTOS_RELACIONADOS_BLOCK}}' => $this->generateRelatedDocumentsBlock($despatch),
 
@@ -365,28 +366,33 @@ class SunatXmlGenerator
         }
 
         $secondaryDriversXml = '';
+        $mainDriverId = $despatch->driver_id; 
 
-        // Obtener conductores únicos de vehículos secundarios
         $secondaryDrivers = $despatch->secondaryVehicles
-            ->filter(function ($vehicle) {
-                return $vehicle->driver !== null;
+            ->filter(function ($vehicle) use ($mainDriverId) {
+                return $vehicle->driver !== null && $vehicle->driver->id !== $mainDriverId;
             })
             ->map(function ($vehicle) {
                 return $vehicle->driver;
             })
-            ->unique('id');
+            ->unique('id'); // Evitar duplicados entre conductores secundarios
+
+        // Si no hay conductores secundarios diferentes, no generar bloque
+        if ($secondaryDrivers->isEmpty()) {
+            return '';
+        }
 
         foreach ($secondaryDrivers as $driver) {
             $secondaryDriversXml .= '
-      <cac:DriverPerson>
-        <cbc:ID schemeID="' . $this->mapDocumentType($driver->document_type) . '">' . htmlspecialchars($driver->document_number, ENT_XML1) . '</cbc:ID>
-        <cbc:FirstName>' . htmlspecialchars($driver->first_name, ENT_XML1) . '</cbc:FirstName>
-        <cbc:FamilyName>' . htmlspecialchars($driver->last_name, ENT_XML1) . '</cbc:FamilyName>
-        <cbc:JobTitle>Secundario</cbc:JobTitle>
-        <cac:IdentityDocumentReference>
-          <cbc:ID>' . htmlspecialchars($driver->license_number, ENT_XML1) . '</cbc:ID>
-        </cac:IdentityDocumentReference>
-      </cac:DriverPerson>';
+          <cac:DriverPerson>
+            <cbc:ID schemeID="' . $this->mapDocumentType($driver->document_type) . '">' . htmlspecialchars($driver->document_number, ENT_XML1) . '</cbc:ID>
+            <cbc:FirstName>' . htmlspecialchars($driver->first_name, ENT_XML1) . '</cbc:FirstName>
+            <cbc:FamilyName>' . htmlspecialchars($driver->last_name, ENT_XML1) . '</cbc:FamilyName>
+            <cbc:JobTitle>Secundario</cbc:JobTitle>
+            <cac:IdentityDocumentReference>
+              <cbc:ID>' . htmlspecialchars($driver->license_number, ENT_XML1) . '</cbc:ID>
+            </cac:IdentityDocumentReference>
+          </cac:DriverPerson>';
         }
 
         return $secondaryDriversXml;
@@ -405,14 +411,12 @@ class SunatXmlGenerator
 
         foreach ($despatch->secondaryVehicles as $vehicle) {
             $secondaryVehiclesXml .= '
-    <cac:TransportHandlingUnit>
-      <cac:TransportEquipment>
-        <cbc:ID>' . htmlspecialchars($vehicle->plate_number, ENT_XML1) . '</cbc:ID>
-        <cac:ApplicableTransportMeans>
-          <cbc:RegistrationNationalityID>' . htmlspecialchars($vehicle->vehicle_certificate ?? '', ENT_XML1) . '</cbc:RegistrationNationalityID>
-        </cac:ApplicableTransportMeans>
-      </cac:TransportEquipment>
-    </cac:TransportHandlingUnit>';
+            <cac:AttachedTransportEquipment>
+              <cbc:ID>' . htmlspecialchars($vehicle->plate_number, ENT_XML1) . '</cbc:ID>
+              <cac:ApplicableTransportMeans>
+                <cbc:RegistrationNationalityID>' . htmlspecialchars($vehicle->vehicle_certificate ?? '', ENT_XML1) . '</cbc:RegistrationNationalityID>
+              </cac:ApplicableTransportMeans>
+            </cac:AttachedTransportEquipment>';
         }
 
         return $secondaryVehiclesXml;

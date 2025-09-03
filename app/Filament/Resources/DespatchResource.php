@@ -768,10 +768,10 @@ class DespatchResource extends Resource
                                     }
 
                                     // ✅ VALIDACIÓN 3: No puede tener el mismo conductor que el principal
-                                    if ($mainDriverId && $vehicle->driver->id == $mainDriverId) {
+                                    /* if ($mainDriverId && $vehicle->driver->id == $mainDriverId) {
                                         $errorMessages[] = "🚛 {$vehicle->plate_number}: Su conductor ya es el conductor principal";
                                         continue;
-                                    }
+                                    } */
 
                                     // ✅ VALIDACIÓN 4: No duplicados
                                     if (in_array($vehicleId, $validatedVehicles)) {
