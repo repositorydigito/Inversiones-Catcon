@@ -333,7 +333,7 @@ class DespatchResource extends Resource
                             ->label('Serie')
                             ->required()
                             ->maxLength(4)
-                            ->default('VVV1'),
+                            ->default('V001'),
 
                         TextInput::make('number')
                             ->label('Número')
