@@ -136,7 +136,6 @@ class VehicleResource extends Resource
                         }
                         return 'Sin asignar';
                     })
-                    ->searchable()
                     ->sortable(),
             ])
             ->filters([
