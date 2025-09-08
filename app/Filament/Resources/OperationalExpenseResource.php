@@ -444,7 +444,7 @@ class OperationalExpenseResource extends Resource
                 Tables\Actions\EditAction::make(),
             ])
             ->bulkActions([])
-            ->defaultSort('expense_date', 'desc')
+            ->defaultSort('created_at', 'desc')
             ->striped()
             ->paginated([10, 25, 50, 100]);
     }

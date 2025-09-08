@@ -821,6 +821,7 @@ class DespatchResource extends Resource
                     ->label('Serie'),
                 Tables\Columns\TextColumn::make('number')
                     ->numeric()
+                    ->searchable()
                     ->sortable()
                     ->label('Número'),
                 Tables\Columns\TextColumn::make('company.name')
@@ -838,10 +839,7 @@ class DespatchResource extends Resource
                 Tables\Columns\TextColumn::make('transfer_start_date')
                     ->date()
                     ->sortable()
-                    ->label('F. Inicio Traslado'),
-                /* Tables\Columns\IconColumn::make('accepted_by_sunat')
-                    ->label('Aceptado SUNAT')
-                    ->boolean(), */
+                    ->label('F. Inicio Traslado'),                
                 Tables\Columns\TextColumn::make('status')
                     ->badge()
                     ->label('Estado SUNAT')
@@ -861,11 +859,9 @@ class DespatchResource extends Resource
                         'heroicon-s-clock' => 'Generado',
                     ])
                     //->tooltip(fn (Despatch $record): ?string => $record->sunat_description)
-                    ->sortable()
-                    ->searchable(),
+                    ->sortable(),
                 Tables\Columns\TextColumn::make('sunat_response_code')
                     ->label('Cód. Resp. SUNAT')
-                    ->searchable()
                     ->toggleable(isToggledHiddenByDefault: true),
                 Tables\Columns\TextColumn::make('created_at')
                     ->dateTime()
@@ -991,6 +987,22 @@ class DespatchResource extends Resource
                     ->url(fn (Despatch $record): ?string => $record->enlace_del_cdr)
                     ->openUrlInNewTab()
                     ->visible(fn (Despatch $record): bool => !empty($record->enlace_del_cdr)),
+
+                Tables\Actions\DeleteAction::make()
+                    ->visible(fn (Despatch $record): bool => !$record->accepted_by_sunat)
+                    ->requiresConfirmation()
+                    ->modalHeading('Eliminar Guía de Remisión')
+                    ->modalDescription(fn (Despatch $record): string => 
+                        "¿Está seguro de eliminar la guía {$record->series}-{$record->number}? Esta acción no se puede deshacer."
+                    )
+                    ->modalSubmitActionLabel('Sí, eliminar')
+                    ->successNotificationTitle('Guía eliminada')
+                    ->before(function (Despatch $record) {
+                        // Verificación adicional de seguridad
+                        if ($record->accepted_by_sunat) {
+                            throw new \Exception('No se puede eliminar una guía aceptada por SUNAT');
+                        }                       
+                    }),
 
             ])
             ->bulkActions([
