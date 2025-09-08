@@ -10,6 +10,7 @@ use App\Models\Vehicle;
 use App\Models\ExpenseType;
 use App\Models\Client;
 use App\Exports\OperationalExpensesExport;
+use App\Models\OperationalExpenseConfig;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
@@ -142,6 +143,18 @@ class OperationalExpenseResource extends Resource
                     })
                     ->searchable(['document_number'])
                     ->sortable(false),
+                
+                // 7. Punto de Carga - Punto 1
+                Tables\Columns\TextColumn::make('loading_point')
+                    ->label('Punto 1')
+                    ->getStateUsing(function (OperationalExpense $record): ?string {
+                        return $record->despatch?->loading_point;
+                    })
+                    ->limit(25)
+                    ->tooltip(function (OperationalExpense $record): ?string {
+                        return $record->despatch?->loading_point;
+                    })
+                    ->toggleable(isToggledHiddenByDefault: true),
 
                 // 5. Punto de Partida
                 Tables\Columns\TextColumn::make('departure_location')
@@ -166,19 +179,7 @@ class OperationalExpenseResource extends Resource
                         return $record->despatch?->arrival_location;
                     })
                     ->toggleable(isToggledHiddenByDefault: true),
-
-                // 7. Punto de Carga - Punto 1
-                Tables\Columns\TextColumn::make('loading_point')
-                    ->label('Punto 1')
-                    ->getStateUsing(function (OperationalExpense $record): ?string {
-                        return $record->despatch?->loading_point;
-                    })
-                    ->limit(25)
-                    ->tooltip(function (OperationalExpense $record): ?string {
-                        return $record->despatch?->loading_point;
-                    })
-                    ->toggleable(isToggledHiddenByDefault: true),
-
+                
                 // 8. Punto de Descarga - Punto 4
                 Tables\Columns\TextColumn::make('unloading_point')
                     ->label('Punto 4')
@@ -441,22 +442,107 @@ class OperationalExpenseResource extends Resource
                     ->modalWidth('2xl'),
             ])
             ->actions([
-                Tables\Actions\EditAction::make(),
+                // Tables\Actions\EditAction::make(),
+                Tables\Actions\Action::make('editRouteInfo')
+                    ->label('Editar Ruta')
+                    ->icon('heroicon-o-map-pin')
+                    ->color('primary')
+                    ->visible(fn(OperationalExpense $record): bool => 
+                        $record->despatch && $record->expenseType->name === 'Gastos de Guía'
+                    )
+                    ->form([
+                        Forms\Components\Section::make('Información de Ruta')
+                            ->description('Complete los 4 puntos de ruta para generar automáticamente los gastos operativos')
+                            ->schema([
+                                Forms\Components\Select::make('loading_point')
+                                    ->label('Punto 1')
+                                    ->options(OperationalExpenseConfig::distinct()->pluck('departure_point', 'departure_point'))
+                                    ->searchable()
+                                    ->live()
+                                    ->afterStateUpdated(function ($state, callable $get, callable $set) {
+                                        static::autoCompleteFromRouteFields($get, $set);
+                                    }),
+                                
+                                Forms\Components\Select::make('departure_location')
+                                    ->label('Punto de Partida')
+                                    ->options(OperationalExpenseConfig::distinct()->pluck('departure_location', 'departure_location'))
+                                    ->searchable()
+                                    ->live()
+                                    ->afterStateUpdated(function ($state, callable $get, callable $set) {
+                                        static::autoCompleteFromRouteFields($get, $set);
+                                    }),
+                                
+                                Forms\Components\Select::make('arrival_location')
+                                    ->label('Punto de Llegada')
+                                    ->options(OperationalExpenseConfig::distinct()->pluck('arrival_location', 'arrival_location'))
+                                    ->searchable()
+                                    ->live()
+                                    ->afterStateUpdated(function ($state, callable $get, callable $set) {
+                                        static::autoCompleteFromRouteFields($get, $set);
+                                    }),
+                                
+                                Forms\Components\Select::make('unloading_point')
+                                    ->label('Punto 4')
+                                    ->options(OperationalExpenseConfig::distinct()->pluck('destination_point', 'destination_point'))
+                                    ->searchable()
+                                    ->live()
+                                    ->afterStateUpdated(function ($state, callable $get, callable $set) {
+                                        static::autoCompleteFromRouteFields($get, $set);
+                                    }),
+
+                                Forms\Components\Fieldset::make('Gastos Calculados Automáticamente')
+                                    ->schema([
+                                        Forms\Components\TextInput::make('tolls')
+                                            ->label('Peajes')
+                                            ->prefix('S/.')
+                                            ->disabled()
+                                            ->dehydrated(),
+                                        Forms\Components\TextInput::make('loading_expenses')
+                                            ->label('Gastos de Carga')
+                                            ->prefix('S/.')
+                                            ->disabled()
+                                            ->dehydrated(),
+                                        Forms\Components\TextInput::make('variable_salary')
+                                            ->label('Sueldo Variable')
+                                            ->prefix('S/.')
+                                            ->disabled()
+                                            ->dehydrated(),
+                                        Forms\Components\TextInput::make('operations_manager')
+                                            ->label('Jefe Operaciones')
+                                            ->prefix('S/.')
+                                            ->disabled()
+                                            ->dehydrated(),
+                                        Forms\Components\TextInput::make('security')
+                                            ->label('Seguridad')
+                                            ->prefix('S/.')
+                                            ->disabled()
+                                            ->dehydrated(),
+                                    ])
+                                    ->columns(3),
+                            ])
+                            ->columns(2)
+                    ])
+                    ->action(function (OperationalExpense $record, array $data): void {
+                        $record->despatch->update($data);
+                        
+                        Notification::make()
+                            ->title('Información de ruta actualizada')
+                            ->body('Los gastos operativos se recalcularán automáticamente')
+                            ->success()
+                            ->send();
+                    }),
             ])
             ->bulkActions([])
             ->defaultSort('created_at', 'desc')
             ->striped()
             ->paginated([10, 25, 50, 100]);
     }
-
-
     public static function getRelations(): array
     {
         return [
             //
         ];
     }
-
     public static function getPages(): array
     {
         return [
@@ -464,5 +550,36 @@ class OperationalExpenseResource extends Resource
             'create' => Pages\CreateOperationalExpense::route('/create'),
             'edit' => Pages\EditOperationalExpense::route('/{record}/edit'),
         ];
+    }
+    private static function autoCompleteFromRouteFields(callable $get, callable $set): void
+    {
+        $loadingPoint = $get('loading_point');
+        $departureLocation = $get('departure_location');
+        $arrivalLocation = $get('arrival_location');
+        $unloadingPoint = $get('unloading_point');
+
+        // Solo buscar si tenemos los 4 campos completos
+        if ($loadingPoint && $departureLocation && $arrivalLocation && $unloadingPoint) {
+            $config = OperationalExpenseConfig::where('departure_point', $loadingPoint)
+                                            ->where('departure_location', $departureLocation)
+                                            ->where('arrival_location', $arrivalLocation)
+                                            ->where('destination_point', $unloadingPoint)
+                                            ->first();
+
+            if ($config) {
+                $set('tolls', $config->tolls);
+                $set('loading_expenses', $config->loading_expenses);
+                $set('variable_salary', $config->variable_salary);
+                $set('operations_manager', $config->operations_manager);
+                $set('security', $config->security);
+            } else {
+                // Si no hay configuración, poner todo en 0
+                $set('tolls', 0);
+                $set('loading_expenses', 0);
+                $set('variable_salary', 0);
+                $set('operations_manager', 0);
+                $set('security', 0);
+            }
+        }
     }
 }

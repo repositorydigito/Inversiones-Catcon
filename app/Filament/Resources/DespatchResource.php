@@ -395,7 +395,7 @@ class DespatchResource extends Resource
                     ->schema([
                         Select::make('loading_point')
                             ->label('Punto 1')
-                            ->required()
+                            ->nullable()
                             ->options(OperationalExpenseConfig::distinct()->pluck('departure_point', 'departure_point'))
                             ->searchable()
                             ->live()
@@ -405,7 +405,7 @@ class DespatchResource extends Resource
 
                         Select::make('departure_location')
                             ->label('Punto de Partida')
-                            ->required()
+                            ->nullable()
                             ->options(OperationalExpenseConfig::distinct()->pluck('departure_location', 'departure_location'))
                             ->searchable()
                             ->live()
@@ -415,7 +415,7 @@ class DespatchResource extends Resource
 
                         Select::make('arrival_location')
                             ->label('Punto de Llegada')
-                            ->required()
+                            ->nullable()
                             ->options(OperationalExpenseConfig::distinct()->pluck('arrival_location', 'arrival_location'))
                             ->searchable()
                             ->live()
@@ -425,7 +425,7 @@ class DespatchResource extends Resource
 
                         Select::make('unloading_point')
                             ->label('Punto 4')
-                            ->required()
+                            ->nullable()
                             ->options(OperationalExpenseConfig::distinct()->pluck('destination_point', 'destination_point'))
                             ->searchable()
                             ->live()
@@ -1048,6 +1048,7 @@ class DespatchResource extends Resource
         // Contar cuántas guías tiene este conductor en la misma fecha (excluyendo la actual si existe)
         $existingGuidesCount = \App\Models\Despatch::where('driver_id', $driverId)
             ->whereDate('emission_date', $emissionDateFormatted)
+            ->where('accepted_by_sunat', true)
             ->when($record, function ($query) use ($record) {
                 // Si es una edición, excluir la guía actual del conteo
                 return $query->where('id', '!=', $record->id);
