@@ -272,13 +272,7 @@ class CreateInvoice extends CreateRecord
                 'emission_date_parsed' => $emissionDate->format('Y-m-d H:i:s'),
                 'es_posterior' => $dueDate->gt($emissionDate)
             ]);
-<<<<<<< HEAD
             
-            
-=======
-
-            // CRITICAL VALIDATION: Error SUNAT 3267
->>>>>>> 5cdcb0dcb82b9874d76d135007c241e2cdf06256
             if ($dueDate->lte($emissionDate)) {
                 // AUTO-CORREGIR fecha inválida agregando días suficientes
                 $correctedDate = $emissionDate->copy()->addDays(($index + 1) * 7); // +7, +14, +21 días según cuota
@@ -559,14 +553,7 @@ class CreateInvoice extends CreateRecord
         if (isset($data['is_credit_payment']) && !$data['is_credit_payment']) {
             $data['due_date'] = null; // Si no es crédito, limpiar fecha de vencimiento
         }
-<<<<<<< HEAD
         
-        
-=======
-
-        // NOTA: La validación de cuotas se ejecuta en handleRecordCreation() después de calcular totales
->>>>>>> 5cdcb0dcb82b9874d76d135007c241e2cdf06256
-
         Log::info('Datos validados antes de crear:', [
             'series' => $data['series'],
             'number' => $data['number'],
