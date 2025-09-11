@@ -80,7 +80,7 @@ class CreditInvoiceBuilder extends AbstractInvoiceBuilder
         }
         
         // Fallback: Generar una sola cuota con el total (facturas creadas antes del sistema de cuotas)
-        // CRITICAL: Asegurar fecha válida para SUNAT 3267
+        
         $validDueDate = $this->invoice->due_date;
         
         // ALWAYS validate: Si la fecha de vencimiento es igual o anterior a la emisión, corregirla

@@ -78,7 +78,7 @@ class EditInvoice extends EditRecord
         
         // Modificar solo la sección de cuotas para agregar la lógica que falta en edición
         return $baseForm->schema([
-            // Mantener todos los campos base del Resource
+
             ...$this->getInvoiceFormSchema(),
         ]);
     }
@@ -124,7 +124,7 @@ class EditInvoice extends EditRecord
             ->visible(fn ($get) => $get('is_credit_payment'))
             ->columns(1)
             ->schema([
-                // Campo auxiliar para número de cuotas
+
                 Select::make('number_of_installments')
                     ->label('Número de Cuotas')
                     ->options([
@@ -263,7 +263,7 @@ class EditInvoice extends EditRecord
         for ($i = 0; $i < $count; $i++) {
             $amount = ($i === $count - 1) ? $lastInstallmentAmount : $amountPerInstallment;
             
-            // CRITICAL FIX: Asegurar fechas POSTERIORES a emission_date para evitar SUNAT 3267
+            
             if ($count === 1) {
                 // Para pago único, usar +7 días (mínimo seguro)
                 $daysToAdd = 7;
@@ -334,7 +334,7 @@ class EditInvoice extends EditRecord
             $content .= "**⚠️ ADVERTENCIA: Diferencia de S/ " . number_format($difference, 2) . "**\n";
         }
         
-        // Validación de fechas SUNAT
+        
         $validDates = true;
         if ($emissionDate) {
             foreach ($installments as $installment) {
@@ -378,12 +378,12 @@ class EditInvoice extends EditRecord
         // Calcular totales finales
         $this->calculateFinalTotals($data);
         
-        // Validar cuotas para evitar Error SUNAT 3267
+
         $this->validateInstallments($data);
         
         // Actualizar en transacción
         return DB::transaction(function () use ($record, $data) {
-            // Limpiar campos que no van en la tabla principal
+    
             $invoiceData = collect($data)->except([
                 'items', 
                 'installments',
@@ -410,7 +410,7 @@ class EditInvoice extends EditRecord
             if (isset($data['installments']) && is_array($data['installments'])) {
                 $record->installments()->delete();
                 foreach ($data['installments'] as $installmentData) {
-                    // Limpiar campos que no van en BD
+            
                     unset($installmentData['id']);
                     $record->installments()->create($installmentData);
                 }
@@ -529,7 +529,7 @@ class EditInvoice extends EditRecord
         foreach ($installments as $index => &$installment) {
             $dueDate = Carbon::parse($installment['due_date']);
             
-            // CRITICAL VALIDATION: Error SUNAT 3267
+
             if ($dueDate->lte($emissionDate)) {
                 $correctedDate = $emissionDate->copy()->addDays(($index + 1) * 7);
                 $installment['due_date'] = $correctedDate->format('Y-m-d');

@@ -143,7 +143,7 @@ class SunatXmlGenerator
         $despatch->loadMissing([
             'company',
             'client',
-            'senderClient', // ✅ Nueva relación
+            'senderClient',
             'vehicle',
             'driver',
             'items.unitOfMeasure',
@@ -170,7 +170,7 @@ class SunatXmlGenerator
             '{{TRANSPORTISTA_NOMBRE}}' => $despatch->company->name,
             '{{TRANSPORTISTA_TIPO_DOC}}' => '6', // RUC
 
-            // ✅ CORREGIDO: Remitente (quien envía la mercancía)
+            // Remitente (quien envía la mercancía)
             '{{REMITENTE_RUC}}' => $despatch->senderClient->document_number,
             '{{REMITENTE_NOMBRE}}' => $despatch->senderClient->name,
             '{{REMITENTE_TIPO_DOC}}' => '6', // RUC
@@ -213,7 +213,7 @@ class SunatXmlGenerator
     }
 
     /**
-     * ✅ NUEVO: Genera el bloque de documentos relacionados
+     * Genera el bloque de documentos relacionados
      */
     protected function generateRelatedDocumentsBlock(Despatch $despatch): string
     {
@@ -265,12 +265,6 @@ class SunatXmlGenerator
             throw new Exception('La guía debe tener un cliente (destinatario) asociado');
         }
 
-        // ✅ NUEVA VALIDACIÓN
-        if (!$despatch->senderClient) {
-            throw new Exception('La guía debe tener un remitente asociado');
-        }
-
-        // ✅ NUEVA VALIDACIÓN
         if (!$despatch->senderClient) {
             throw new Exception('La guía debe tener un remitente asociado');
         }

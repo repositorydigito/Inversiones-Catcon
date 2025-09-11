@@ -197,7 +197,7 @@ class CreateInvoice extends CreateRecord
             'send_automatically_to_sunat' => true,
             'send_automatically_to_client' => false,
             'exchange_rate' => null,
-            // Campos de detracción con valores por defecto
+            
             'detraction_service_code' => $data['detraction_service_code'] ?? '027',
             'detraction_payment_method' => $data['detraction_payment_method'] ?? '001',
             'detraction_percentage' => $data['detraction_percentage'] ?? 4.00,
@@ -273,7 +273,7 @@ class CreateInvoice extends CreateRecord
                 'es_posterior' => $dueDate->gt($emissionDate)
             ]);
             
-            // CRITICAL VALIDATION: Error SUNAT 3267
+            
             if ($dueDate->lte($emissionDate)) {
                 // AUTO-CORREGIR fecha inválida agregando días suficientes
                 $correctedDate = $emissionDate->copy()->addDays(($index + 1) * 7); // +7, +14, +21 días según cuota
@@ -550,12 +550,12 @@ class CreateInvoice extends CreateRecord
             throw new \Exception("Ya existe una factura con serie {$data['series']} y número {$data['number']}.");
         }
 
-        // Mapear el campo auxiliar is_credit_payment
+        
         if (isset($data['is_credit_payment']) && !$data['is_credit_payment']) {
             $data['due_date'] = null; // Si no es crédito, limpiar fecha de vencimiento
         }
         
-        // NOTA: La validación de cuotas se ejecuta en handleRecordCreation() después de calcular totales
+        
 
         Log::info('Datos validados antes de crear:', [
             'series' => $data['series'],
