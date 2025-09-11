@@ -72,6 +72,7 @@ class SunatXmlGenerator
   <cac:Shipment>
     <cbc:ID>SUNAT_Envio</cbc:ID>
     <cbc:GrossWeightMeasure unitCode="{{PESO_UNIDAD}}">{{PESO_BRUTO}}</cbc:GrossWeightMeasure>
+    {{INDICADOR_PAGADOR_FLETE_BLOCK}}
     <cac:ShipmentStage>
       <cac:TransitPeriod>
         <cbc:StartDate>{{FECHA_INICIO_TRASLADO}}</cbc:StartDate>
@@ -82,6 +83,7 @@ class SunatXmlGenerator
         </cac:PartyIdentification>
         <cac:PartyLegalEntity>
           <cbc:RegistrationName>{{TRANSPORTISTA_NOMBRE}}</cbc:RegistrationName>
+          <cbc:CompanyID>{{TRANSPORTISTA_MTC}}</cbc:CompanyID>
         </cac:PartyLegalEntity>
       </cac:CarrierParty>
       <cac:TransportMeans>
@@ -127,9 +129,13 @@ class SunatXmlGenerator
     <cac:TransportHandlingUnit>
       <cac:TransportEquipment>
         <cbc:ID>{{VEHICULO_PLACA}}</cbc:ID>
+        <cac:ApplicableTransportMeans>
+            <cbc:RegistrationNationalityID>{{VEHICULO_TUC}}</cbc:RegistrationNationalityID>
+        </cac:ApplicableTransportMeans>
+        {{VEHICULOS_SECUNDARIOS_BLOCK}}
       </cac:TransportEquipment>
     </cac:TransportHandlingUnit>
-    {{VEHICULOS_SECUNDARIOS_BLOCK}}
+    
   </cac:Shipment>
   {{DETALLE_ITEMS}}
 </DespatchAdvice>';
@@ -161,7 +167,7 @@ class SunatXmlGenerator
             '{{SERIE}}' => $despatch->series,
             '{{NUMERO}}' => $despatch->number,
             '{{FECHA_EMISION}}' => $despatch->emission_date->format('Y-m-d'),
-            '{{HORA_EMISION}}' => $despatch->emission_date->format('H:i:s'),
+            '{{HORA_EMISION}}' => $despatch->created_at->format('H:i:s'),
             '{{OBSERVACIONES_BLOCK}}' => $this->generateObservationsBlock($despatch->observations),
             '{{DOCUMENTOS_RELACIONADOS_BLOCK}}' => $this->generateRelatedDocumentsBlock($despatch),
 
@@ -169,6 +175,7 @@ class SunatXmlGenerator
             '{{TRANSPORTISTA_RUC}}' => $despatch->company->ruc,
             '{{TRANSPORTISTA_NOMBRE}}' => $despatch->company->name,
             '{{TRANSPORTISTA_TIPO_DOC}}' => '6', // RUC
+            '{{TRANSPORTISTA_MTC}}' => $despatch->company->mtc_registration_number,
 
             // Remitente (quien envía la mercancía)
             '{{REMITENTE_RUC}}' => $despatch->senderClient->document_number,
@@ -179,6 +186,9 @@ class SunatXmlGenerator
             '{{DESTINATARIO_RUC}}' => $despatch->client->document_number,
             '{{DESTINATARIO_NOMBRE}}' => $despatch->client->name,
             '{{DESTINATARIO_TIPO_DOC}}' => '6',
+
+            // Indicador de pagador del flete (opcional)
+            '{{INDICADOR_PAGADOR_FLETE_BLOCK}}' => $this->generateIndicadorPagadorFleteBlock($despatch),
 
             // Pesos
             '{{PESO_BRUTO}}' => number_format($despatch->total_gross_weight, 1, '.', ''),
@@ -196,6 +206,7 @@ class SunatXmlGenerator
 
             // Vehículo principal
             '{{VEHICULO_PLACA}}' => $despatch->vehicle->plate_number,
+            '{{VEHICULO_TUC}}' => $despatch->vehicle->vehicle_certificate,
 
             // Ubicaciones
             '{{ORIGEN_UBIGEO}}' => $despatch->departure_ubigeo,
@@ -207,9 +218,23 @@ class SunatXmlGenerator
             '{{CONDUCTORES_SECUNDARIOS_BLOCK}}' => $this->generateSecondaryDriversBlock($despatch),
             '{{VEHICULOS_SECUNDARIOS_BLOCK}}' => $this->generateSecondaryVehiclesBlock($despatch),
             '{{DETALLE_ITEMS}}' => $this->generateItemsBlock($despatch->items),
+            // '{{DETALLE_ITEMS}}' => $this->shouldIncludeItems($despatch) ? $this->generateItemsBlock($despatch->items) : '',
         ];
 
         return str_replace(array_keys($replacements), array_values($replacements), $xml);
+    }
+
+    protected function shouldIncludeItems(Despatch $despatch): bool
+    {
+        $tieneGuiaRemitente = $despatch->relatedDocuments->contains('document_type', '09');
+        $pagadorEsRemitente = $despatch->sunat_envio_indicador === '01';
+
+        // Si hay guía remitente Y pagador es remitente → Sin ítems
+        if ($tieneGuiaRemitente && $pagadorEsRemitente) {
+            return false;
+        }
+
+        return true;
     }
 
     /**
@@ -252,6 +277,30 @@ class SunatXmlGenerator
         return $documentsXml;
     }
 
+    protected function generateIndicadorPagadorFleteBlock(Despatch $despatch): string
+    {
+        if (empty($despatch->sunat_envio_indicador)) {
+            return '';
+        }
+
+        $indicadores = [
+            '01' => 'SUNAT_Envio_IndicadorPagadorFlete_Remitente',
+            '02' => 'SUNAT_Envio_IndicadorPagadorFlete_Subcontratista',
+            '03' => 'SUNAT_Envio_IndicadorPagadorFlete_Tercero',
+            '04' => 'SUNAT_Envio_IndicadorRetornoVehiculoEnvaseVacio',
+            '05' => 'SUNAT_Envio_IndicadorRetornoVehiculoVacio',
+            '06' => 'SUNAT_Envio_IndicadorTrasladoVehiculoM1L'
+        ];
+
+        $valorIndicador = $indicadores[$despatch->sunat_envio_indicador] ?? '';
+
+        if (empty($valorIndicador)) {
+            return '';
+        }
+
+        return '<cbc:SpecialInstructions>' . $valorIndicador . '</cbc:SpecialInstructions>';
+    }
+
     /**
      * Valida que el despatch tenga todos los datos necesarios
      */
@@ -277,9 +326,9 @@ class SunatXmlGenerator
             throw new Exception('La guía debe tener un conductor principal asociado');
         }
 
-        if ($despatch->items->isEmpty()) {
+        /* if ($despatch->items->isEmpty()) {
             throw new Exception('La guía debe tener al menos un ítem');
-        }
+        } */
 
         // Validar que todos los ítems tengan unidad de medida
         foreach ($despatch->items as $item) {
@@ -311,28 +360,33 @@ class SunatXmlGenerator
         }
 
         $secondaryDriversXml = '';
+        $mainDriverId = $despatch->driver_id; 
 
-        // Obtener conductores únicos de vehículos secundarios
         $secondaryDrivers = $despatch->secondaryVehicles
-            ->filter(function ($vehicle) {
-                return $vehicle->driver !== null;
+            ->filter(function ($vehicle) use ($mainDriverId) {
+                return $vehicle->driver !== null && $vehicle->driver->id !== $mainDriverId;
             })
             ->map(function ($vehicle) {
                 return $vehicle->driver;
             })
-            ->unique('id');
+            ->unique('id'); // Evitar duplicados entre conductores secundarios
+
+        // Si no hay conductores secundarios diferentes, no generar bloque
+        if ($secondaryDrivers->isEmpty()) {
+            return '';
+        }
 
         foreach ($secondaryDrivers as $driver) {
             $secondaryDriversXml .= '
-      <cac:DriverPerson>
-        <cbc:ID schemeID="' . $this->mapDocumentType($driver->document_type) . '">' . htmlspecialchars($driver->document_number, ENT_XML1) . '</cbc:ID>
-        <cbc:FirstName>' . htmlspecialchars($driver->first_name, ENT_XML1) . '</cbc:FirstName>
-        <cbc:FamilyName>' . htmlspecialchars($driver->last_name, ENT_XML1) . '</cbc:FamilyName>
-        <cbc:JobTitle>Secundario</cbc:JobTitle>
-        <cac:IdentityDocumentReference>
-          <cbc:ID>' . htmlspecialchars($driver->license_number, ENT_XML1) . '</cbc:ID>
-        </cac:IdentityDocumentReference>
-      </cac:DriverPerson>';
+          <cac:DriverPerson>
+            <cbc:ID schemeID="' . $this->mapDocumentType($driver->document_type) . '">' . htmlspecialchars($driver->document_number, ENT_XML1) . '</cbc:ID>
+            <cbc:FirstName>' . htmlspecialchars($driver->first_name, ENT_XML1) . '</cbc:FirstName>
+            <cbc:FamilyName>' . htmlspecialchars($driver->last_name, ENT_XML1) . '</cbc:FamilyName>
+            <cbc:JobTitle>Secundario</cbc:JobTitle>
+            <cac:IdentityDocumentReference>
+              <cbc:ID>' . htmlspecialchars($driver->license_number, ENT_XML1) . '</cbc:ID>
+            </cac:IdentityDocumentReference>
+          </cac:DriverPerson>';
         }
 
         return $secondaryDriversXml;
@@ -351,11 +405,12 @@ class SunatXmlGenerator
 
         foreach ($despatch->secondaryVehicles as $vehicle) {
             $secondaryVehiclesXml .= '
-    <cac:TransportHandlingUnit>
-      <cac:TransportEquipment>
-        <cbc:ID>' . htmlspecialchars($vehicle->plate_number, ENT_XML1) . '</cbc:ID>
-      </cac:TransportEquipment>
-    </cac:TransportHandlingUnit>';
+            <cac:AttachedTransportEquipment>
+              <cbc:ID>' . htmlspecialchars($vehicle->plate_number, ENT_XML1) . '</cbc:ID>
+              <cac:ApplicableTransportMeans>
+                <cbc:RegistrationNationalityID>' . htmlspecialchars($vehicle->vehicle_certificate ?? '', ENT_XML1) . '</cbc:RegistrationNationalityID>
+              </cac:ApplicableTransportMeans>
+            </cac:AttachedTransportEquipment>';
         }
 
         return $secondaryVehiclesXml;

@@ -333,7 +333,7 @@ class DespatchResource extends Resource
                             ->label('Serie')
                             ->required()
                             ->maxLength(4)
-                            ->default('VVV1'),
+                            ->default('V001'),
 
                         TextInput::make('number')
                             ->label('Número')
@@ -395,6 +395,7 @@ class DespatchResource extends Resource
                     ->schema([
                         Select::make('loading_point')
                             ->label('Punto 1')
+                            ->nullable()
                             ->options(OperationalExpenseConfig::distinct()->pluck('departure_point', 'departure_point'))
                             ->searchable()
                             ->live()
@@ -404,6 +405,7 @@ class DespatchResource extends Resource
 
                         Select::make('departure_location')
                             ->label('Punto de Partida')
+                            ->nullable()
                             ->options(OperationalExpenseConfig::distinct()->pluck('departure_location', 'departure_location'))
                             ->searchable()
                             ->live()
@@ -413,6 +415,7 @@ class DespatchResource extends Resource
 
                         Select::make('arrival_location')
                             ->label('Punto de Llegada')
+                            ->nullable()
                             ->options(OperationalExpenseConfig::distinct()->pluck('arrival_location', 'arrival_location'))
                             ->searchable()
                             ->live()
@@ -422,6 +425,7 @@ class DespatchResource extends Resource
 
                         Select::make('unloading_point')
                             ->label('Punto 4')
+                            ->nullable()
                             ->options(OperationalExpenseConfig::distinct()->pluck('destination_point', 'destination_point'))
                             ->searchable()
                             ->live()
@@ -431,7 +435,7 @@ class DespatchResource extends Resource
                     ])
                     ->columns(4),
 
-                Section::make('Gastos Operativos')
+                /* Section::make('Gastos Operativos')
                     ->description('Información autogenerada en función a los puntos de ruta para el control de gastos operativos.')
                     ->schema([
                         Forms\Components\Group::make()
@@ -439,9 +443,6 @@ class DespatchResource extends Resource
                                 Forms\Components\TextInput::make('product')
                                     ->label('Producto')
                                     ->maxLength(255),
-                                /* Forms\Components\TextInput::make('supplier')
-                                    ->label('Proveedor')
-                                    ->maxLength(255), */
                                 Forms\Components\TextInput::make('tolls')
                                     ->label('Peajes')
                                     ->numeric()
@@ -510,7 +511,7 @@ class DespatchResource extends Resource
                                     ->live(),
                             ])
                             ->columns(4),
-                    ]),
+                    ]), */
 
                 Section::make('Datos de Pagador del Flete')
                     ->description(new HtmlString('<p class="text-sm">Selecciona el indicador de envío para mostrar campos adicionales si aplica.</p>'))
@@ -526,7 +527,7 @@ class DespatchResource extends Resource
                                 '05' => 'Retorno Vehículo Vacío',
                                 '06' => 'Traslado Vehículo M1L',
                             ])
-                            ->default('')
+                            ->default('01')
                             ->live()
                             ->nullable()
                             ->columnSpanFull()
@@ -618,6 +619,7 @@ class DespatchResource extends Resource
                                         }
                                     })
                                     ->placeholder('Seleccionar servicio...')
+                                    ->nullable()
                                     ->columnSpan(2),
                                 TextInput::make('code')
                                     ->label('Código')
@@ -631,20 +633,20 @@ class DespatchResource extends Resource
                                 TextInput::make('quantity')
                                     ->label('Cantidad')
                                     ->numeric()
-                                    ->required()
+                                    ->nullable()
                                     ->minValue(0.01)
                                     ->step(0.01),
                                 Select::make('unit_of_measure_id')
                                 ->label('Unidad de Medida')
                                 ->options(MeasureUnit::all()->pluck('description', 'id'))
                                 ->searchable()
-                                ->required()
+                                ->nullable()
                                 ->default(function () {
                                     return MeasureUnit::where('code', 'ZZ')->first()->id;
                                 }),
                             ])
                             ->columns(6)
-                            ->defaultItems(1)
+                            ->defaultItems(0)
                             ->reorderableWithButtons()
                             ->itemLabel(fn (array $state): ?string => $state['description'] ?? null)
                             ->addActionLabel('Agregar Ítem'),
@@ -766,10 +768,10 @@ class DespatchResource extends Resource
                                     }
 
                                     // ✅ VALIDACIÓN 3: No puede tener el mismo conductor que el principal
-                                    if ($mainDriverId && $vehicle->driver->id == $mainDriverId) {
+                                    /* if ($mainDriverId && $vehicle->driver->id == $mainDriverId) {
                                         $errorMessages[] = "🚛 {$vehicle->plate_number}: Su conductor ya es el conductor principal";
                                         continue;
-                                    }
+                                    } */
 
                                     // ✅ VALIDACIÓN 4: No duplicados
                                     if (in_array($vehicleId, $validatedVehicles)) {
@@ -819,6 +821,7 @@ class DespatchResource extends Resource
                     ->label('Serie'),
                 Tables\Columns\TextColumn::make('number')
                     ->numeric()
+                    ->searchable()
                     ->sortable()
                     ->label('Número'),
                 Tables\Columns\TextColumn::make('company.name')
@@ -836,10 +839,7 @@ class DespatchResource extends Resource
                 Tables\Columns\TextColumn::make('transfer_start_date')
                     ->date()
                     ->sortable()
-                    ->label('F. Inicio Traslado'),
-                /* Tables\Columns\IconColumn::make('accepted_by_sunat')
-                    ->label('Aceptado SUNAT')
-                    ->boolean(), */
+                    ->label('F. Inicio Traslado'),                
                 Tables\Columns\TextColumn::make('status')
                     ->badge()
                     ->label('Estado SUNAT')
@@ -859,11 +859,9 @@ class DespatchResource extends Resource
                         'heroicon-s-clock' => 'Generado',
                     ])
                     //->tooltip(fn (Despatch $record): ?string => $record->sunat_description)
-                    ->sortable()
-                    ->searchable(),
+                    ->sortable(),
                 Tables\Columns\TextColumn::make('sunat_response_code')
                     ->label('Cód. Resp. SUNAT')
-                    ->searchable()
                     ->toggleable(isToggledHiddenByDefault: true),
                 Tables\Columns\TextColumn::make('created_at')
                     ->dateTime()
@@ -966,29 +964,45 @@ class DespatchResource extends Resource
                     ->requiresConfirmation()
                     ->modalDescription('¿Está seguro de reenviar esta guía a SUNAT?'),
 
-                /* Tables\Actions\Action::make('downloadPdf')
+                Tables\Actions\Action::make('downloadPdf')
                     ->label('PDF')
                     ->icon('heroicon-o-document-arrow-down')
                     ->color('gray')
-                    ->url(fn (Despatch $record): string => $record->enlace_del_pdf ?? '#')
+                    ->url(fn (Despatch $record): ?string => $record->cdr_pdf_url ?: $record->enlace_del_pdf)
                     ->openUrlInNewTab()
-                    ->visible(fn (Despatch $record): bool => !is_null($record->enlace_del_pdf)),
+                    ->visible(fn (Despatch $record): bool => $record->accepted_by_sunat && ($record->cdr_pdf_url || $record->enlace_del_pdf)),
 
                 Tables\Actions\Action::make('downloadXml')
                     ->label('XML')
                     ->icon('heroicon-o-document-text')
                     ->color('gray')
-                    ->url(fn (Despatch $record): string => $record->enlace_del_xml ?? '#')
+                    ->url(fn (Despatch $record): ?string => $record->enlace_del_xml)
                     ->openUrlInNewTab()
-                    ->visible(fn (Despatch $record): bool => !is_null($record->enlace_del_xml)),
+                    ->visible(fn (Despatch $record): bool => !empty($record->enlace_del_xml)),
 
                 Tables\Actions\Action::make('downloadCdr')
                     ->label('CDR')
                     ->icon('heroicon-o-document-duplicate')
                     ->color('gray')
-                    ->url(fn (Despatch $record): string => $record->enlace_del_cdr ?? '#')
+                    ->url(fn (Despatch $record): ?string => $record->enlace_del_cdr)
                     ->openUrlInNewTab()
-                    ->visible(fn (Despatch $record): bool => !is_null($record->enlace_del_cdr)), */
+                    ->visible(fn (Despatch $record): bool => !empty($record->enlace_del_cdr)),
+
+                Tables\Actions\DeleteAction::make()
+                    ->visible(fn (Despatch $record): bool => !$record->accepted_by_sunat)
+                    ->requiresConfirmation()
+                    ->modalHeading('Eliminar Guía de Remisión')
+                    ->modalDescription(fn (Despatch $record): string => 
+                        "¿Está seguro de eliminar la guía {$record->series}-{$record->number}? Esta acción no se puede deshacer."
+                    )
+                    ->modalSubmitActionLabel('Sí, eliminar')
+                    ->successNotificationTitle('Guía eliminada')
+                    ->before(function (Despatch $record) {
+                        // Verificación adicional de seguridad
+                        if ($record->accepted_by_sunat) {
+                            throw new \Exception('No se puede eliminar una guía aceptada por SUNAT');
+                        }                       
+                    }),
 
             ])
             ->bulkActions([
@@ -1034,6 +1048,7 @@ class DespatchResource extends Resource
         // Contar cuántas guías tiene este conductor en la misma fecha (excluyendo la actual si existe)
         $existingGuidesCount = \App\Models\Despatch::where('driver_id', $driverId)
             ->whereDate('emission_date', $emissionDateFormatted)
+            ->where('accepted_by_sunat', true)
             ->when($record, function ($query) use ($record) {
                 // Si es una edición, excluir la guía actual del conteo
                 return $query->where('id', '!=', $record->id);

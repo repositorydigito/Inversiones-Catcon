@@ -3,6 +3,7 @@
 namespace App\Providers\Filament;
 
 use Filament\Http\Middleware\Authenticate;
+use BezhanSalleh\FilamentShield\FilamentShieldPlugin;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
 use Filament\Http\Middleware\DispatchServingFilamentEvent;
@@ -20,6 +21,11 @@ use Illuminate\View\Middleware\ShareErrorsFromSession;
 use SolutionForest\FilamentSimpleLightBox\SimpleLightBoxPlugin;
 use Solutionforest\FilamentLoginScreen\Filament\Pages\Auth\Themes\Theme1\LoginScreenPage;
 use Filament\Support\Enums\MaxWidth;
+use Filament\Navigation\MenuItem;
+use Filament\Navigation\NavigationGroup;
+use TomatoPHP\FilamentUsers\FilamentUsersPlugin;
+use Joaopaulolndev\FilamentEditProfile\FilamentEditProfilePlugin;
+use Joaopaulolndev\FilamentEditProfile\Pages\EditProfilePage;
 
 class AdminPanelProvider extends PanelProvider
 {
@@ -54,10 +60,24 @@ class AdminPanelProvider extends PanelProvider
                 Widgets\AccountWidget::class,
                 
             ])
+            ->userMenuItems([
+                MenuItem::make()
+                    ->label('Perfil')
+                    ->url(fn (): string => EditProfilePage::getUrl())
+                    ->icon('heroicon-o-user')
+            ])
             ->sidebarWidth('18rem')
             ->sidebarCollapsibleOnDesktop()
             ->collapsibleNavigationGroups()
-            ->globalSearchKeyBindings(['command+k', 'ctrl+k'])            
+            ->globalSearchKeyBindings(['command+k', 'ctrl+k']) 
+            ->navigationGroups([                
+                NavigationGroup::make()
+                    ->label('Entidades')
+                    ->collapsible(false),
+                NavigationGroup::make()
+                    ->label('Filament Shield')
+                    ->collapsible(true),
+            ])           
             ->middleware([
                 EncryptCookies::class,
                 AddQueuedCookiesToResponse::class,
@@ -68,6 +88,11 @@ class AdminPanelProvider extends PanelProvider
                 SubstituteBindings::class,
                 DisableBladeIconComponents::class,
                 DispatchServingFilamentEvent::class,
+            ])
+            ->plugins([
+                FilamentShieldPlugin::make(),
+                FilamentUsersPlugin::make(),
+                FilamentEditProfilePlugin::make()->shouldRegisterNavigation(false),
             ])
             ->authMiddleware([
                 Authenticate::class,

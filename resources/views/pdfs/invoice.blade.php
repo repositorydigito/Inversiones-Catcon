@@ -12,7 +12,7 @@
         
         body {
             font-family: Arial, sans-serif;
-            font-size: 11px;
+            font-size: 14px;
             line-height: 1.4;
             color: #000;
             margin: 0;
@@ -354,7 +354,8 @@
     <!-- Footer -->
     <div class="footer">
         <strong>COMPROBANTE ELECTRÓNICO - {{ $company['name'] }}</strong><br>
-        Fecha: {{ $generated_at->format('d/m/Y H:i:s') }} | 
+        Fecha: {{ $generated_at->format('d/m/Y H:i:s') }} 
+        {{-- | 
         Estado SUNAT: 
         @if($invoice->sunat_accepted === true)
             ACEPTADO
@@ -366,7 +367,7 @@
         
         @if($invoice->hash_code)
         <br><br>Código Hash: {{ $invoice->hash_code }}
-        @endif
+        @endif --}}
         
         <br><small>Resolución SUNAT N° 097-2012/SUNAT</small>
     </div>
