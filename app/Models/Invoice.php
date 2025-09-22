@@ -64,11 +64,15 @@ class Invoice extends Model
         'hash_code',
         'sunat_link',
 
-        // Campos de detracción
         'detraction_service_code',
-        'detraction_payment_method',
         'detraction_percentage',
+        'detraction_payment_method',
         'detraction_bank_account',
+        'tipo_carga',
+        'distancia_km',
+        'peso_toneladas',
+        'retorno_vacio',
+        'ubigeo',
     ];
 
     protected $casts = [
@@ -80,6 +84,9 @@ class Invoice extends Model
         'sunat_accepted' => 'boolean',
         'detraction_percentage' => 'decimal:2',
         'detraction' => 'boolean',
+        'distancia_km' => 'decimal:2',
+        'peso_toneladas' => 'decimal:2',
+        'retorno_vacio' => 'boolean',
     ];
 
     public function items()

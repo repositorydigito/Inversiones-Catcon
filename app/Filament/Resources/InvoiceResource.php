@@ -201,10 +201,10 @@ class InvoiceResource extends Resource
                             ->step(0.01)
                             ->default(0.00)
                             ->columnSpan(1),
-                        /* Toggle::make('detraction')
+                        Toggle::make('detraction')
                             ->label('¿Aplica Detracción?')
                             ->default(false)
-                            ->columnSpan(1), */
+                            ->columnSpan(1),
                         TextInput::make('observations')
                             ->label('Observaciones')
                             ->maxLength(255)
@@ -213,6 +213,7 @@ class InvoiceResource extends Resource
                     ]),
 
                 Section::make('Datos del Cliente')
+                    ->description('Información del cliente (se llena automáticamente desde las guías).')
                     ->columns(2)
                     ->schema([
                         Select::make('client_id')
@@ -237,7 +238,7 @@ class InvoiceResource extends Resource
                                 }
                             })
                             ->live()
-                            // ->disabled(fn ($get) => !empty($get('selected_despatches')) && !$get('manual_mode'))
+                            ->disabled(fn ($get) => !empty($get('selected_despatches')) && !$get('manual_mode'))
                             ->columnSpanFull(),
 
 
@@ -259,12 +260,12 @@ class InvoiceResource extends Resource
                             ->required()
                             ->disabled(fn (string $operation): bool => $operation !== 'create')
                             ->dehydrated(fn ($state) => filled($state)),
-                        /* TextInput::make('client_address')
+                        TextInput::make('client_address')
                             ->label('Dirección Cliente (SUNAT)')
                             ->readOnly()
                             ->nullable()
                             ->disabled(fn (string $operation): bool => $operation !== 'create')
-                            ->dehydrated(fn ($state) => filled($state)), */
+                            ->dehydrated(fn ($state) => filled($state)),
                         TextInput::make('client_email')
                             ->label('Email Cliente (SUNAT)')
                             ->readOnly()
@@ -595,38 +596,124 @@ class InvoiceResource extends Resource
 
                         TextInput::make('detraction_bank_account')
                             ->label('Nro. Cuenta Banco de la Nación')
-                            ->helperText('Cuenta de detracciones del proveedor')
+                            ->helperText('Cuenta de detracciones del proveedor (OBLIGATORIO para SUNAT)')
                             ->maxLength(15)
+                            ->required()
+                            ->placeholder('Ej: 00000012345')
+                            ->columnSpan(1),
+
+                        Select::make('tipo_carga')
+                            ->label('Tipo de Carga')
+                            ->options([
+                                'contenedor_lleno' => 'Contenedor lleno',
+                                'carga_general_liquidos' => 'Carga general/líquidos',
+                            ])
+                            ->default('carga_general_liquidos')
+                            ->live()
+                            ->columnSpan(1),
+
+                        TextInput::make('distancia_km')
+                            ->label('Distancia (km)')
+                            ->numeric()
+                            ->step(0.01)
+                            ->default(0)
+                            ->live()
+                            ->helperText('Distancia del recorrido en kilómetros')
+                            ->columnSpan(1),
+
+                        TextInput::make('peso_toneladas')
+                            ->label('Peso (toneladas)')
+                            ->numeric()
+                            ->step(0.01)
+                            ->visible(fn ($get) => $get('tipo_carga') === 'carga_general_liquidos')
+                            ->required(fn ($get) => $get('tipo_carga') === 'carga_general_liquidos')
+                            ->live()
+                            ->helperText('Peso de la carga en toneladas')
+                            ->columnSpan(1),
+
+                        Toggle::make('retorno_vacio')
+                            ->label('Retorno en vacío')
+                            ->helperText('Aplica factor 1.4 si distancia > 200km')
+                            ->live()
+                            ->columnSpan(1),
+
+                        TextInput::make('ubigeo')
+                            ->label('Código Ubigeo SUNAT')
+                            ->helperText('Código de 6 dígitos para geolocalización (requerido por SUNAT)')
+                            ->maxLength(6)
+                            ->minLength(6)
+                            ->placeholder('Ej: 150101')
+                            ->regex('/^[0-9]{6}$/')
+                            ->validationMessages([
+                                'regex' => 'El ubigeo debe tener exactamente 6 dígitos numéricos.',
+                            ])
                             ->columnSpan(1),
 
                         Placeholder::make('detraction_info')
-                            ->label(' Información de Detracción')
+                            ->label('📊 Cálculo SUNAT Automático')
                             ->content(function ($get) {
                                 $total = (float) ($get('total') ?? 0);
+                                $tipoCarga = $get('tipo_carga') ?? 'carga_general_liquidos';
+                                $distancia = (float) ($get('distancia_km') ?? 0);
+                                $peso = (float) ($get('peso_toneladas') ?? 0);
+                                $retornoVacio = $get('retorno_vacio') ?? false;
                                 $percentage = (float) ($get('detraction_percentage') ?? 4.00);
                                 $serviceCode = $get('detraction_service_code') ?? '027';
-                                $paymentMethod = $get('detraction_payment_method') ?? '001';
                                 $bankAccount = $get('detraction_bank_account') ?? '';
                                 
                                 if ($total <= 0) {
-                                    return '⏳ Complete los montos para calcular la detracción.';
+                                    return '⏳ Complete los montos para ver el cálculo SUNAT.';
                                 }
                                 
-                                $detractionAmount = $total * ($percentage / 100);
+
+                                $valorReferencial = 0;
+                                if ($distancia > 0) {
+                                    if ($tipoCarga === 'contenedor_lleno') {
+                                        $valorReferencial = $distancia * 1.31; // S/ por km
+                                    } else { // carga_general_liquidos
+                                        if ($peso > 0) {
+                                            $valorReferencial = $distancia * $peso * 0.157; // S/ por km*tn
+                                        }
+                                    }
+                                    
+                                    // Factor retorno vacío (1.4 si > 200km)
+                                    if ($retornoVacio && $distancia > 200) {
+                                        $valorReferencial *= 1.4;
+                                    }
+                                }
                                 
-                                $content = "** Cálculo de Detracción:**\n";
-                                $content .= "• Código: {$serviceCode}\n";
-                                $content .= "• Porcentaje: {$percentage}%\n";
-                                $content .= "• Base imponible: S/ " . number_format($total, 2) . "\n";
-                                $content .= "• **Monto detracción: S/ " . number_format($detractionAmount, 2) . "**\n";
+                                // Base para detracción: mayor entre facturado y referencial
+                                $baseDetraccion = max($total, $valorReferencial);
+                                $detractionAmount = $baseDetraccion * ($percentage / 100);
+                                
+                                $content = "**🚛 Datos del Transporte:**\n";
+                                $content .= "• Tipo: " . ($tipoCarga === 'contenedor_lleno' ? 'Contenedor lleno' : 'Carga general/líquidos') . "\n";
+                                $content .= "• Distancia: {$distancia} km\n";
+                                if ($tipoCarga === 'carga_general_liquidos') {
+                                    $content .= "• Peso: {$peso} tn\n";
+                                }
+                                if ($retornoVacio && $distancia > 200) {
+                                    $content .= "• Retorno vacío: Sí (factor 1.4)\n";
+                                }
+                                
+                                $content .= "\n**💰 Cálculo SUNAT:**\n";
+                                $content .= "• Valor facturado: S/ " . number_format($total, 2) . "\n";
+                                if ($valorReferencial > 0) {
+                                    $content .= "• Valor referencial: S/ " . number_format($valorReferencial, 2) . "\n";
+                                    $content .= "• Base detracción: S/ " . number_format($baseDetraccion, 2) . " (mayor)\n";
+                                } else {
+                                    $content .= "• Base detracción: S/ " . number_format($baseDetraccion, 2) . "\n";
+                                }
+                                $content .= "• Detracción ({$percentage}%): S/ " . number_format($detractionAmount, 2) . "\n";
+                                $content .= "• **Neto a pagar: S/ " . number_format($total - $detractionAmount, 2) . "**\n";
                                 
                                 if ($bankAccount) {
-                                    $content .= "• Cuenta BN: {$bankAccount}\n";
+                                    $content .= "\n• Cuenta BN: {$bankAccount}";
                                 }
                                 
                                 return $content;
                             })
-                            ->columnSpan(1),
+                            ->columnSpan(2),
                     ]),
 
 
@@ -668,7 +755,7 @@ class InvoiceResource extends Resource
                                 for ($i = 0; $i < $numberOfInstallments; $i++) {
                                     $amount = ($i === $numberOfInstallments - 1) ? $lastInstallmentAmount : $amountPerInstallment;
                                     
-                                    // CRITICAL FIX: Asegurar fechas POSTERIORES a emission_date para evitar SUNAT 3267
+    
                                     if ($numberOfInstallments === 1) {
                                         // Para pago único, usar +7 días (mínimo seguro)
                                         $daysToAdd = 7;
@@ -823,7 +910,7 @@ class InvoiceResource extends Resource
                                     $installments = $get('installments') ?? [];
                                     $rawTotal = $get('total') ?? 0;
                                     
-                                    // ENHANCED VALIDATION: Validación más robusta del total
+    
                                     if (!is_numeric($rawTotal) || $rawTotal === '' || $rawTotal === null || is_array($rawTotal) || is_object($rawTotal)) {
                                         $invoiceTotal = 0.0;
                                     } else {
@@ -838,7 +925,7 @@ class InvoiceResource extends Resource
                                     $content = "**📋 Cuotas configuradas:**\n";
                                     
                                     foreach ($installments as $index => $installment) {
-                                        // ENHANCED VALIDATION: Validación más robusta del monto de cuota
+        
                                         $rawAmount = $installment['amount'] ?? 0;
                                         $dueDate = $installment['due_date'] ?? '';
                                         
@@ -904,7 +991,7 @@ class InvoiceResource extends Resource
                                         $content .= "\n\n✅ **Las cuotas coinciden con el total de la factura**";
                                     }
                                     
-                                    // Validación de fechas SUNAT
+        
                                     $emissionDate = $get('emission_date');
                                     if ($emissionDate) {
                                         $invalidDates = false;
@@ -1067,6 +1154,12 @@ class InvoiceResource extends Resource
                 TextColumn::make('sunat_response_code')
                     ->label('Cód. SUNAT')
                     ->searchable(),
+                TextColumn::make('ubigeo')
+                    ->label('Ubigeo')
+                    ->searchable()
+                    ->placeholder('Sin ubigeo')
+                    ->badge()
+                    ->color('gray'),
             ])
             ->filters([
                 SelectFilter::make('client_id')
@@ -1178,8 +1271,7 @@ class InvoiceResource extends Resource
                     ->visible(fn (Invoice $record): bool => !empty($record->cdr_link) || !empty($record->cdr_zip_base64)),
             ])
             ->bulkActions([                
-            ])
-            ->defaultSort('created_at', 'desc');
+            ]);
     }
 
     public static function getRelations(): array

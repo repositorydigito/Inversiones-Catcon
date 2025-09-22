@@ -129,17 +129,18 @@ class CreditDetractionInvoiceBuilder extends AbstractInvoiceBuilder
     {
         $detractionAmount = $this->invoice->total * ($this->invoice->detraction_percentage / 100);
         
+        // Validar que la cuenta bancaria esté presente
+        if (empty($this->invoice->detraction_bank_account)) {
+            throw new \Exception('La cuenta bancaria de detracción es obligatoria para facturas con detracción.');
+        }
+        
         $data = [
             "codBienDetraccion" => $this->invoice->detraction_service_code,
             "codMedioPago" => $this->invoice->detraction_payment_method,
             "percent" => (float) $this->invoice->detraction_percentage,
-            "mount" => round($detractionAmount, 2)
+            "mount" => round($detractionAmount, 2),
+            "ctaBanco" => $this->invoice->detraction_bank_account
         ];
-        
-        // Solo agregar cuenta bancaria si tiene valor válido
-        if (!empty($this->invoice->detraction_bank_account)) {
-            $data["ctaBanco"] = $this->invoice->detraction_bank_account;
-        }
         
         return $data;
     }
