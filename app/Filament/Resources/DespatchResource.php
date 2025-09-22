@@ -964,12 +964,54 @@ class DespatchResource extends Resource
                     ->requiresConfirmation()
                     ->modalDescription('¿Está seguro de reenviar esta guía a SUNAT?'),
 
-                Tables\Actions\Action::make('downloadPdf')
+                /* Tables\Actions\Action::make('downloadPdf')
                     ->label('PDF')
                     ->icon('heroicon-o-document-arrow-down')
                     ->color('gray')
                     ->url(fn (Despatch $record): ?string => $record->cdr_pdf_url ?: $record->enlace_del_pdf)
                     ->openUrlInNewTab()
+                    ->visible(fn (Despatch $record): bool => $record->accepted_by_sunat && ($record->cdr_pdf_url || $record->enlace_del_pdf)), */
+
+                Tables\Actions\Action::make('downloadPdf')
+                    ->label('PDF')
+                    ->icon('heroicon-o-document-arrow-down')
+                    ->color('gray')
+                    ->action(function (Despatch $record) {
+                        try {
+                            $sunatService = app(\App\Services\SunatDespatchService::class);
+                            $result = $sunatService->downloadCdrPdf($record);
+
+                            if ($result['success']) {
+                                $fileName = "GRE_{$record->series}-{$record->number}.pdf";
+                                
+                                return response()->streamDownload(function () use ($result) {
+                                    echo $result['content'];
+                                }, $fileName, [
+                                    'Content-Type' => 'application/pdf',
+                                    'Content-Length' => $result['size'],
+                                ]);
+                            } else {
+                                // Mensaje específico según el tipo de error
+                                $errorMessage = static::getErrorMessage($result['error']);
+                                
+                                Notification::make()
+                                    ->title('No se pudo descargar el PDF')
+                                    ->body($errorMessage)
+                                    ->warning()
+                                    ->persistent()
+                                    ->send();
+                            }
+
+                        } catch (\Exception $e) {
+                            // En producción, mostrar mensaje genérico amigable
+                            Notification::make()
+                                ->title('Error temporal')
+                                ->body('Los servidores de SUNAT están temporalmente lentos. Por favor, intente nuevamente en unos minutos.')
+                                ->warning()
+                                ->persistent()
+                                ->send();
+                        }
+                    })
                     ->visible(fn (Despatch $record): bool => $record->accepted_by_sunat && ($record->cdr_pdf_url || $record->enlace_del_pdf)),
 
                 Tables\Actions\Action::make('downloadXml')
@@ -1010,14 +1052,12 @@ class DespatchResource extends Resource
             ])
             ->defaultSort('created_at', 'desc');
     }
-
     public static function getRelations(): array
     {
         return [
             //
         ];
     }
-
     public static function getPages(): array
     {
         return [
@@ -1026,7 +1066,21 @@ class DespatchResource extends Resource
             // 'edit' => Pages\EditDespatch::route('/{record}/edit'),
         ];
     }
-
+    private static function getErrorMessage(string $error): string
+    {
+        if (strpos($error, 'timeout') !== false || 
+            strpos($error, '15 seconds') !== false) {
+            return 'Los servidores de SUNAT están temporalmente lentos. Intente nuevamente en unos minutos.';
+        }
+        
+        if (strpos($error, 'file_get_contents') !== false || 
+            strpos($error, 'HTTP request failed') !== false ||
+            strpos($error, 'Failed to open stream') !== false) {
+            return 'Los servidores de SUNAT están temporalmente ocupados. Intente nuevamente.';
+        }
+        
+        return 'Error temporal descargando desde SUNAT. Intente nuevamente.';
+    }
     private static function calculateTravelAllowances(callable $get, $record = null): float
     {
         $driverId = $get('driver_id');
