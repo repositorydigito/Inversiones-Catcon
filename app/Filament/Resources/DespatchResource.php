@@ -33,6 +33,9 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 use Illuminate\Support\HtmlString;
 use Filament\Notifications\Notification;
+use Filament\Forms\Components\FileUpload;
+use App\Services\SunatXmlImportService;
+use Filament\Tables\Actions\Action as TableAction;
 use Exception;
 
 class DespatchResource extends Resource
@@ -433,85 +436,7 @@ class DespatchResource extends Resource
                                 static::autoCompleteFromFourFields($get, $set);
                             }),
                     ])
-                    ->columns(4),
-
-                /* Section::make('Gastos Operativos')
-                    ->description('Información autogenerada en función a los puntos de ruta para el control de gastos operativos.')
-                    ->schema([
-                        Forms\Components\Group::make()
-                            ->schema([
-                                Forms\Components\TextInput::make('product')
-                                    ->label('Producto')
-                                    ->maxLength(255),
-                                Forms\Components\TextInput::make('tolls')
-                                    ->label('Peajes')
-                                    ->numeric()
-                                    ->prefix('S/.')
-                                    ->step(0.01)
-                                    ->default(0)
-                                    ->disabled()
-                                    ->dehydrated()
-                                    ->live(),
-                                Forms\Components\TextInput::make('loading_expenses')
-                                    ->label('Gastos de Carga')
-                                    ->numeric()
-                                    ->prefix('S/.')
-                                    ->step(0.01)
-                                    ->default(0)
-                                    ->disabled()
-                                    ->dehydrated()
-                                    ->live(),
-                            ])
-                            ->columns(4),
-
-                        Forms\Components\Group::make()
-                            ->schema([
-                                Forms\Components\TextInput::make('travel_allowances')
-                                    ->label('Viáticos')
-                                    ->numeric()
-                                    ->prefix('S/.')
-                                    ->step(0.01)
-                                    ->disabled()
-                                    ->dehydrated()
-                                    ->live()
-                                    ->afterStateHydrated(function (Forms\Components\TextInput $component, $state, $record, callable $get) {
-                                        // Calcular valor inicial cuando se carga el formulario
-                                        $calculatedValue = static::calculateTravelAllowances($get, $record);
-                                        $component->state($calculatedValue);
-                                    }),
-
-                                Forms\Components\TextInput::make('variable_salary')
-                                    ->label('Sueldo Variable')
-                                    ->numeric()
-                                    ->prefix('S/.')
-                                    ->step(0.01)
-                                    ->default(0)
-                                    ->disabled()
-                                    ->dehydrated()
-                                    ->live(),
-
-                                Forms\Components\TextInput::make('operations_manager')
-                                    ->label('Jefe de Operaciones')
-                                    ->numeric()
-                                    ->prefix('S/.')
-                                    ->step(0.01)
-                                    ->default(0)
-                                    ->disabled()
-                                    ->dehydrated()
-                                    ->live(),
-
-                                Forms\Components\TextInput::make('security')
-                                    ->label('Seguridad')
-                                    ->numeric()
-                                    ->prefix('S/.')
-                                    ->step(0.01)
-                                    ->default(0)
-                                    ->disabled()
-                                    ->dehydrated()
-                                    ->live(),
-                            ])
-                            ->columns(4),
-                    ]), */
+                    ->columns(4),                
 
                 Section::make('Datos de Pagador del Flete')
                     ->description(new HtmlString('<p class="text-sm">Selecciona el indicador de envío para mostrar campos adicionales si aplica.</p>'))
@@ -810,7 +735,6 @@ class DespatchResource extends Resource
                     ->collapsed(false),
             ]);
     }
-
     public static function table(Table $table): Table
     {
         return $table
@@ -1047,11 +971,99 @@ class DespatchResource extends Resource
                     }),
 
             ])
+            ->headerActions([
+                TableAction::make('importFromXml')
+                    ->label('Importar XML')
+                    ->icon('heroicon-o-arrow-up-tray')
+                    ->color('info')
+                    ->form([
+                        FileUpload::make('xml_file')
+                            ->label('Archivo XML de SUNAT')
+                            ->acceptedFileTypes(['application/xml', 'text/xml'])
+                            ->maxSize(2048)
+                            ->required()
+                            ->helperText('Selecciona el archivo XML de la guía emitida desde el Portal SOL SUNAT')
+                            ->storeFiles(false), // No almacenar permanentemente
+                            
+                        Forms\Components\Section::make('Información')
+                            ->description('Al importar el XML se crearán automáticamente las entidades que no existan.')
+                            ->schema([
+                                Forms\Components\Placeholder::make('warning')
+                                    ->label('Importante')
+                                    ->content('Asegúrate de que el XML corresponda a una guía donde tu empresa figure como transportista.')
+                            ])
+                            ->collapsible()
+                    ])
+                    ->action(function (array $data) {
+                        try {
+                            // Acceder al archivo temporal correctamente
+                            $uploadedFile = $data['xml_file'];
+                            
+                            // Si es un UploadedFile object
+                            if (is_object($uploadedFile) && method_exists($uploadedFile, 'get')) {
+                                $xmlContent = $uploadedFile->get();
+                            } 
+                            // Si es un string (path temporal)
+                            else {
+                                $tempPath = storage_path('app/livewire-tmp/' . $uploadedFile);
+                                if (file_exists($tempPath)) {
+                                    $xmlContent = file_get_contents($tempPath);
+                                    // Limpiar archivo temporal
+                                    unlink($tempPath);
+                                } else {
+                                    throw new Exception('No se pudo encontrar el archivo temporal');
+                                }
+                            }
+                            
+                            if (empty($xmlContent)) {
+                                throw new Exception('El archivo XML está vacío');
+                            }
+                            
+                            // Procesar la importación
+                            $importService = app(SunatXmlImportService::class);
+                            $result = $importService->importFromXml($xmlContent);
+                            
+                            if ($result['success']) {
+                                $createdEntitiesText = '';
+                                if (!empty($result['created_entities'])) {
+                                    $createdEntitiesText = "\n\nEntidades creadas:\n• " . implode("\n• ", $result['created_entities']);
+                                }
+                                
+                                Notification::make()
+                                    ->title('Importación Exitosa')
+                                    ->body("Guía {$result['despatch']->series}-{$result['despatch']->number} importada correctamente.{$createdEntitiesText}")
+                                    ->success()
+                                    ->persistent()
+                                    ->send();
+                                    
+                                return redirect()->route('filament.admin.resources.despatches.index');
+                            } else {
+                                Notification::make()
+                                    ->title('Error en la Importación')
+                                    ->body($result['error'])
+                                    ->danger()
+                                    ->persistent()
+                                    ->send();
+                            }
+                            
+                        } catch (Exception $e) {
+                            Notification::make()
+                                ->title('Error Procesando XML')
+                                ->body($e->getMessage())
+                                ->danger()
+                                ->persistent()
+                                ->send();
+                        }
+                    })
+                    ->modalHeading('Importar Guía desde XML de SUNAT')
+                    ->modalSubmitActionLabel('Importar Guía')
+                    ->modalWidth('md')
+            ])
             ->bulkActions([
 
             ])
             ->defaultSort('created_at', 'desc');
-    }
+    }    
     public static function getRelations(): array
     {
         return [
@@ -1063,7 +1075,7 @@ class DespatchResource extends Resource
         return [
             'index' => Pages\ListDespatches::route('/'),
             'create' => Pages\CreateDespatch::route('/create'),
-            // 'edit' => Pages\EditDespatch::route('/{record}/edit'),
+            'edit' => Pages\EditDespatch::route('/{record}/edit'),
         ];
     }
     private static function getErrorMessage(string $error): string
