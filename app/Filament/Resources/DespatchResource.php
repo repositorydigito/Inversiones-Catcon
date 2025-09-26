@@ -70,7 +70,12 @@ class DespatchResource extends Resource
                         TextInput::make('sender_document_number')
                             ->label('RUC')
                             ->required()
-                            ->readOnly(),
+                            ->readOnly()
+                            ->afterStateHydrated(function ($component, $state, $record) {
+                                if ($record && $record->senderClient) {
+                                    $component->state($record->senderClient->document_number);
+                                }
+                            }),
                         /* TextInput::make('departure_address')
                             ->label('Punto de Partida')
                             ->required()
@@ -183,7 +188,12 @@ class DespatchResource extends Resource
                         TextInput::make('client_document_number')
                             ->label('RUC')
                             ->required()
-                            ->readOnly(),
+                            ->readOnly()
+                            ->afterStateHydrated(function ($component, $state, $record) {
+                                if ($record && $record->client) {
+                                    $component->state($record->client->document_number);
+                                }
+                            }),
                         Select::make('arrival_address')
                             ->label('Punto de Llegada')
                             ->required()
@@ -436,7 +446,7 @@ class DespatchResource extends Resource
                                 static::autoCompleteFromFourFields($get, $set);
                             }),
                     ])
-                    ->columns(4),                
+                    ->columns(4),
 
                 Section::make('Datos de Pagador del Flete')
                     ->description(new HtmlString('<p class="text-sm">Selecciona el indicador de envío para mostrar campos adicionales si aplica.</p>'))
@@ -763,7 +773,7 @@ class DespatchResource extends Resource
                 Tables\Columns\TextColumn::make('transfer_start_date')
                     ->date()
                     ->sortable()
-                    ->label('F. Inicio Traslado'),                
+                    ->label('F. Inicio Traslado'),
                 Tables\Columns\TextColumn::make('status')
                     ->badge()
                     ->label('Estado SUNAT')
@@ -907,7 +917,7 @@ class DespatchResource extends Resource
 
                             if ($result['success']) {
                                 $fileName = "GRE_{$record->series}-{$record->number}.pdf";
-                                
+
                                 return response()->streamDownload(function () use ($result) {
                                     echo $result['content'];
                                 }, $fileName, [
@@ -917,7 +927,7 @@ class DespatchResource extends Resource
                             } else {
                                 // Mensaje específico según el tipo de error
                                 $errorMessage = static::getErrorMessage($result['error']);
-                                
+
                                 Notification::make()
                                     ->title('No se pudo descargar el PDF')
                                     ->body($errorMessage)
@@ -958,7 +968,7 @@ class DespatchResource extends Resource
                     ->visible(fn (Despatch $record): bool => !$record->accepted_by_sunat)
                     ->requiresConfirmation()
                     ->modalHeading('Eliminar Guía de Remisión')
-                    ->modalDescription(fn (Despatch $record): string => 
+                    ->modalDescription(fn (Despatch $record): string =>
                         "¿Está seguro de eliminar la guía {$record->series}-{$record->number}? Esta acción no se puede deshacer."
                     )
                     ->modalSubmitActionLabel('Sí, eliminar')
@@ -967,7 +977,7 @@ class DespatchResource extends Resource
                         // Verificación adicional de seguridad
                         if ($record->accepted_by_sunat) {
                             throw new \Exception('No se puede eliminar una guía aceptada por SUNAT');
-                        }                       
+                        }
                     }),
 
             ])
@@ -984,25 +994,16 @@ class DespatchResource extends Resource
                             ->required()
                             ->helperText('Selecciona el archivo XML de la guía emitida desde el Portal SOL SUNAT')
                             ->storeFiles(false), // No almacenar permanentemente
-                            
-                        Forms\Components\Section::make('Información')
-                            ->description('Al importar el XML se crearán automáticamente las entidades que no existan.')
-                            ->schema([
-                                Forms\Components\Placeholder::make('warning')
-                                    ->label('Importante')
-                                    ->content('Asegúrate de que el XML corresponda a una guía donde tu empresa figure como transportista.')
-                            ])
-                            ->collapsible()
                     ])
                     ->action(function (array $data) {
                         try {
                             // Acceder al archivo temporal correctamente
                             $uploadedFile = $data['xml_file'];
-                            
+
                             // Si es un UploadedFile object
                             if (is_object($uploadedFile) && method_exists($uploadedFile, 'get')) {
                                 $xmlContent = $uploadedFile->get();
-                            } 
+                            }
                             // Si es un string (path temporal)
                             else {
                                 $tempPath = storage_path('app/livewire-tmp/' . $uploadedFile);
@@ -1014,28 +1015,28 @@ class DespatchResource extends Resource
                                     throw new Exception('No se pudo encontrar el archivo temporal');
                                 }
                             }
-                            
+
                             if (empty($xmlContent)) {
                                 throw new Exception('El archivo XML está vacío');
                             }
-                            
+
                             // Procesar la importación
                             $importService = app(SunatXmlImportService::class);
                             $result = $importService->importFromXml($xmlContent);
-                            
+
                             if ($result['success']) {
                                 $createdEntitiesText = '';
                                 if (!empty($result['created_entities'])) {
                                     $createdEntitiesText = "\n\nEntidades creadas:\n• " . implode("\n• ", $result['created_entities']);
                                 }
-                                
+
                                 Notification::make()
                                     ->title('Importación Exitosa')
                                     ->body("Guía {$result['despatch']->series}-{$result['despatch']->number} importada correctamente.{$createdEntitiesText}")
                                     ->success()
                                     ->persistent()
                                     ->send();
-                                    
+
                                 return redirect()->route('filament.admin.resources.despatches.index');
                             } else {
                                 Notification::make()
@@ -1045,7 +1046,7 @@ class DespatchResource extends Resource
                                     ->persistent()
                                     ->send();
                             }
-                            
+
                         } catch (Exception $e) {
                             Notification::make()
                                 ->title('Error Procesando XML')
@@ -1063,7 +1064,7 @@ class DespatchResource extends Resource
 
             ])
             ->defaultSort('created_at', 'desc');
-    }    
+    }
     public static function getRelations(): array
     {
         return [
@@ -1080,17 +1081,17 @@ class DespatchResource extends Resource
     }
     private static function getErrorMessage(string $error): string
     {
-        if (strpos($error, 'timeout') !== false || 
+        if (strpos($error, 'timeout') !== false ||
             strpos($error, '15 seconds') !== false) {
             return 'Los servidores de SUNAT están temporalmente lentos. Intente nuevamente en unos minutos.';
         }
-        
-        if (strpos($error, 'file_get_contents') !== false || 
+
+        if (strpos($error, 'file_get_contents') !== false ||
             strpos($error, 'HTTP request failed') !== false ||
             strpos($error, 'Failed to open stream') !== false) {
             return 'Los servidores de SUNAT están temporalmente ocupados. Intente nuevamente.';
         }
-        
+
         return 'Error temporal descargando desde SUNAT. Intente nuevamente.';
     }
     private static function calculateTravelAllowances(callable $get, $record = null): float

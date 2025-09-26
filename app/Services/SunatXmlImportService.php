@@ -19,44 +19,44 @@ class SunatXmlImportService
     public function importFromXml(string $xmlContent): array
     {
         DB::beginTransaction();
-        
+
         try {
             Log::info("Iniciando importación de XML de SUNAT");
-            
+
             // 1. Parsear y validar XML
             $xmlData = $this->parseXmlData($xmlContent);
-            
+
             // 2. Validar duplicados
             $this->validateDuplicate($xmlData);
-            
+
             // 3. Procesar entidades relacionadas
             $entities = $this->processRelatedEntities($xmlData);
-            
+
             // 4. Crear el Despatch
             $despatch = $this->createDespatch($xmlData, $entities);
-            
+
             DB::commit();
-            
+
             Log::info("XML importado exitosamente", [
                 'despatch_id' => $despatch->id,
                 'serie_numero' => $despatch->series . '-' . $despatch->number
             ]);
-            
+
             return [
                 'success' => true,
                 'despatch' => $despatch,
                 'message' => 'Guía importada exitosamente',
                 'created_entities' => $entities['created_entities'] ?? []
             ];
-            
+
         } catch (Exception $e) {
             DB::rollBack();
-            
+
             Log::error("Error al importar XML", [
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
             ]);
-            
+
             return [
                 'success' => false,
                 'error' => $e->getMessage(),
@@ -64,14 +64,13 @@ class SunatXmlImportService
             ];
         }
     }
-    
     /**
      * Parsea el XML y extrae los datos principales
      */
     protected function parseXmlData(string $xmlContent): array
     {
         $xml = simplexml_load_string($xmlContent);
-        
+
         if ($xml === false) {
             throw new Exception('El archivo XML no es válido');
         }
@@ -80,63 +79,65 @@ class SunatXmlImportService
         $xml->registerXPathNamespace('cbc', 'urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2');
         $xml->registerXPathNamespace('cac', 'urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2');
         $xml->registerXPathNamespace('da', 'urn:oasis:names:specification:ubl:schema:xsd:DespatchAdvice-2');
-        
+
         $data = [];
-        
+
         // Información básica - BUSCAR EL ID PRINCIPAL (primer elemento hijo directo)
         $idElements = $xml->xpath('/da:DespatchAdvice/cbc:ID');
         $idElement = $xml->children('urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2')->ID;
-        
+
         if (!$idElement) {
             throw new Exception('No se encontró el ID principal de la guía en el XML');
         }
-        
+
         $idString = (string) $idElement;
 
         if (!preg_match('/^([A-Z0-9]+)-(\d+)$/', $idString, $matches)) {
             throw new Exception("Formato de ID inválido: {$idString}");
         }
-        
+
         $data['series'] = $matches[1];
         $data['number'] = (int) $matches[2];
-        
+
         // Fechas
         $data['emission_date'] = $this->getXmlValue($xml, '//cbc:IssueDate');
         $data['transfer_start_date'] = $this->getXmlValue($xml, '//cac:TransitPeriod/cbc:StartDate');
-        
+
+        // Documentos relacionados
+        $data['documentos_relacionados'] = $this->parseDocumentosRelacionados($xml);
+
         // Observaciones
         $data['observations'] = $this->getXmlValue($xml, '//cbc:Note');
-        
+
         // Peso
         $weightElement = $xml->xpath('//cbc:GrossWeightMeasure')[0] ?? null;
         if ($weightElement) {
             $data['total_gross_weight'] = (float) $weightElement;
             $data['total_gross_weight_unit_of_measure'] = (string) $weightElement['unitCode'] ?: 'KGM';
         }
-        
+
         // Transportista (debe ser tu empresa)
         $data['transportista'] = $this->parseTransportista($xml);
-        
+
         // Remitente y Destinatario
         $data['remitente'] = $this->parseRemitente($xml);
         $data['destinatario'] = $this->parseDestinatario($xml);
-        
+
         // Conductor principal
         $data['conductor'] = $this->parseConductorPrincipal($xml);
-        
+
         // Vehículo principal
         $data['vehiculo'] = $this->parseVehiculoPrincipal($xml);
-        
+
         // Vehículos secundarios
         $data['vehiculos_secundarios'] = $this->parseVehiculosSecundarios($xml);
-        
+
         // Ubicaciones
         $data['partida'] = $this->parseUbicacionPartida($xml);
         $data['llegada'] = $this->parseUbicacionLlegada($xml);
-        
+
         return $data;
     }
-    
     /**
      * Obtiene valor de un elemento XML usando XPath
      */
@@ -145,7 +146,6 @@ class SunatXmlImportService
         $elements = $xml->xpath($xpath);
         return $elements && count($elements) > 0 ? (string) $elements[0] : null;
     }
-    
     /**
      * Parsea datos del transportista
      */
@@ -153,13 +153,12 @@ class SunatXmlImportService
     {
         $ruc = $this->getXmlValue($xml, '//cac:DespatchSupplierParty//cbc:ID');
         $nombre = $this->getXmlValue($xml, '//cac:DespatchSupplierParty//cbc:RegistrationName');
-        
+
         return [
             'ruc' => $ruc,
             'nombre' => $nombre
         ];
     }
-    
     /**
      * Parsea datos del remitente
      */
@@ -167,13 +166,12 @@ class SunatXmlImportService
     {
         $ruc = $this->getXmlValue($xml, '//cac:OriginatorCustomerParty//cbc:ID');
         $nombre = $this->getXmlValue($xml, '//cac:OriginatorCustomerParty//cbc:RegistrationName');
-        
+
         return [
             'ruc' => $ruc,
             'nombre' => $nombre
         ];
     }
-    
     /**
      * Parsea datos del destinatario
      */
@@ -181,21 +179,19 @@ class SunatXmlImportService
     {
         $ruc = $this->getXmlValue($xml, '//cac:DeliveryCustomerParty//cbc:ID');
         $nombre = $this->getXmlValue($xml, '//cac:DeliveryCustomerParty//cbc:RegistrationName');
-        
+
         return [
             'ruc' => $ruc,
             'nombre' => $nombre
         ];
     }
-    
     /**
      * Parsea datos del conductor principal
      */
     protected function parseConductorPrincipal($xml): array
     {
-        // Buscar conductor con JobTitle = Principal o el primero si no hay
         $conductores = $xml->xpath('//cac:DriverPerson');
-        
+
         $conductorPrincipal = null;
         foreach ($conductores as $conductor) {
             $jobTitle = (string) $conductor->xpath('cbc:JobTitle')[0] ?? '';
@@ -204,31 +200,32 @@ class SunatXmlImportService
                 break;
             }
         }
-        
-        // Si no hay principal, tomar el primero
+
         if (!$conductorPrincipal && !empty($conductores)) {
             $conductorPrincipal = $conductores[0];
         }
-        
+
         if (!$conductorPrincipal) {
             throw new Exception('No se encontró conductor en el XML');
         }
-        
+
         $documento = (string) $conductorPrincipal->xpath('cbc:ID')[0] ?? '';
         $tipoDoc = (string) $conductorPrincipal->xpath('cbc:ID/@schemeID')[0] ?? '1';
-        $nombres = (string) $conductorPrincipal->xpath('cbc:FirstName')[0] ?? '';
-        $apellidos = (string) $conductorPrincipal->xpath('cbc:FamilyName')[0] ?? '';
+        $firstName = (string) $conductorPrincipal->xpath('cbc:FirstName')[0] ?? '';
+        $lastName = (string) $conductorPrincipal->xpath('cbc:FamilyName')[0] ?? '';
         $licencia = (string) $conductorPrincipal->xpath('cac:IdentityDocumentReference/cbc:ID')[0] ?? '';
-        
+
+        // Procesar nombres correctamente
+        $names = $this->processDriverName($firstName, $lastName);
+
         return [
             'document_number' => $documento,
             'document_type' => $this->mapSunatDocumentType($tipoDoc),
-            'first_name' => $nombres,
-            'last_name' => $apellidos,
+            'first_name' => $names['first_name'],
+            'last_name' => $names['last_name'],
             'license_number' => $licencia
         ];
     }
-    
     /**
      * Parsea datos del vehículo principal
      */
@@ -236,17 +233,16 @@ class SunatXmlImportService
     {
         $placa = $this->getXmlValue($xml, '//cac:TransportEquipment/cbc:ID');
         $certificado = $this->getXmlValue($xml, '//cac:TransportEquipment//cbc:RegistrationNationalityID');
-        
+
         if (!$placa) {
             throw new Exception('No se encontró placa del vehículo principal en el XML');
         }
-        
+
         return [
             'plate_number' => $placa,
             'vehicle_certificate' => $certificado
         ];
     }
-    
     /**
      * Parsea vehículos secundarios
      */
@@ -254,11 +250,11 @@ class SunatXmlImportService
     {
         $secundarios = [];
         $vehiculosSecundarios = $xml->xpath('//cac:AttachedTransportEquipment');
-        
+
         foreach ($vehiculosSecundarios as $vehiculo) {
             $placa = (string) $vehiculo->xpath('cbc:ID')[0] ?? '';
             $certificado = (string) $vehiculo->xpath('cac:ApplicableTransportMeans/cbc:RegistrationNationalityID')[0] ?? '';
-            
+
             if ($placa) {
                 $secundarios[] = [
                     'plate_number' => $placa,
@@ -266,10 +262,9 @@ class SunatXmlImportService
                 ];
             }
         }
-        
+
         return $secundarios;
     }
-    
     /**
      * Parsea ubicación de partida
      */
@@ -277,13 +272,12 @@ class SunatXmlImportService
     {
         $ubigeo = $this->getXmlValue($xml, '//cac:Despatch//cac:DespatchAddress/cbc:ID');
         $direccion = $this->getXmlValue($xml, '//cac:Despatch//cac:DespatchAddress//cbc:Line');
-        
+
         return [
             'ubigeo' => $ubigeo,
             'address' => $direccion
         ];
     }
-    
     /**
      * Parsea ubicación de llegada
      */
@@ -291,13 +285,12 @@ class SunatXmlImportService
     {
         $ubigeo = $this->getXmlValue($xml, '//cac:DeliveryAddress/cbc:ID');
         $direccion = $this->getXmlValue($xml, '//cac:DeliveryAddress//cbc:Line');
-        
+
         return [
             'ubigeo' => $ubigeo,
             'address' => $direccion
         ];
     }
-    
     /**
      * Mapea tipos de documento de SUNAT a nuestro sistema
      */
@@ -311,7 +304,6 @@ class SunatXmlImportService
             default => 'DNI'
         };
     }
-    
     /**
      * Valida que no sea duplicado
      */
@@ -321,64 +313,63 @@ class SunatXmlImportService
                           ->where('number', $xmlData['number'])
                           ->where('company_id', 1) // Tu empresa
                           ->exists();
-        
+
         if ($exists) {
             throw new Exception("Ya existe una guía con serie {$xmlData['series']} y número {$xmlData['number']}");
         }
     }
-    
     /**
      * Procesa todas las entidades relacionadas
      */
     protected function processRelatedEntities(array $xmlData): array
     {
         $entities = ['created_entities' => []];
-        
+
         // 1. Validar transportista (debe ser tu empresa)
         $company = Company::where('ruc', $xmlData['transportista']['ruc'])->first();
         if (!$company) {
             throw new Exception("El transportista {$xmlData['transportista']['ruc']} no corresponde a tu empresa");
         }
         $entities['company'] = $company;
-        
+
         // 2. Procesar remitente
         $entities['remitente'] = $this->findOrCreateClient($xmlData['remitente']);
         if ($entities['remitente']->wasRecentlyCreated) {
             $entities['created_entities'][] = "Cliente remitente: {$entities['remitente']->name}";
         }
-        
+
         // 3. Procesar destinatario
         $entities['destinatario'] = $this->findOrCreateClient($xmlData['destinatario']);
         if ($entities['destinatario']->wasRecentlyCreated) {
             $entities['created_entities'][] = "Cliente destinatario: {$entities['destinatario']->name}";
         }
-        
+
         // 4. Procesar conductor
         $entities['conductor'] = $this->findOrCreateDriver($xmlData['conductor']);
         if ($entities['conductor']->wasRecentlyCreated) {
             $entities['created_entities'][] = "Conductor: {$entities['conductor']->first_name} {$entities['conductor']->last_name}";
         }
-        
+
         // 5. Procesar vehículo principal
         $entities['vehiculo'] = $this->findOrCreateVehicle($xmlData['vehiculo'], $entities['conductor']);
         if ($entities['vehiculo']->wasRecentlyCreated) {
             $entities['created_entities'][] = "Vehículo principal: {$entities['vehiculo']->plate_number}";
         }
-        
+
         // 6. Procesar vehículos secundarios
         $entities['vehiculos_secundarios'] = [];
         foreach ($xmlData['vehiculos_secundarios'] as $vehiculoData) {
-            $vehiculo = $this->findOrCreateVehicle($vehiculoData);
+            // Pasar el conductor principal también a los secundarios
+            $vehiculo = $this->findOrCreateVehicle($vehiculoData, $entities['conductor']);
             $entities['vehiculos_secundarios'][] = $vehiculo;
-            
+
             if ($vehiculo->wasRecentlyCreated) {
                 $entities['created_entities'][] = "Vehículo secundario: {$vehiculo->plate_number}";
             }
         }
-        
+
         return $entities;
     }
-    
     /**
      * Busca o crea un cliente
      */
@@ -392,23 +383,34 @@ class SunatXmlImportService
             ]
         );
     }
-    
     /**
      * Busca o crea un conductor
      */
     protected function findOrCreateDriver(array $driverData): Driver
     {
-        return Driver::firstOrCreate(
-            ['document_number' => $driverData['document_number']],
-            [
+        // Buscar por documento primero (insensible a mayúsculas)
+        $existingDriver = Driver::where('document_number', $driverData['document_number'])->first();
+
+        if ($existingDriver) {
+            // Si existe, actualizar nombres si están mejor formateados
+            $existingDriver->update([
                 'first_name' => $driverData['first_name'],
                 'last_name' => $driverData['last_name'],
-                'document_type' => $driverData['document_type'],
                 'license_number' => $driverData['license_number']
-            ]
-        );
+            ]);
+
+            return $existingDriver;
+        }
+
+        // Si no existe, crear nuevo
+        return Driver::create([
+            'first_name' => $driverData['first_name'],
+            'last_name' => $driverData['last_name'],
+            'document_type' => $driverData['document_type'],
+            'document_number' => $driverData['document_number'],
+            'license_number' => $driverData['license_number']
+        ]);
     }
-    
     /**
      * Busca o crea un vehículo
      */
@@ -423,55 +425,75 @@ class SunatXmlImportService
                 'driver_id' => $driver?->id
             ]
         );
-        
+
         // Si existe y no tiene conductor asignado, asignar el conductor
         if (!$vehicle->wasRecentlyCreated && !$vehicle->driver_id && $driver) {
             $vehicle->update(['driver_id' => $driver->id]);
         }
-        
+
         return $vehicle;
     }
-    
     /**
      * Crea el despatch con los datos procesados
      */
     protected function createDespatch(array $xmlData, array $entities): Despatch
     {
-        return Despatch::create([
+        // Generar códigos de ubigeo para los campos de formulario
+        $departureUbigeoData = $this->parseUbigeoCode($xmlData['partida']['ubigeo']);
+        $arrivalUbigeoData = $this->parseUbigeoCode($xmlData['llegada']['ubigeo']);
+
+        $despatch = Despatch::create([
             // Datos básicos
             'document_type' => 8, // GRE Transportista
             'series' => $xmlData['series'],
             'number' => $xmlData['number'],
-            'company_id' => 1, // Tu empresa por defecto
-            
+            'company_id' => 1,
+
             // Fechas
             'emission_date' => $xmlData['emission_date'],
             'transfer_start_date' => $xmlData['transfer_start_date'],
-            
+
             // Entidades relacionadas
             'sender_client_id' => $entities['remitente']->id,
             'client_id' => $entities['destinatario']->id,
             'driver_id' => $entities['conductor']->id,
             'vehicle_id' => $entities['vehiculo']->id,
-            
+
             // Ubicaciones
             'departure_ubigeo' => $xmlData['partida']['ubigeo'],
             'departure_address' => $xmlData['partida']['address'],
             'arrival_ubigeo' => $xmlData['llegada']['ubigeo'],
             'arrival_address' => $xmlData['llegada']['address'],
-            
+
+            // Documentos de remitente y destinatario
+            'sender_document_number' => $entities['remitente']->document_number,
+            'client_document_number' => $entities['destinatario']->document_number,
+
+            // Ubigeo de partida descompuesto
+            'departure_departamento' => $departureUbigeoData['departamento'],
+            'departure_provincia' => $departureUbigeoData['provincia'],
+            'departure_distrito' => $departureUbigeoData['distrito'],
+
+            // Ubigeo de llegada descompuesto
+            'arrival_departamento' => $arrivalUbigeoData['departamento'],
+            'arrival_provincia' => $arrivalUbigeoData['provincia'],
+            'arrival_distrito' => $arrivalUbigeoData['distrito'],
+
             // Peso
             'total_gross_weight' => $xmlData['total_gross_weight'] ?? 0,
             'total_gross_weight_unit_of_measure' => $xmlData['total_gross_weight_unit_of_measure'] ?? 'KGM',
-            
+
             // Observaciones
             'observations' => $xmlData['observations'],
-            
+
+            // Indicador de envío SUNAT
+            'sunat_envio_indicador' => '01',
+
             // Estado SUNAT
             'accepted_by_sunat' => true,
             'sunat_description' => 'Importado desde XML de SUNAT',
             'sunat_response_code' => '0',
-            
+
             // Gastos operativos (valores por defecto)
             'tolls' => 0,
             'loading_expenses' => 0,
@@ -480,5 +502,116 @@ class SunatXmlImportService
             'operations_manager' => 0,
             'security' => 0,
         ]);
+
+        // Crear documentos relacionados
+        foreach ($xmlData['documentos_relacionados'] as $docData) {
+            $despatch->relatedDocuments()->create($docData);
+        }
+
+        // Vincular vehículos secundarios
+        if (!empty($entities['vehiculos_secundarios'])) {
+            $vehicleIds = collect($entities['vehiculos_secundarios'])->pluck('id')->toArray();
+            $despatch->secondaryVehicles()->attach($vehicleIds);
+        }
+
+        return $despatch;
+    }
+    /**
+     * Parsea documentos relacionados (AdditionalDocumentReference)
+     */
+    protected function parseDocumentosRelacionados($xml): array
+    {
+        $documentos = [];
+        $documentElements = $xml->xpath('//cac:AdditionalDocumentReference');
+
+        foreach ($documentElements as $doc) {
+            $docId = (string) $doc->xpath('cbc:ID')[0] ?? '';
+            $docType = (string) $doc->xpath('cbc:DocumentTypeCode')[0] ?? '';
+
+            // Extraer serie y número del ID (formato: SERIE-NUMERO)
+            if (preg_match('/^([A-Z0-9]+)-(\d+)$/', $docId, $matches)) {
+                $documentos[] = [
+                    'document_type' => $docType,
+                    'series' => $matches[1],
+                    'number' => (int) $matches[2]
+                ];
+            }
+        }
+
+        return $documentos;
+    }
+    /**
+     * Procesa nombres de conductor manejando duplicación de SUNAT
+     */
+    protected function processDriverName(string $firstName, string $lastName): array
+    {
+        // Normalizar texto a formato título
+        $fullName = $this->normalizeText($firstName);
+
+        // Si firstName y lastName son iguales, procesar como nombre completo
+        if (trim($firstName) === trim($lastName) || empty(trim($lastName))) {
+            return $this->splitFullName($fullName);
+        }
+
+        // Si son diferentes, usar como están pero normalizados
+        return [
+            'first_name' => $this->normalizeText($firstName),
+            'last_name' => $this->normalizeText($lastName)
+        ];
+    }
+    /**
+     * Divide un nombre completo en nombres y apellidos
+     */
+    protected function splitFullName(string $fullName): array
+    {
+        $parts = array_filter(explode(' ', trim($fullName)));
+
+        if (count($parts) < 2) {
+            return [
+                'first_name' => $fullName,
+                'last_name' => 'Por Completar'
+            ];
+        }
+
+        // Tomar las primeras 2 palabras como apellidos, el resto como nombres
+        if (count($parts) >= 3) {
+            $apellidos = implode(' ', array_slice($parts, 0, 2));
+            $nombres = implode(' ', array_slice($parts, 2));
+        } else {
+            // Si solo hay 2 palabras, primera es apellido, segunda es nombre
+            $apellidos = $parts[0];
+            $nombres = $parts[1];
+        }
+
+        return [
+            'first_name' => $nombres,
+            'last_name' => $apellidos
+        ];
+    }
+    /**
+     * Normaliza texto: convierte a formato título y limpia espacios
+     */
+    protected function normalizeText(string $text): string
+    {
+        return ucwords(strtolower(trim($text)));
+    }
+    /**
+     * Descompone un código de ubigeo en departamento, provincia y distrito
+     */
+    protected function parseUbigeoCode(string $ubigeoCode): array
+    {
+        if (strlen($ubigeoCode) !== 6) {
+            return [
+                'departamento' => null,
+                'provincia' => null,
+                'distrito' => null
+            ];
+        }
+
+        return [
+            'departamento' => substr($ubigeoCode, 0, 2),
+            'provincia' => substr($ubigeoCode, 2, 2),
+            'distrito' => substr($ubigeoCode, 4, 2)
+        ];
     }
 }
