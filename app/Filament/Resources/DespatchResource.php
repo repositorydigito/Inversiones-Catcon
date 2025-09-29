@@ -987,77 +987,113 @@ class DespatchResource extends Resource
                     ->icon('heroicon-o-arrow-up-tray')
                     ->color('info')
                     ->form([
-                        FileUpload::make('xml_file')
-                            ->label('Archivo XML de SUNAT')
+                        FileUpload::make('xml_files')
+                            ->label('Archivos XML de SUNAT')
                             ->acceptedFileTypes(['application/xml', 'text/xml'])
+                            ->multiple()
+                            ->maxFiles(20)
                             ->maxSize(2048)
                             ->required()
-                            ->helperText('Selecciona el archivo XML de la guía emitida desde el Portal SOL SUNAT')
-                            ->storeFiles(false), // No almacenar permanentemente
+                            ->storeFiles(false),
                     ])
                     ->action(function (array $data) {
                         try {
-                            // Acceder al archivo temporal correctamente
-                            $uploadedFile = $data['xml_file'];
-
-                            // Si es un UploadedFile object
-                            if (is_object($uploadedFile) && method_exists($uploadedFile, 'get')) {
-                                $xmlContent = $uploadedFile->get();
+                            $uploadedFiles = $data['xml_files'];
+                            
+                            if (!is_array($uploadedFiles)) {
+                                $uploadedFiles = [$uploadedFiles];
                             }
-                            // Si es un string (path temporal)
-                            else {
-                                $tempPath = storage_path('app/livewire-tmp/' . $uploadedFile);
-                                if (file_exists($tempPath)) {
-                                    $xmlContent = file_get_contents($tempPath);
-                                    // Limpiar archivo temporal
-                                    unlink($tempPath);
+
+                            $xmlContents = [];
+                            
+                            foreach ($uploadedFiles as $uploadedFile) {
+                                if (is_object($uploadedFile) && method_exists($uploadedFile, 'get')) {
+                                    $xmlContents[] = $uploadedFile->get();
                                 } else {
-                                    throw new Exception('No se pudo encontrar el archivo temporal');
+                                    $tempPath = storage_path('app/livewire-tmp/' . $uploadedFile);
+                                    if (file_exists($tempPath)) {
+                                        $xmlContents[] = file_get_contents($tempPath);
+                                        unlink($tempPath);
+                                    }
                                 }
                             }
 
-                            if (empty($xmlContent)) {
-                                throw new Exception('El archivo XML está vacío');
+                            if (empty($xmlContents)) {
+                                throw new Exception('No se pudieron leer los archivos XML');
                             }
 
-                            // Procesar la importación
                             $importService = app(SunatXmlImportService::class);
-                            $result = $importService->importFromXml($xmlContent);
+                            
+                            // Usar importación masiva o individual según la cantidad
+                            if (count($xmlContents) === 1) {
+                                $result = $importService->importFromXml($xmlContents[0]);
+                                
+                                if ($result['success']) {
+                                    $createdEntitiesText = '';
+                                    if (!empty($result['created_entities'])) {
+                                        $createdEntitiesText = "\n\nEntidades creadas:\n• " . implode("\n• ", $result['created_entities']);
+                                    }
 
-                            if ($result['success']) {
+                                    Notification::make()
+                                        ->title('Importación Exitosa')
+                                        ->body("Guía {$result['despatch']->series}-{$result['despatch']->number} importada correctamente.{$createdEntitiesText}")
+                                        ->success()
+                                        ->persistent()
+                                        ->send();
+                                } else {
+                                    Notification::make()
+                                        ->title('Error en la Importación')
+                                        ->body($result['error'])
+                                        ->danger()
+                                        ->persistent()
+                                        ->send();
+                                }
+                            } else {
+                                // Importación masiva
+                                $result = $importService->importMultipleFromXml($xmlContents);
+                                
+                                $statusSummary = "✅ Importadas: {$result['imported']}\n❌ Fallidas: {$result['failed']}\n📁 Total: {$result['total']}";
+                                
+                                $detailsText = '';
+                                foreach ($result['details'] as $detail) {
+                                    if ($detail['status'] === 'success') {
+                                        $detailsText .= "\n✓ {$detail['serie_numero']}";
+                                    } else {
+                                        $detailsText .= "\n✗ {$detail['message']}";
+                                    }
+                                }
+                                
                                 $createdEntitiesText = '';
                                 if (!empty($result['created_entities'])) {
-                                    $createdEntitiesText = "\n\nEntidades creadas:\n• " . implode("\n• ", $result['created_entities']);
+                                    $createdEntitiesText = "\n\n📝 Entidades nuevas:\n• " . implode("\n• ", array_slice($result['created_entities'], 0, 10));
+                                    if (count($result['created_entities']) > 10) {
+                                        $createdEntitiesText .= "\n... y " . (count($result['created_entities']) - 10) . " más";
+                                    }
                                 }
 
                                 Notification::make()
-                                    ->title('Importación Exitosa')
-                                    ->body("Guía {$result['despatch']->series}-{$result['despatch']->number} importada correctamente.{$createdEntitiesText}")
-                                    ->success()
-                                    ->persistent()
-                                    ->send();
-
-                                return redirect()->route('filament.admin.resources.despatches.index');
-                            } else {
-                                Notification::make()
-                                    ->title('Error en la Importación')
-                                    ->body($result['error'])
-                                    ->danger()
+                                    ->title('Importación Masiva Completada')
+                                    ->body("{$statusSummary}{$detailsText}{$createdEntitiesText}")
+                                    ->success($result['imported'] > 0)
+                                    ->warning($result['failed'] > 0 && $result['imported'] === 0)
                                     ->persistent()
                                     ->send();
                             }
+
+                            return redirect()->route('filament.admin.resources.despatches.index');
 
                         } catch (Exception $e) {
                             Notification::make()
-                                ->title('Error Procesando XML')
+                                ->title('Error Procesando XMLs')
                                 ->body($e->getMessage())
                                 ->danger()
                                 ->persistent()
                                 ->send();
                         }
                     })
-                    ->modalHeading('Importar Guía desde XML de SUNAT')
-                    ->modalSubmitActionLabel('Importar Guía')
+                    ->modalHeading('Importar Guías desde XML de SUNAT')
+                    ->modalDescription('Puedes importar una o múltiples guías a la vez (máximo 20 archivos)')
+                    ->modalSubmitActionLabel('Importar')
                     ->modalWidth('md')
             ])
             ->bulkActions([

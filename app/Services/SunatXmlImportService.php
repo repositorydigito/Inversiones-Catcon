@@ -13,6 +13,61 @@ use Illuminate\Support\Facades\Log;
 
 class SunatXmlImportService
 {
+    public function importMultipleFromXml(array $xmlFiles): array
+    {
+        set_time_limit(300);
+        
+        $results = [
+            'success' => true,
+            'total' => count($xmlFiles),
+            'imported' => 0,
+            'failed' => 0,
+            'details' => [],
+            'created_entities' => []
+        ];
+
+        foreach ($xmlFiles as $index => $xmlContent) {
+            try {
+                Log::info("Procesando XML " . ($index + 1) . " de " . count($xmlFiles));
+                
+                $result = $this->importFromXml($xmlContent);
+                
+                if ($result['success']) {
+                    $results['imported']++;
+                    $results['details'][] = [
+                        'status' => 'success',
+                        'serie_numero' => $result['despatch']->series . '-' . $result['despatch']->number,
+                        'message' => 'Importado exitosamente'
+                    ];
+                    
+                    if (!empty($result['created_entities'])) {
+                        $results['created_entities'] = array_merge(
+                            $results['created_entities'],
+                            $result['created_entities']
+                        );
+                    }
+                } else {
+                    $results['failed']++;
+                    $results['details'][] = [
+                        'status' => 'error',
+                        'message' => $result['error']
+                    ];
+                }
+                
+            } catch (Exception $e) {
+                $results['failed']++;
+                $results['details'][] = [
+                    'status' => 'error',
+                    'message' => 'Error: ' . $e->getMessage()
+                ];
+            }
+        }
+
+        $results['created_entities'] = array_unique($results['created_entities']);
+        $results['success'] = $results['imported'] > 0;
+
+        return $results;
+    }
     /**
      * Importa una guía de remisión desde XML de SUNAT
      */
