@@ -76,6 +76,7 @@ class Despatch extends Model
         'variable_salary',
         'operations_manager',
         'security',
+        'net_sale',
 
         'sunat_ticket',
         'xml_file_name',
@@ -93,6 +94,7 @@ class Despatch extends Model
         'operations_manager' => 'decimal:2',
         'security' => 'decimal:2',
         'net_weight' => 'decimal:2',
+        'net_sale' => 'decimal:2',
     ];
 
     // Relación con la empresa remitente

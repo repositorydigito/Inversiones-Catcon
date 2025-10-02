@@ -148,29 +148,41 @@ class DespatchObserver
     }
     private function automatizeTravelAllowances(Despatch $despatch): void
     {
-        // Configuración: monto de viáticos por día
-        $dailyTravelAllowance = 30.00;
+        // Obtener el monto de viáticos desde la configuración de ruta
+        $dailyTravelAllowance = 30.00; // Valor por defecto
+        
+        if ($despatch->loading_point && $despatch->departure_location && 
+            $despatch->arrival_location && $despatch->unloading_point) {
+            
+            $config = \App\Models\OperationalExpenseConfig::where('departure_point', $despatch->loading_point)
+                                            ->where('departure_location', $despatch->departure_location)
+                                            ->where('arrival_location', $despatch->arrival_location)
+                                            ->where('destination_point', $despatch->unloading_point)
+                                            ->first();
+            
+            if ($config && $config->travel_allowances > 0) {
+                $dailyTravelAllowance = $config->travel_allowances;
+            }
+        }
 
         // Obtener la fecha de emisión
         $emissionDate = Carbon::parse($despatch->emission_date)->format('Y-m-d');
 
-        // Contar cuántas guías tiene este conductor en la misma fecha (excluyendo la actual si es una actualización)
+        // Contar cuántas guías tiene este conductor en la misma fecha
         $existingGuides = Despatch::where('driver_id', $despatch->driver_id)
             ->whereDate('emission_date', $emissionDate)
             ->where('accepted_by_sunat', true)
             ->when($despatch->exists, function ($query) use ($despatch) {
-                // Si es una actualización, excluir la guía actual del conteo
                 return $query->where('id', '!=', $despatch->id);
             })
             ->orderBy('emission_date', 'asc')
             ->orderBy('created_at', 'asc')
             ->get();
 
-        // Si es la primera guía del día (no hay guías existentes), asignar viáticos
+        // Si es la primera guía del día, asignar viáticos
         if ($despatch->accepted_by_sunat && $existingGuides->isEmpty()) {
             $despatch->travel_allowances = $dailyTravelAllowance;
         } else {
-            // Si ya hay guías en el día, no asignar viáticos
             $despatch->travel_allowances = 0;
         }
     }
@@ -181,7 +193,6 @@ class DespatchObserver
     {
         $emissionDate = Carbon::parse($currentDespatch->emission_date)->format('Y-m-d');
 
-        // Obtener todas las guías del conductor en la misma fecha, ordenadas por hora de creación
         $guidesOfTheDay = Despatch::where('driver_id', $currentDespatch->driver_id)
             ->whereDate('emission_date', $emissionDate)
             ->where('accepted_by_sunat', true)
@@ -189,16 +200,28 @@ class DespatchObserver
             ->orderBy('created_at', 'asc')
             ->get();
 
-        // Configuración: monto de viáticos por día
-        $dailyTravelAllowance = 30.00;
-
         foreach ($guidesOfTheDay as $index => $guide) {
+            // Obtener el monto de viáticos desde la configuración de cada guía
+            $dailyTravelAllowance = 30.00;
+            
+            if ($guide->loading_point && $guide->departure_location && 
+                $guide->arrival_location && $guide->unloading_point) {
+                
+                $config = \App\Models\OperationalExpenseConfig::where('departure_point', $guide->loading_point)
+                                                ->where('departure_location', $guide->departure_location)
+                                                ->where('arrival_location', $guide->arrival_location)
+                                                ->where('destination_point', $guide->unloading_point)
+                                                ->first();
+                
+                if ($config && $config->travel_allowances > 0) {
+                    $dailyTravelAllowance = $config->travel_allowances;
+                }
+            }
+
             // Solo la primera guía del día debe tener viáticos
             $newTravelAllowance = ($index === 0) ? $dailyTravelAllowance : 0;
 
-            // Solo actualizar si el valor es diferente para evitar loops
             if ($guide->travel_allowances != $newTravelAllowance) {
-                // Usar updateQuietly para evitar disparar el observer nuevamente
                 $guide->updateQuietly(['travel_allowances' => $newTravelAllowance]);
             }
         }
@@ -210,7 +233,6 @@ class DespatchObserver
     {
         $emissionDate = Carbon::parse($emissionDate)->format('Y-m-d');
 
-        // Obtener todas las guías restantes del conductor en esa fecha
         $remainingGuides = Despatch::where('driver_id', $driverId)
             ->whereDate('emission_date', $emissionDate)
             ->where('accepted_by_sunat', true)
@@ -218,14 +240,27 @@ class DespatchObserver
             ->orderBy('created_at', 'asc')
             ->get();
 
-        // Configuración: monto de viáticos por día
-        $dailyTravelAllowance = 30.00;
-
         foreach ($remainingGuides as $index => $guide) {
+            // Obtener el monto de viáticos desde la configuración de cada guía
+            $dailyTravelAllowance = 30.00;
+            
+            if ($guide->loading_point && $guide->departure_location && 
+                $guide->arrival_location && $guide->unloading_point) {
+                
+                $config = \App\Models\OperationalExpenseConfig::where('departure_point', $guide->loading_point)
+                                                ->where('departure_location', $guide->departure_location)
+                                                ->where('arrival_location', $guide->arrival_location)
+                                                ->where('destination_point', $guide->unloading_point)
+                                                ->first();
+                
+                if ($config && $config->travel_allowances > 0) {
+                    $dailyTravelAllowance = $config->travel_allowances;
+                }
+            }
+
             // Solo la primera guía del día debe tener viáticos
             $newTravelAllowance = ($index === 0) ? $dailyTravelAllowance : 0;
 
-            // Actualizar si es necesario
             if ($guide->travel_allowances != $newTravelAllowance) {
                 $guide->updateQuietly(['travel_allowances' => $newTravelAllowance]);
             }

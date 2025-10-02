@@ -16,6 +16,7 @@ class OperationalExpenseConfig extends Model
         'variable_salary',
         'operations_manager',
         'security',
+        'rate',
     ];
 
     protected $casts = [
@@ -24,6 +25,7 @@ class OperationalExpenseConfig extends Model
         'variable_salary' => 'decimal:2',
         'operations_manager' => 'decimal:2',
         'security' => 'decimal:2',
+        'rate' => 'decimal:2',
     ];
 
     /**

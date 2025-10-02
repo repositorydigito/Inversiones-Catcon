@@ -217,6 +217,17 @@ class OperationalExpenseResource extends Resource
                         return null;
                     })
                     ->toggleable(isToggledHiddenByDefault: true),
+                
+                // 10.1 Venta Neta (Tarifa x Peso Neto)
+                Tables\Columns\TextColumn::make('net_sale')
+                    ->label('Venta Neta')
+                    ->getStateUsing(function (OperationalExpense $record): ?string {
+                        if ($record->despatch && $record->despatch->net_sale) {
+                            return 'S/. ' . number_format($record->despatch->net_sale, 2);
+                        }
+                        return 'S/. 0.00';
+                    })
+                    ->toggleable(isToggledHiddenByDefault: true),
 
                 // 11. Producto
                 Tables\Columns\TextColumn::make('product')
@@ -517,12 +528,26 @@ class OperationalExpenseResource extends Resource
                                             ->prefix('S/.')
                                             ->disabled()
                                             ->dehydrated(),
+                                        Forms\Components\TextInput::make('rate')
+                                            ->label('Tarifa')
+                                            ->prefix('S/.')
+                                            ->disabled()
+                                            ->dehydrated(),
+                                        Forms\Components\TextInput::make('travel_allowances') 
+                                            ->label('Viáticos')
+                                            ->prefix('S/.')
+                                            ->disabled()
+                                            ->dehydrated(),
                                     ])
                                     ->columns(3),
                             ])
                             ->columns(2)
                     ])
                     ->action(function (OperationalExpense $record, array $data): void {
+                        // Calcular venta neta si hay tarifa y peso bruto
+                        if (isset($data['rate']) && $record->despatch->total_gross_weight) {
+                            $data['net_sale'] = $record->despatch->total_gross_weight * $data['rate'];
+                        }
                         $record->despatch->update($data);
                         
                         Notification::make()
@@ -569,16 +594,20 @@ class OperationalExpenseResource extends Resource
             if ($config) {
                 $set('tolls', $config->tolls);
                 $set('loading_expenses', $config->loading_expenses);
+                $set('travel_allowances', $config->travel_allowances);
                 $set('variable_salary', $config->variable_salary);
                 $set('operations_manager', $config->operations_manager);
                 $set('security', $config->security);
+                $set('rate', $config->rate);
             } else {
                 // Si no hay configuración, poner todo en 0
                 $set('tolls', 0);
                 $set('loading_expenses', 0);
+                $set('travel_allowances', 30.00);
                 $set('variable_salary', 0);
                 $set('operations_manager', 0);
                 $set('security', 0);
+                $set('rate', 0);
             }
         }
     }

@@ -69,6 +69,7 @@ class OperationalExpensesExport implements FromQuery, WithHeadings, WithMapping,
             'Punto 4',
             'Peso Bruto',
             'Peso Neto',
+            'Venta Neta',
             'Producto',
             'Peajes',
             'Gastos de Carga',
@@ -123,6 +124,10 @@ class OperationalExpensesExport implements FromQuery, WithHeadings, WithMapping,
             // Peso Neto
             $expense->despatch && $expense->despatch->net_weight ?
                 number_format($expense->despatch->net_weight, 2) . ' ' . $expense->despatch->total_gross_weight_unit_of_measure : '',
+            
+            // Venta Neta
+            $expense->despatch && $expense->despatch->net_sale ?
+                'S/. ' . number_format($expense->despatch->net_sale, 2) : 'S/. 0.00',
 
             // Producto
             $expense->despatch?->product ?? '',
@@ -161,48 +166,7 @@ class OperationalExpensesExport implements FromQuery, WithHeadings, WithMapping,
                 default => $expense->status ?? ''
             },
         ];
-    }
-
-    /* public function styles(Worksheet $sheet)
-    {
-        return [
-            // Estilo para los encabezados
-            1 => [
-                'font' => [
-                    'bold' => true,
-                    'color' => ['rgb' => 'FFFFFF'],
-                ],
-                'fill' => [
-                    'fillType' => Fill::FILL_SOLID,
-                    'startColor' => ['rgb' => '4F81BD'],
-                ],
-                'alignment' => [
-                    'horizontal' => Alignment::HORIZONTAL_CENTER,
-                    'vertical' => Alignment::VERTICAL_CENTER,
-                ],
-                'borders' => [
-                    'allBorders' => [
-                        'borderStyle' => Border::BORDER_THIN,
-                        'color' => ['rgb' => '000000'],
-                    ],
-                ],
-            ],
-
-            // Estilo para todas las celdas
-            'A:V' => [
-                'borders' => [
-                    'allBorders' => [
-                        'borderStyle' => Border::BORDER_THIN,
-                        'color' => ['rgb' => 'CCCCCC'],
-                    ],
-                ],
-                'alignment' => [
-                    'vertical' => Alignment::VERTICAL_CENTER,
-                    'wrapText' => true,
-                ],
-            ],
-        ];
-    } */
+    }    
 
     public function columnWidths(): array
     {
@@ -218,17 +182,18 @@ class OperationalExpensesExport implements FromQuery, WithHeadings, WithMapping,
             'I' => 25, // Punto 4
             'J' => 15, // Peso Bruto
             'K' => 15, // Peso Neto
-            'L' => 20, // Producto
-            'M' => 12, // Peajes
-            'N' => 15, // Gastos de Carga
-            'O' => 12, // Viáticos
-            'P' => 15, // Sueldo Variable
-            'Q' => 18, // Jefe de Operaciones
-            'R' => 12, // Seguridad
-            'S' => 20, // Proveedor
-            'T' => 15, // Monto Total
-            'U' => 30, // Descripción
-            'V' => 12, // Estado
+            'L' => 15, // Venta Neta
+            'M' => 20, // Producto
+            'N' => 12, // Peajes
+            'O' => 15, // Gastos de Carga
+            'P' => 12, // Viáticos
+            'Q' => 15, // Sueldo Variable
+            'R' => 18, // Jefe de Operaciones
+            'S' => 12, // Seguridad
+            'T' => 20, // Proveedor
+            'U' => 15, // Monto Total
+            'V' => 30, // Descripción
+            'W' => 12, // Estado
         ];
     }
 

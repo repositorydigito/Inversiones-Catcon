@@ -61,10 +61,19 @@ class OperationalExpenseSettings extends Page implements HasTable
                     ->label('SEG.')
                     ->money('PEN')
                     ->sortable(),
+                Tables\Columns\TextColumn::make('rate')
+                    ->label('Tarifa')
+                    ->money('PEN')
+                    ->sortable(),
+                Tables\Columns\TextColumn::make('travel_allowances')
+                    ->label('Viáticos')
+                    ->money('PEN')
+                    ->sortable(),
             ])
             ->headerActions([
                 Tables\Actions\CreateAction::make()
                     ->label('Nueva Configuración')
+                    ->modalHeading('Crear Configuración de Gastos')
                     ->form([
                         Forms\Components\Section::make('Información de Ruta')
                             ->schema([
@@ -118,8 +127,23 @@ class OperationalExpenseSettings extends Page implements HasTable
                                     ->prefix('S/.')
                                     ->step(0.01)
                                     ->default(0),
+                                Forms\Components\TextInput::make('rate')
+                                    ->label('Tarifa')
+                                    ->numeric()
+                                    ->prefix('S/.')
+                                    ->step(0.01)
+                                    ->default(0),
                             ])
                             ->columns(3),
+                        Forms\Components\Section::make('Viáticos')
+                            ->schema([
+                                Forms\Components\TextInput::make('travel_allowances')
+                                    ->label('Viáticos')
+                                    ->numeric()
+                                    ->prefix('S/.')
+                                    ->step(0.01)
+                                    ->default(30.00),
+                            ]),
                     ])
                     ->action(function (array $data) {
                         try {
@@ -192,8 +216,23 @@ class OperationalExpenseSettings extends Page implements HasTable
                                     ->prefix('S/.')
                                     ->step(0.01)
                                     ->default(0),
+                                Forms\Components\TextInput::make('rate')
+                                    ->label('Tarifa')
+                                    ->numeric()
+                                    ->prefix('S/.')
+                                    ->step(0.01)
+                                    ->default(0),
                             ])
                             ->columns(3),
+                        Forms\Components\Section::make('Viáticos')
+                            ->schema([
+                                Forms\Components\TextInput::make('travel_allowances')
+                                    ->label('Viáticos')
+                                    ->numeric()
+                                    ->prefix('S/.')
+                                    ->step(0.01)
+                                    ->default(30.00),
+                            ]),
                     ]),
                 Tables\Actions\DeleteAction::make(),
             ])
