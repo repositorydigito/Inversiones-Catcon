@@ -7,15 +7,6 @@ use App\Models\Client;
 use App\Models\Invoice;
 use Carbon\Carbon;
 use Filament\Actions;
-use Filament\Forms\Components\DatePicker;
-use Filament\Forms\Components\Grid;
-use Filament\Forms\Components\Hidden;
-use Filament\Forms\Components\Placeholder;
-use Filament\Forms\Components\Repeater;
-use Filament\Forms\Components\Section;
-use Filament\Forms\Components\Select;
-use Filament\Forms\Components\TextInput;
-use Filament\Forms\Form;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\EditRecord;
 use Illuminate\Support\Facades\DB;
@@ -69,293 +60,6 @@ class EditInvoice extends EditRecord
     }
 
     /**
-     * Sobrescribir el formulario para incluir la lógica de cálculo automático de cuotas
-     */
-    public function form(Form $form): Form
-    {
-        // Obtener el formulario base del Resource
-        $baseForm = parent::form($form);
-        
-        // Modificar solo la sección de cuotas para agregar la lógica que falta en edición
-        return $baseForm->schema([
-
-            ...$this->getInvoiceFormSchema(),
-        ]);
-    }
-
-    /**
-     * Obtiene el esquema del formulario con la lógica de cuotas mejorada para edición
-     */
-    protected function getInvoiceFormSchema(): array
-    {
-        // Usar el schema base del Resource pero con modificaciones específicas para edición
-        $baseSchema = InvoiceResource::form(\Filament\Forms\Form::make())->getSchema();
-        
-        // Buscar y reemplazar la sección de configuración de cuotas
-        return $this->enhanceInstallmentsSection($baseSchema);
-    }
-
-    /**
-     * Mejora la sección de cuotas para incluir cálculo automático en edición
-     */
-    protected function enhanceInstallmentsSection(array $schema): array
-    {
-        foreach ($schema as $index => $component) {
-            // Buscar la sección de Configuración de Cuotas
-            if ($component instanceof Section && 
-                method_exists($component, 'getLabel') && 
-                $component->getLabel() === 'Configuración de Cuotas') {
-                
-                // Reemplazar con versión mejorada
-                $schema[$index] = $this->createEnhancedInstallmentsSection();
-            }
-        }
-        
-        return $schema;
-    }
-
-    /**
-     * Crea la sección mejorada de configuración de cuotas
-     */
-    protected function createEnhancedInstallmentsSection(): Section
-    {
-        return Section::make('Configuración de Cuotas')
-            ->description('Configure las cuotas de pago para facturas a crédito.')
-            ->visible(fn ($get) => $get('is_credit_payment'))
-            ->columns(1)
-            ->schema([
-
-                Select::make('number_of_installments')
-                    ->label('Número de Cuotas')
-                    ->options([
-                        1 => '1 cuota (pago único)',
-                        2 => '2 cuotas',
-                        3 => '3 cuotas',
-                        4 => '4 cuotas',
-                        6 => '6 cuotas',
-                        12 => '12 cuotas',
-                    ])
-                    ->default(fn ($get) => count($get('installments') ?? []) ?: 1)
-                    ->live()
-                    ->afterStateUpdated(function ($state, $set, $get) {
-                        $this->handleInstallmentsCalculation($state, $set, $get);
-                    })
-                    ->helperText('Al cambiar el número de cuotas se auto-calculará la división del monto total')
-                    ->columnSpanFull(),
-                    
-                Repeater::make('installments')
-                    ->label('Cuotas de Pago')
-                    ->relationship('installments') // En EDIT sí podemos usar relationship
-                    ->schema([
-                        Hidden::make('installment_number'),
-                        Hidden::make('order'),
-                        
-                        Grid::make(2)->schema([
-                            TextInput::make('amount')
-                                ->label('Monto')
-                                ->numeric()
-                                ->step(0.01)
-                                ->prefix('S/')
-                                ->required()
-                                ->live()
-                                ->afterStateUpdated(function ($state, $set, $get) {
-                                    // Auto-calcular el número de cuota y orden
-                                    $installments = $get('../../installments') ?? [];
-                                    $currentIndex = 0;
-                                    foreach ($installments as $index => $installment) {
-                                        if ($installment === $get('../')) {
-                                            $currentIndex = $index;
-                                            break;
-                                        }
-                                    }
-                                    $cuotaNumber = str_pad($currentIndex + 1, 3, '0', STR_PAD_LEFT);
-                                    $set('installment_number', 'Cuota' . $cuotaNumber);
-                                    $set('order', $currentIndex + 1);
-                                })
-                                ->helperText('Monto editable - se calculó automáticamente pero puedes ajustarlo')
-                                ->columnSpan(1),
-                                
-                            DatePicker::make('due_date')
-                                ->label('Fecha de Vencimiento')
-                                ->native(false)
-                                ->after('../../emission_date') // CRITICAL: Debe ser POSTERIOR a emission_date
-                                ->required()
-                                ->helperText('Debe ser posterior a la fecha de emisión para cumplir con SUNAT')
-                                ->columnSpan(1),
-                        ])
-                    ])
-                    ->defaultItems(1)
-                    ->minItems(1)
-                    ->maxItems(12)
-                    ->reorderable(false)
-                    ->addActionLabel('Agregar Cuota')
-                    ->deleteAction(
-                        fn (\Filament\Forms\Components\Actions\Action $action) => $action->requiresConfirmation()
-                    )
-                    ->itemLabel(fn (array $state): ?string => 
-                        ($state['installment_number'] ?? 'Nueva cuota') . ': S/ ' . number_format($state['amount'] ?? 0, 2)
-                    ),
-                    
-                Placeholder::make('installments_summary')
-                    ->label('Resumen de Cuotas')
-                    ->content(function ($get) {
-                        return $this->generateInstallmentsSummary($get);
-                    })
-            ]);
-    }
-
-    /**
-     * Maneja el cálculo automático de cuotas cuando cambia el número de cuotas
-     */
-    protected function handleInstallmentsCalculation($state, $set, $get): void
-    {
-        $numberOfInstallments = (int) $state;
-        $total = (float) ($get('total') ?? 0);
-        $emissionDate = $get('emission_date');
-        
-        Log::info('EditInvoice: Calculando cuotas automáticamente', [
-            'numberOfInstallments' => $numberOfInstallments,
-            'total' => $total,
-            'emissionDate' => $emissionDate
-        ]);
-        
-        if ($total <= 0 || !$emissionDate) {
-            Log::warning('EditInvoice: No se puede calcular - datos insuficientes');
-            return;
-        }
-        
-        // Generar cuotas automáticamente
-        $installments = $this->generateAutomaticInstallments(
-            $numberOfInstallments, 
-            $total, 
-            $emissionDate
-        );
-        
-        // Aplicar al formulario
-        $set('installments', $installments);
-        $set('due_date', end($installments)['due_date']);
-        
-        // Notificación al usuario
-        Notification::make()
-            ->title('✅ Cuotas recalculadas automáticamente')
-            ->body("Se generaron {$numberOfInstallments} cuotas de S/ " . 
-                   number_format($installments[0]['amount'], 2))
-            ->success()
-            ->duration(3000)
-            ->send();
-            
-        Log::info('EditInvoice: Cuotas calculadas exitosamente', [
-            'installments_count' => count($installments),
-            'first_amount' => $installments[0]['amount'] ?? 0
-        ]);
-    }
-
-    /**
-     * Genera cuotas automáticamente dividiendo el total entre el número de cuotas
-     */
-    protected function generateAutomaticInstallments(int $count, float $total, string $emissionDate): array
-    {
-        $amountPerInstallment = round($total / $count, 2);
-        $lastInstallmentAmount = $total - ($amountPerInstallment * ($count - 1));
-        $baseDate = Carbon::parse($emissionDate);
-        $installments = [];
-        
-        for ($i = 0; $i < $count; $i++) {
-            $amount = ($i === $count - 1) ? $lastInstallmentAmount : $amountPerInstallment;
-            
-            
-            if ($count === 1) {
-                // Para pago único, usar +7 días (mínimo seguro)
-                $daysToAdd = 7;
-            } else {
-                // Para múltiples cuotas, usar patrón +7, +14, +21, etc.
-                $daysToAdd = ($i + 1) * 7;
-            }
-            
-            $dueDate = $baseDate->copy()->addDays($daysToAdd);
-            
-            $installments[] = [
-                'installment_number' => 'Cuota' . str_pad($i + 1, 3, '0', STR_PAD_LEFT),
-                'amount' => $amount,
-                'due_date' => $dueDate->format('Y-m-d'),
-                'order' => $i + 1,
-            ];
-        }
-        
-        return $installments;
-    }
-
-    /**
-     * Genera el resumen visual de las cuotas
-     */
-    protected function generateInstallmentsSummary($get): string
-    {
-        $installments = $get('installments') ?? [];
-        $invoiceTotal = (float) ($get('total') ?? 0);
-        $emissionDate = $get('emission_date');
-        
-        if (empty($installments) || $invoiceTotal <= 0) {
-            return '⏳ Configure las cuotas para ver el resumen.';
-        }
-        
-        $totalCuotas = 0;
-        $content = "**📋 Cuotas configuradas:**\n";
-        
-        $baseDate = $emissionDate ? Carbon::parse($emissionDate) : Carbon::now();
-        
-        foreach ($installments as $index => $installment) {
-            $amount = (float) ($installment['amount'] ?? 0);
-            $dueDate = $installment['due_date'] ?? null;
-            $totalCuotas += $amount;
-            
-            $dueDateFormatted = $dueDate ? Carbon::parse($dueDate)->format('d/m/Y') : 'Sin fecha';
-            
-            // Validar fecha
-            $dateIcon = '✅';
-            if ($dueDate && $emissionDate) {
-                $dueDateCarbon = Carbon::parse($dueDate);
-                if ($dueDateCarbon->lte($baseDate)) {
-                    $dateIcon = '🚨';
-                }
-            }
-            
-            $content .= "• Cuota " . ($index + 1) . ": S/ " . number_format($amount, 2) . 
-                       " (Vence: {$dueDateFormatted}) {$dateIcon}\n";
-        }
-        
-        $content .= "\n**💰 Total cuotas:** S/ " . number_format($totalCuotas, 2) . "\n";
-        $content .= "**🧾 Total factura:** S/ " . number_format($invoiceTotal, 2) . "\n";
-        
-        $difference = abs($totalCuotas - $invoiceTotal);
-        
-        if ($difference <= 0.01) {
-            $content .= "**✅ Las cuotas coinciden con el total de la factura**\n";
-        } else {
-            $content .= "**⚠️ ADVERTENCIA: Diferencia de S/ " . number_format($difference, 2) . "**\n";
-        }
-        
-        
-        $validDates = true;
-        if ($emissionDate) {
-            foreach ($installments as $installment) {
-                if ($installment['due_date'] && 
-                    Carbon::parse($installment['due_date'])->lte(Carbon::parse($emissionDate))) {
-                    $validDates = false;
-                    break;
-                }
-            }
-        }
-        
-        if ($validDates) {
-            $content .= "**✅ Fechas válidas para SUNAT** (todas posteriores a emisión)";
-        } else {
-            $content .= "**🚨 ERROR: Algunas fechas son anteriores o iguales a emisión (Error SUNAT 3267)**";
-        }
-        
-        return $content;
-    }
-
-    /**
      * Maneja la actualización del registro con validaciones específicas para edición
      */
     protected function handleRecordUpdate(Model $record, array $data): Invoice
@@ -378,12 +82,12 @@ class EditInvoice extends EditRecord
         // Calcular totales finales
         $this->calculateFinalTotals($data);
         
-
+        // Validar cuotas
         $this->validateInstallments($data);
         
         // Actualizar en transacción
         return DB::transaction(function () use ($record, $data) {
-    
+            // Preparar datos de la factura
             $invoiceData = collect($data)->except([
                 'items', 
                 'installments',
@@ -410,7 +114,7 @@ class EditInvoice extends EditRecord
             if (isset($data['installments']) && is_array($data['installments'])) {
                 $record->installments()->delete();
                 foreach ($data['installments'] as $installmentData) {
-            
+                    // Eliminar ID si existe para forzar creación nueva
                     unset($installmentData['id']);
                     $record->installments()->create($installmentData);
                 }
@@ -425,7 +129,7 @@ class EditInvoice extends EditRecord
     }
 
     /**
-     * Métodos helper copiados de CreateInvoice para mantener consistencia
+     * Métodos helper para mantener consistencia con CreateInvoice
      */
     protected function handleClientCreation(array $data): Client
     {
@@ -529,7 +233,7 @@ class EditInvoice extends EditRecord
         foreach ($installments as $index => &$installment) {
             $dueDate = Carbon::parse($installment['due_date']);
             
-
+            // CRITICAL: Fecha debe ser POSTERIOR a emission_date
             if ($dueDate->lte($emissionDate)) {
                 $correctedDate = $emissionDate->copy()->addDays(($index + 1) * 7);
                 $installment['due_date'] = $correctedDate->format('Y-m-d');

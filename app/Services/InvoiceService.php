@@ -29,21 +29,105 @@ class InvoiceService
             // Construir los datos de la factura
             $data = $builder->buildInvoiceData();
             
-            // Enviar a Greenter/Nubefact
-            $response = Greenter::send('invoice', $data);
-            
-            return [
-                'success' => true,
-                'response' => $response,
-            ];
+            // Configurar credenciales de NubeFact OSE temporalmente
+            $originalUser = config('greenter.company.clave_sol.user');
+            $originalPass = config('greenter.company.clave_sol.password');
+
+            config([
+                'greenter.company.clave_sol.user' => config('greenter.company.nubefact_ose.user'),
+                'greenter.company.clave_sol.password' => config('greenter.company.nubefact_ose.password'),
+            ]);
+
+            try {
+                // Enviar a Greenter/Nubefact con credenciales correctas
+                $result = Greenter::send('invoice', $data);
+                
+                Log::info('Respuesta de Greenter recibida:', [
+                    'invoice_id' => $invoice->id,
+                    'has_error' => (bool)$result->error,
+                    'error_message' => $result->error ? $result->error->getMessage() : null,
+                    'has_cdr' => $result->cdrResponse !== null
+                ]);
+                
+                // Procesar respuesta y actualizar factura
+                $this->processNubefactResponse($invoice, $result);
+                
+                return [
+                    'success' => true,
+                    'response' => $result,
+                ];
+                
+            } finally {
+                // Restaurar credenciales originales
+                config([
+                    'greenter.company.clave_sol.user' => $originalUser,
+                    'greenter.company.clave_sol.password' => $originalPass,
+                ]);
+            }
             
         } catch (\Exception $e) {
             Log::error('Error enviando factura a Nubefact:', [
                 'invoice_id' => $invoice->id,
                 'error' => $e->getMessage()
             ]);
+            
+            // Actualizar factura como rechazada
+            $invoice->update([
+                'sunat_accepted' => false,
+                'sunat_description' => 'Error: ' . $e->getMessage(),
+            ]);
+            
             throw $e;
         }
+    }
+    
+    /**
+     * Procesa la respuesta de Nubefact y actualiza la factura
+     */
+    protected function processNubefactResponse(Invoice $invoice, $result): void
+    {
+        $updateData = [];
+        
+        // Si hay error
+        if ($result->error) {
+            $updateData['sunat_accepted'] = false;
+            $updateData['sunat_description'] = 'Error: ' . $result->error->getMessage();
+            if (method_exists($result->error, 'getCode')) {
+                $updateData['sunat_response_code'] = $result->error->getCode();
+            }
+        }
+        // Si hay respuesta CDR exitosa
+        elseif ($result->cdrResponse) {
+            $cdr = $result->cdrResponse;
+            $updateData['sunat_accepted'] = true;
+            $updateData['sunat_response_code'] = $cdr->code;
+            $updateData['sunat_description'] = $cdr->description;
+            
+            // Notas adicionales si existen
+            if (property_exists($cdr, 'notes') && is_array($cdr->notes) && count($cdr->notes) > 0) {
+                $updateData['sunat_notes'] = implode(' | ', $cdr->notes);
+            }
+            
+            // CDR en base64 (Constancia de Recepción)
+            if (property_exists($result, 'cdrZip') && $result->cdrZip) {
+                $updateData['cdr_zip_base64'] = base64_encode($result->cdrZip);
+            }
+        }
+        // Sin error pero sin CDR (estado pendiente)
+        else {
+            $updateData['sunat_accepted'] = null;
+            $updateData['sunat_description'] = 'Enviado a Nubefact - Esperando respuesta de SUNAT';
+        }
+        
+        // Actualizar la factura
+        $invoice->update($updateData);
+        
+        Log::info('Factura actualizada con respuesta de Nubefact:', [
+            'invoice_id' => $invoice->id,
+            'sunat_accepted' => $updateData['sunat_accepted'],
+            'response_code' => $updateData['sunat_response_code'] ?? 'N/A',
+            'description' => $updateData['sunat_description'] ?? 'N/A'
+        ]);
     }
     
     /**

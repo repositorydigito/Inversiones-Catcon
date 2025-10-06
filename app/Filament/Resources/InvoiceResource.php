@@ -70,7 +70,35 @@ class InvoiceResource extends Resource
                             })
                             ->searchable()
                             ->preload()
-                            ->live()                            
+                            ->live()
+                            ->afterStateUpdated(function ($state, $set) {
+                                // Si se seleccionó al menos una guía
+                                if (!empty($state) && is_array($state)) {
+                                    // Obtener la primera guía seleccionada
+                                    $firstDespatchId = $state[0];
+                                    $despatch = Despatch::with('client')->find($firstDespatchId);
+                                    
+                                    if ($despatch && $despatch->client) {
+                                        $client = $despatch->client;
+                                        
+                                        // Llenar automáticamente los datos del cliente
+                                        $set('client_id', $client->id);
+                                        $set('client_document_type', $client->document_type);
+                                        $set('client_document_number', $client->document_number);
+                                        $set('client_name', $client->name);
+                                        $set('client_address', $client->address);
+                                        $set('client_email', $client->email);                                                                                
+                                    }
+                                } else {
+                                    // Si se deseleccionan todas las guías, limpiar los datos del cliente
+                                    $set('client_id', null);
+                                    $set('client_document_type', null);
+                                    $set('client_document_number', null);
+                                    $set('client_name', null);
+                                    $set('client_address', null);
+                                    $set('client_email', null);
+                                }
+                            })                            
                             ->helperText('Selecciona una o más guías de remisión. ✅ = Aceptada por SUNAT, ❌ = Rechazada, ⏳ = Pendiente')
                             ->columnSpanFull(),                       
                     ])
@@ -201,10 +229,10 @@ class InvoiceResource extends Resource
                             ->step(0.01)
                             ->default(0.00)
                             ->columnSpan(1),
-                        Toggle::make('detraction')
+                        /* Toggle::make('detraction')
                             ->label('¿Aplica Detracción?')
                             ->default(false)
-                            ->columnSpan(1),
+                            ->columnSpan(1), */
                         TextInput::make('observations')
                             ->label('Observaciones')
                             ->maxLength(255)

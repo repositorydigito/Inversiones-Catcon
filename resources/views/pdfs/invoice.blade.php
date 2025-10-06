@@ -84,11 +84,11 @@
         .items-table th {
             background-color: #000;
             color: #fff;
-            font-size: 9px;
+            font-size: 12px;
         }
         
         .items-table td {
-            font-size: 9px;
+            font-size: 12px;
             text-align: center;
         }
         
@@ -135,7 +135,7 @@
         .footer {
             margin-top: 20px;
             text-align: center;
-            font-size: 9px;
+            font-size: 12px;
             border-top: 1px solid #000;
             padding-top: 10px;
         }
@@ -297,7 +297,7 @@
 
     <!-- Installments -->
     @if($invoice->installments && $invoice->installments->count() > 0)
-    <div class="section-title">CRONOGRAMA DE PAGOS</div>
+    <div class="section-title">INFORMACIÓN DE CRÉDITO</div>
     <table>
         <thead>
             <tr>
@@ -311,7 +311,7 @@
             <tr>
                 <td class="text-center">{{ $installment->installment_number }}</td>
                 <td class="text-center">{{ \Carbon\Carbon::parse($installment->due_date)->format('d/m/Y') }}</td>
-                <td class="text-right">{{ $currency_symbol }} {{ number_format($installment->amount, 2) }}</td>
+                <td class="text-center">{{ $currency_symbol }} {{ number_format($installment->amount, 2) }}</td>
             </tr>
             @endforeach
         </tbody>
@@ -334,9 +334,9 @@
             @foreach($invoice->despatches as $despatch)
             <tr>
                 <td class="text-center">
-                    @if($despatch->document_type === '7')
+                    @if($despatch->document_type === 7)
                         GRE REMITENTE
-                    @elseif($despatch->document_type === '8')
+                    @elseif($despatch->document_type === 8)
                         GRE TRANSPORTISTA
                     @else
                         GRE TIPO {{ $despatch->document_type }}
@@ -344,7 +344,7 @@
                 </td>
                 <td class="text-center">{{ $despatch->series }}-{{ str_pad($despatch->number, 8, '0', STR_PAD_LEFT) }}</td>
                 <td class="text-center">{{ $despatch->emission_date->format('d/m/Y') }}</td>
-                <td>{{ $despatch->client->name ?? 'N/A' }}</td>
+                <td class="text-center">{{ $despatch->client->name ?? 'N/A' }}</td>
             </tr>
             @endforeach
         </tbody>
@@ -354,7 +354,7 @@
     <!-- Footer -->
     <div class="footer">
         <strong>COMPROBANTE ELECTRÓNICO - {{ $company['name'] }}</strong><br>
-        Fecha: {{ $generated_at->format('d/m/Y H:i:s') }} 
+        Fecha: {{ $despatch->emission_date->format('d/m/Y') }} 
         {{-- | 
         Estado SUNAT: 
         @if($invoice->sunat_accepted === true)
@@ -369,7 +369,7 @@
         <br><br>Código Hash: {{ $invoice->hash_code }}
         @endif --}}
         
-        <br><small>Resolución SUNAT N° 097-2012/SUNAT</small>
+        {{-- <br><small>Resolución SUNAT N° 097-2012/SUNAT</small> --}}
     </div>
 </body>
 </html>

@@ -30,30 +30,12 @@ return [
             'client_id' => env('GREENTER_CLIENT_ID', 'test-85e5b0ae-255c-4891-a595-0b98c65c9854'),
             'client_secret' => env('GREENTER_CLIENT_SECRET', 'test-Hty/M6QshYvPgItX2P0+Kw=='),
         ],
-    ],
 
-    /* 'endpoints' => [
-        'fe' => [
-            'beta' => SunatEndpoints::FE_BETA,
-            'prod' => SunatEndpoints::FE_PRODUCCION,
+        'nubefact_ose' => [
+            'user' => env('NUBEFACT_OSE_USER'),
+            'password' => env('NUBEFACT_OSE_PASS'),
         ],
-        'retencion' => [
-            'beta' => SunatEndpoints::RETENCION_BETA,
-            'prod' => SunatEndpoints::RETENCION_PRODUCCION,
-        ],
-        'api' => [
-            'beta' => [
-                'auth' => 'https://gre-test.nubefact.com/v1',
-                'cpe' => 'https://gre-test.nubefact.com/v1',
-            ],
-            'prod' => [
-                'auth' => 'https://api-seguridad.sunat.gob.pe/v1',
-                'cpe' => 'https://api-cpe.sunat.gob.pe/v1',
-            ],
-        ],
-    ], */
-
-
+    ],    
 
     'endpoints' => [
         'fe' => [

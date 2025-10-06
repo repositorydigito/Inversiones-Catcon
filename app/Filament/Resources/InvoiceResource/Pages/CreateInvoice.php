@@ -363,28 +363,33 @@ class CreateInvoice extends CreateRecord
             ]);
 
             $invoiceService = new InvoiceService();
-
+            
             // Enviar a Nubefact usando Laravel Greenter
             $result = $invoiceService->sendToNubefact($this->record);
 
-            Log::info('Resultado del envío a Nubefact:', $result);
+            // La factura ya fue actualizada por processNubefactResponse()
+            Log::info('Resultado del envío a Nubefact:', [
+                'invoice_id' => $this->record->id,
+                'success' => $result['success'],
+                'sunat_accepted' => $result['sunat_accepted'] ?? null,
+                'sunat_response_code' => $result['sunat_response_code'] ?? null
+            ]);
+
+            // Recargar el registro para obtener los datos actualizados
+            $this->record->refresh();
 
             if ($result['success']) {
-                Log::info('Factura enviada exitosamente a Nubefact OSE', [
-                    'invoice_id' => $this->record->id,
-                    'sunat_accepted' => $result['sunat_accepted'] ?? null,
-                    'sunat_response_code' => $result['sunat_response_code'] ?? null
-                ]);
-            } else {
-                Log::error('Error en el envío a Nubefact OSE:', [
-                    'invoice_id' => $this->record->id,
-                    'error' => $result['error'] ?? 'Error desconocido'
-                ]);
-
                 Notification::make()
-                    ->title('Error al enviar a Nubefact')
-                    ->body($result['error'] ?? 'Error desconocido al procesar la factura')
-                    ->danger()
+                    ->title('✅ Factura enviada exitosamente')
+                    ->body("Factura {$this->record->series}-{$this->record->number} aceptada por SUNAT/Nubefact")
+                    ->success()
+                    ->duration(5000)
+                    ->send();
+            } else {
+                Notification::make()
+                    ->title('⚠️ Factura enviada pero con observaciones')
+                    ->body($result['sunat_description'] ?? 'Verificar respuesta de SUNAT')
+                    ->warning()
                     ->persistent()
                     ->send();
             }
@@ -398,17 +403,11 @@ class CreateInvoice extends CreateRecord
             ]);
 
             Notification::make()
-                ->title('Error crítico al enviar a Nubefact')
+                ->title('❌ Error crítico al enviar a Nubefact')
                 ->body('Excepción: ' . $e->getMessage())
                 ->danger()
                 ->persistent()
                 ->send();
-
-            // Marcar como error en la factura
-            $this->record->update([
-                'sunat_accepted' => false,
-                'sunat_description' => 'Error del sistema: ' . $e->getMessage(),
-            ]);
         }
     }
 
