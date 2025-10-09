@@ -63,13 +63,12 @@ class OperationalExpensesExport implements FromQuery, WithHeadings, WithMapping,
             'Fecha',
             'Categoría Gasto',
             'Guía/Doc',
-            'Punto de Partida',
-            'Punto de Llegada',
             'Punto 1',
+            'Punto de Partida',
+            'Punto de Llegada',            
             'Punto 4',
             'Peso Bruto',
             'Peso Neto',
-            'Venta Neta',
             'Producto',
             'Peajes',
             'Gastos de Carga',
@@ -105,15 +104,15 @@ class OperationalExpensesExport implements FromQuery, WithHeadings, WithMapping,
                 $expense->despatch->series . '-' . $expense->despatch->number :
                 ($expense->document_number ?? ''),
 
-            // Punto de Partida
-            $expense->despatch?->departure_address ?? '',
-
-            // Punto de Llegada
-            $expense->despatch?->arrival_address ?? '',
-
             // Punto 1 (Carga)
             $expense->despatch?->loading_point ?? '',
 
+            // Punto de Partida
+            $expense->despatch?->departure_location ?? '',
+
+            // Punto de Llegada
+            $expense->despatch?->arrival_location ?? '',
+            
             // Punto 4 (Descarga)
             $expense->despatch?->unloading_point ?? '',
 
@@ -123,11 +122,7 @@ class OperationalExpensesExport implements FromQuery, WithHeadings, WithMapping,
 
             // Peso Neto
             $expense->despatch && $expense->despatch->net_weight ?
-                number_format($expense->despatch->net_weight, 2) . ' ' . $expense->despatch->total_gross_weight_unit_of_measure : '',
-            
-            // Venta Neta
-            $expense->despatch && $expense->despatch->net_sale ?
-                'S/. ' . number_format($expense->despatch->net_sale, 2) : 'S/. 0.00',
+                number_format($expense->despatch->net_weight, 2) . ' ' . $expense->despatch->total_gross_weight_unit_of_measure : '',           
 
             // Producto
             $expense->despatch?->product ?? '',
@@ -176,24 +171,23 @@ class OperationalExpensesExport implements FromQuery, WithHeadings, WithMapping,
             'C' => 12, // Fecha
             'D' => 15, // Categoría Gasto
             'E' => 15, // Guía/Doc
-            'F' => 30, // Punto de Partida
-            'G' => 30, // Punto de Llegada
-            'H' => 25, // Punto 1
+            'F' => 25, // Punto 1
+            'G' => 30, // Punto de Partida
+            'H' => 30, // Punto de Llegada
             'I' => 25, // Punto 4
             'J' => 15, // Peso Bruto
             'K' => 15, // Peso Neto
-            'L' => 15, // Venta Neta
-            'M' => 20, // Producto
-            'N' => 12, // Peajes
-            'O' => 15, // Gastos de Carga
-            'P' => 12, // Viáticos
-            'Q' => 15, // Sueldo Variable
-            'R' => 18, // Jefe de Operaciones
-            'S' => 12, // Seguridad
-            'T' => 20, // Proveedor
-            'U' => 15, // Monto Total
-            'V' => 30, // Descripción
-            'W' => 12, // Estado
+            'L' => 20, // Producto
+            'M' => 12, // Peajes
+            'N' => 15, // Gastos de Carga
+            'O' => 12, // Viáticos
+            'P' => 15, // Sueldo Variable
+            'Q' => 18, // Jefe de Operaciones
+            'R' => 12, // Seguridad
+            'S' => 20, // Proveedor
+            'T' => 15, // Monto Total
+            'U' => 30, // Descripción
+            'V' => 12, // Estado
         ];
     }
 

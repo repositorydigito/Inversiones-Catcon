@@ -10,6 +10,7 @@ use App\Models\Vehicle;
 use App\Models\ExpenseType;
 use App\Models\Client;
 use App\Exports\OperationalExpensesExport;
+use App\Exports\ProductionExport;
 use App\Models\OperationalExpenseConfig;
 use Filament\Forms;
 use Filament\Forms\Form;
@@ -23,7 +24,8 @@ use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\Filter;
 use Filament\Forms\Components\FileUpload;
 use Filament\Tables\Columns\ImageColumn;
-use Filament\Notifications\Notification; 
+use Filament\Notifications\Notification;
+use Illuminate\Support\Facades\DB;
 use Maatwebsite\Excel\Facades\Excel;
 
 class OperationalExpenseResource extends Resource
@@ -141,7 +143,12 @@ class OperationalExpenseResource extends Resource
                         }
                         return $record->document_number ?? '';
                     })
-                    ->searchable(['document_number'])
+                    ->searchable(query: function (Builder $query, string $search): Builder {
+                        return $query->where('document_number', 'like', "%{$search}%")
+                            ->orWhereHas('despatch', function ($query) use ($search) {
+                                $query->where(DB::raw("CONCAT(series, '-', number)"), 'like', "%{$search}%");
+                            });
+                    })
                     ->sortable(false),
                 
                 // 7. Punto de Carga - Punto 1
@@ -390,10 +397,66 @@ class OperationalExpenseResource extends Resource
                             );
                     }),
             ])
-            // ← AGREGAR AQUÍ EL BOTÓN DE EXPORTACIÓN
             ->headerActions([
+                Tables\Actions\Action::make('exportProduction')
+                    ->label('Exportar Producción')
+                    ->icon('heroicon-o-document-arrow-down')
+                    ->color('success')
+                    ->form([
+                        Forms\Components\Section::make('Filtros para Exportación')
+                            ->description('Selecciona los filtros que deseas aplicar a la exportación')
+                            ->schema([
+                                Forms\Components\Select::make('driver_id')
+                                    ->label('Conductor')
+                                    ->options(Driver::all()->pluck('full_name', 'id'))
+                                    ->placeholder('Todos los conductores')
+                                    ->searchable(),
+
+                                Forms\Components\Select::make('vehicle_id')
+                                    ->label('Vehículo/Unidad')
+                                    ->options(Vehicle::all()->pluck('plate_number', 'id'))
+                                    ->placeholder('Todos los vehículos')
+                                    ->searchable(),
+
+                                Forms\Components\DatePicker::make('date_from')
+                                    ->label('Fecha desde')
+                                    ->placeholder('Seleccionar fecha inicial'),
+
+                                Forms\Components\DatePicker::make('date_to')
+                                    ->label('Fecha hasta')
+                                    ->placeholder('Seleccionar fecha final'),
+                            ])
+                            ->columns(2),
+                    ])
+                    ->action(function (array $data) {
+                        try {
+                            $filters = array_filter([
+                                'driver_id' => $data['driver_id'] ?? null,
+                                'vehicle_id' => $data['vehicle_id'] ?? null,
+                                'date_from' => $data['date_from'] ?? null,
+                                'date_to' => $data['date_to'] ?? null,
+                            ]);
+
+                            $fileName = 'produccion-' . now()->format('Y-m-d-H-i-s') . '.xlsx';
+
+                            return Excel::download(new ProductionExport($filters), $fileName);
+
+                        } catch (\Exception $e) {
+                            Notification::make()
+                                ->title('Error en la exportación')
+                                ->body('No se pudo generar el archivo Excel: ' . $e->getMessage())
+                                ->danger()
+                                ->send();
+
+                            return null;
+                        }
+                    })
+                    ->modalHeading('Exportar Producción a Excel')
+                    ->modalSubmitActionLabel('Descargar Excel')
+                    ->modalWidth('2xl'),
+
                 Tables\Actions\Action::make('export')
-                    ->label('Exportar a Excel')
+                    ->label('Exportar Gastos Operativos')
                     ->icon('heroicon-o-document-arrow-down')
                     ->color('success')
                     ->form([
@@ -461,6 +524,21 @@ class OperationalExpenseResource extends Resource
                     ->visible(fn(OperationalExpense $record): bool => 
                         $record->despatch && $record->expenseType->name === 'Gastos de Guía'
                     )
+                    ->fillForm(fn (OperationalExpense $record): array => [
+                        'loading_point' => $record->despatch->loading_point,
+                        'departure_location' => $record->despatch->departure_location,
+                        'arrival_location' => $record->despatch->arrival_location,
+                        'unloading_point' => $record->despatch->unloading_point,
+                        'product' => $record->despatch->product,
+                        'gross_sale' => $record->despatch->gross_sale,
+                        'tolls' => $record->despatch->tolls,
+                        'loading_expenses' => $record->despatch->loading_expenses,
+                        'variable_salary' => $record->despatch->variable_salary,
+                        'operations_manager' => $record->despatch->operations_manager,
+                        'security' => $record->despatch->security,
+                        'rate' => $record->despatch->rate,
+                        'travel_allowances' => $record->despatch->travel_allowances,
+                    ])
                     ->form([
                         Forms\Components\Section::make('Información de Ruta')
                             ->description('Complete los 4 puntos de ruta para generar automáticamente los gastos operativos')
@@ -500,6 +578,16 @@ class OperationalExpenseResource extends Resource
                                     ->afterStateUpdated(function ($state, callable $get, callable $set) {
                                         static::autoCompleteFromRouteFields($get, $set);
                                     }),
+                                
+                                Forms\Components\TextInput::make('product')
+                                    ->label('Producto')
+                                    ->maxLength(255),
+
+                                Forms\Components\TextInput::make('gross_sale')
+                                    ->label('Venta Bruta')
+                                    ->numeric()
+                                    ->prefix('S/.')
+                                    ->step(0.01),
 
                                 Forms\Components\Fieldset::make('Gastos Calculados Automáticamente')
                                     ->schema([

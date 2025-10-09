@@ -77,6 +77,8 @@ class Despatch extends Model
         'operations_manager',
         'security',
         'net_sale',
+        'rate',
+        'gross_sale',
 
         'sunat_ticket',
         'xml_file_name',
