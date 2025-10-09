@@ -3,6 +3,8 @@
 use Illuminate\Support\Facades\Route;
 use App\Services\InvoicePdfService;
 use App\Models\Invoice;
+use App\Http\Controllers\VoidInvoiceController;
+use App\Http\Controllers\CreditNoteController;
 
 Route::get('/', function () {
     return redirect('/admin/login');
@@ -29,3 +31,18 @@ Route::get('/test-gre-sunat', [App\Http\Controllers\GreenterTestController::clas
 Route::get('/debug-basico', [App\Http\Controllers\GreenterTestController::class, 'debugBasico']);
 
 Route::get('/test-gre-transportista-sunat', [App\Http\Controllers\GreenterTestController::class, 'testGRETransportistaSunat']);
+
+// Anular factura específica
+Route::get('/anular-factura/{id}', [VoidInvoiceController::class, 'voidInvoice']);
+
+// Consultar estado del ticket de baja
+Route::get('/consultar-ticket-baja/{ticket}', [VoidInvoiceController::class, 'checkTicketStatus']);
+
+// Anular factura manualmente (sin BD local)
+Route::get('/anular-factura-manual', [VoidInvoiceController::class, 'voidInvoiceManual']);
+
+// Crear nota de crédito desde factura en BD
+Route::get('/crear-nota-credito/{invoiceId}', [CreditNoteController::class, 'createFromInvoice']);
+
+// Crear nota de crédito manualmente
+Route::get('/crear-nota-credito-manual', [CreditNoteController::class, 'createManual']);
