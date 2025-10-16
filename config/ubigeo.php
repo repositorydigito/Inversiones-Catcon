@@ -1,10 +1,10 @@
 <?php
 
-// Archivo generado automáticamente el 2025-08-26 17:15:32
+// Archivo generado automáticamente el 2025-10-16 11:54:05
 // Datos de ubigeo de Perú obtenidos desde seeders
 
 return array(
-  'departamentos' =>
+  'departamentos' => 
   array(
     '01' => 'AMAZONAS',
     '02' => 'ÁNCASH',
@@ -32,9 +32,9 @@ return array(
   '24' => 'TUMBES',
   '25' => 'UCAYALI',
   ),
-  'provincias' =>
+  'provincias' => 
   array(
-    '01' =>
+    '01' => 
     array(
       '01' => 'CHACHAPOYAS',
       '02' => 'BAGUA',
@@ -44,7 +44,7 @@ return array(
       '06' => 'RODRíGUEZ DE MENDOZA',
       '07' => 'UTCUBAMBA',
     ),
-    '02' =>
+    '02' => 
     array(
       '01' => 'HUARAZ',
       '02' => 'AIJA',
@@ -67,7 +67,7 @@ return array(
   '19' => 'SIHUAS',
   '20' => 'YUNGAY',
     ),
-    '03' =>
+    '03' => 
     array(
       '01' => 'ABANCAY',
       '02' => 'ANDAHUAYLAS',
@@ -77,7 +77,7 @@ return array(
       '06' => 'CHINCHEROS',
       '07' => 'GRAU',
     ),
-    '04' =>
+    '04' => 
     array(
       '01' => 'AREQUIPA',
       '02' => 'CAMANá',
@@ -88,7 +88,7 @@ return array(
       '07' => 'ISLAY',
       '08' => 'LA UNIòN',
     ),
-    '05' =>
+    '05' => 
     array(
       '01' => 'HUAMANGA',
       '02' => 'CANGALLO',
@@ -102,7 +102,7 @@ return array(
   '10' => 'VíCTOR FAJARDO',
   '11' => 'VILCAS HUAMáN',
     ),
-    '06' =>
+    '06' => 
     array(
       '01' => 'CAJAMARCA',
       '02' => 'CAJABAMBA',
@@ -118,11 +118,11 @@ return array(
   '12' => 'SAN PABLO',
   '13' => 'SANTA CRUZ',
     ),
-    '07' =>
+    '07' => 
     array(
       '01' => 'PROV. CONST. DEL CALLAO',
     ),
-    '08' =>
+    '08' => 
     array(
       '01' => 'CUSCO',
       '02' => 'ACOMAYO',
@@ -138,7 +138,7 @@ return array(
   '12' => 'QUISPICANCHI',
   '13' => 'URUBAMBA',
     ),
-    '09' =>
+    '09' => 
     array(
       '01' => 'HUANCAVELICA',
       '02' => 'ACOBAMBA',
@@ -148,7 +148,7 @@ return array(
       '06' => 'HUAYTARá',
       '07' => 'TAYACAJA',
     ),
-  '10' =>
+  '10' => 
     array(
       '01' => 'HUáNUCO',
       '02' => 'AMBO',
@@ -162,7 +162,7 @@ return array(
   '10' => 'LAURICOCHA ',
   '11' => 'YAROWILCA ',
     ),
-  '11' =>
+  '11' => 
     array(
       '01' => 'ICA ',
       '02' => 'CHINCHA ',
@@ -170,7 +170,7 @@ return array(
       '04' => 'PALPA ',
       '05' => 'PISCO ',
     ),
-  '12' =>
+  '12' => 
     array(
       '01' => 'HUANCAYO ',
       '02' => 'CONCEPCIóN ',
@@ -182,7 +182,7 @@ return array(
       '08' => 'YAULI ',
       '09' => 'CHUPACA ',
     ),
-  '13' =>
+  '13' => 
     array(
       '01' => 'TRUJILLO ',
       '02' => 'ASCOPE ',
@@ -197,13 +197,13 @@ return array(
   '11' => 'GRAN CHIMú ',
   '12' => 'VIRú ',
     ),
-  '14' =>
+  '14' => 
     array(
       '01' => 'CHICLAYO ',
       '02' => 'FERREñAFE ',
       '03' => 'LAMBAYEQUE ',
     ),
-  '15' =>
+  '15' => 
     array(
       '01' => 'LIMA ',
       '02' => 'BARRANCA ',
@@ -216,7 +216,7 @@ return array(
       '09' => 'OYóN ',
   '10' => 'YAUYOS ',
     ),
-  '16' =>
+  '16' => 
     array(
       '01' => 'MAYNAS ',
       '02' => 'ALTO AMAZONAS ',
@@ -227,25 +227,25 @@ return array(
       '07' => 'DATEM DEL MARAñóN ',
       '08' => 'PUTUMAYO',
     ),
-  '17' =>
+  '17' => 
     array(
       '01' => 'TAMBOPATA ',
       '02' => 'MANU ',
       '03' => 'TAHUAMANU ',
     ),
-  '18' =>
+  '18' => 
     array(
       '01' => 'MARISCAL NIETO ',
       '02' => 'GENERAL SáNCHEZ CERRO ',
       '03' => 'ILO ',
     ),
-  '19' =>
+  '19' => 
     array(
       '01' => 'PASCO ',
       '02' => 'DANIEL ALCIDES CARRIóN ',
       '03' => 'OXAPAMPA ',
     ),
-  '20' =>
+  '20' => 
     array(
       '01' => 'PIURA ',
       '02' => 'AYABACA ',
@@ -256,7 +256,7 @@ return array(
       '07' => 'TALARA ',
       '08' => 'SECHURA ',
     ),
-  '21' =>
+  '21' => 
     array(
       '01' => 'PUNO ',
       '02' => 'AZáNGARO ',
@@ -272,7 +272,7 @@ return array(
   '12' => 'SANDIA ',
   '13' => 'YUNGUYO ',
     ),
-  '22' =>
+  '22' => 
     array(
       '01' => 'MOYOBAMBA ',
       '02' => 'BELLAVISTA ',
@@ -285,20 +285,20 @@ return array(
       '09' => 'SAN MARTíN ',
   '10' => 'TOCACHE ',
     ),
-  '23' =>
+  '23' => 
     array(
       '01' => 'TACNA ',
       '02' => 'CANDARAVE ',
       '03' => 'JORGE BASADRE ',
       '04' => 'TARATA ',
     ),
-  '24' =>
+  '24' => 
     array(
       '01' => 'TUMBES ',
       '02' => 'CONTRALMIRANTE VILLAR ',
       '03' => 'ZARUMILLA ',
     ),
-  '25' =>
+  '25' => 
     array(
       '01' => 'CORONEL PORTILLO ',
       '02' => 'ATALAYA ',
@@ -306,9 +306,9 @@ return array(
       '04' => 'PURúS',
     ),
   ),
-  'distritos' =>
+  'distritos' => 
   array(
-    '0101' =>
+    '0101' => 
     array(
       '01' => 'CHACHAPOYAS',
       '02' => 'ASUNCIóN',
@@ -332,7 +332,7 @@ return array(
   '20' => 'SOLOCO',
   '21' => 'SONCHE',
     ),
-    '0102' =>
+    '0102' => 
     array(
       '01' => 'BAGUA',
       '02' => 'ARAMANGO',
@@ -341,7 +341,7 @@ return array(
       '05' => 'IMAZA',
       '06' => 'LA PECA',
     ),
-    '0103' =>
+    '0103' => 
     array(
       '01' => 'JUMBILLA',
       '02' => 'CHISQUILLA',
@@ -356,13 +356,13 @@ return array(
   '11' => 'VALERA',
   '12' => 'YAMBRASBAMBA',
     ),
-    '0104' =>
+    '0104' => 
     array(
       '01' => 'NIEVA',
       '02' => 'EL CENEPA',
       '03' => 'RíO SANTIAGO',
     ),
-    '0105' =>
+    '0105' => 
     array(
       '01' => 'LAMUD',
       '02' => 'CAMPORREDONDO',
@@ -388,7 +388,7 @@ return array(
   '22' => 'TINGO',
   '23' => 'TRITA',
     ),
-    '0106' =>
+    '0106' => 
     array(
       '01' => 'SAN NICOLáS',
       '02' => 'CHIRIMOTO',
@@ -403,7 +403,7 @@ return array(
   '11' => 'TOTORA',
   '12' => 'VISTA ALEGRE',
     ),
-    '0107' =>
+    '0107' => 
     array(
       '01' => 'BAGUA GRANDE',
       '02' => 'CAJARURO',
@@ -413,7 +413,7 @@ return array(
       '06' => 'LONYA GRANDE',
       '07' => 'YAMON',
     ),
-    '0201' =>
+    '0201' => 
     array(
       '01' => 'HUARAZ',
       '02' => 'COCHABAMBA',
@@ -428,7 +428,7 @@ return array(
   '11' => 'PIRA',
   '12' => 'TARICA',
     ),
-    '0202' =>
+    '0202' => 
     array(
       '01' => 'AIJA',
       '02' => 'CORIS',
@@ -436,7 +436,7 @@ return array(
       '04' => 'LA MERCED',
       '05' => 'SUCCHA',
     ),
-    '0203' =>
+    '0203' => 
     array(
       '01' => 'LLAMELLIN',
       '02' => 'ACZO',
@@ -445,12 +445,12 @@ return array(
       '05' => 'MIRGAS',
       '06' => 'SAN JUAN DE RONTOY',
     ),
-    '0204' =>
+    '0204' => 
     array(
       '01' => 'CHACAS',
       '02' => 'ACOCHACA',
     ),
-    '0205' =>
+    '0205' => 
     array(
       '01' => 'CHIQUIAN',
       '02' => 'ABELARDO PARDO LEZAMETA',
@@ -468,7 +468,7 @@ return array(
   '14' => 'SAN MIGUEL DE CORPANQUI',
   '15' => 'TICLLOS',
     ),
-    '0206' =>
+    '0206' => 
     array(
       '01' => 'CARHUAZ',
       '02' => 'ACOPAMPA',
@@ -482,20 +482,20 @@ return array(
   '10' => 'TINCO',
   '11' => 'YUNGAR',
     ),
-    '0207' =>
+    '0207' => 
     array(
       '01' => 'SAN LUIS',
       '02' => 'SAN NICOLáS',
       '03' => 'YAUYA',
     ),
-    '0208' =>
+    '0208' => 
     array(
       '01' => 'CASMA',
       '02' => 'BUENA VISTA ALTA',
       '03' => 'COMANDANTE NOEL',
       '04' => 'YAUTAN',
     ),
-    '0209' =>
+    '0209' => 
     array(
       '01' => 'CORONGO',
       '02' => 'ACO',
@@ -505,7 +505,7 @@ return array(
       '06' => 'YANAC',
       '07' => 'YUPAN',
     ),
-    '0210' =>
+    '0210' => 
     array(
       '01' => 'HUARI',
       '02' => 'ANRA',
@@ -524,7 +524,7 @@ return array(
   '15' => 'SAN PEDRO DE CHANA',
   '16' => 'UCO',
     ),
-    '0211' =>
+    '0211' => 
     array(
       '01' => 'HUARMEY',
       '02' => 'COCHAPETI',
@@ -532,7 +532,7 @@ return array(
       '04' => 'HUAYAN',
       '05' => 'MALVAS',
     ),
-    '0212' =>
+    '0212' => 
     array(
       '01' => 'CARAZ',
       '02' => 'HUALLANCA',
@@ -545,7 +545,7 @@ return array(
       '09' => 'SANTO TORIBIO',
   '10' => 'YURACMARCA',
     ),
-    '0213' =>
+    '0213' => 
     array(
       '01' => 'PISCOBAMBA',
       '02' => 'CASCA',
@@ -556,7 +556,7 @@ return array(
       '07' => 'LUCMA',
       '08' => 'MUSGA',
     ),
-    '0214' =>
+    '0214' => 
     array(
       '01' => 'OCROS',
       '02' => 'ACAS',
@@ -569,7 +569,7 @@ return array(
       '09' => 'SAN PEDRO',
   '10' => 'SANTIAGO DE CHILCAS',
     ),
-    '0215' =>
+    '0215' => 
     array(
       '01' => 'CABANA',
       '02' => 'BOLOGNESI',
@@ -583,14 +583,14 @@ return array(
   '10' => 'SANTA ROSA',
   '11' => 'TAUCA',
     ),
-    '0216' =>
+    '0216' => 
     array(
       '01' => 'POMABAMBA',
       '02' => 'HUAYLLAN',
       '03' => 'PAROBAMBA',
       '04' => 'QUINUABAMBA',
     ),
-    '0217' =>
+    '0217' => 
     array(
       '01' => 'RECUAY',
       '02' => 'CATAC',
@@ -603,7 +603,7 @@ return array(
       '09' => 'TAPACOCHA',
   '10' => 'TICAPAMPA',
     ),
-    '0218' =>
+    '0218' => 
     array(
       '01' => 'CHIMBOTE',
       '02' => 'CáCERES DEL PERú',
@@ -615,7 +615,7 @@ return array(
       '08' => 'SANTA',
       '09' => 'NUEVO CHIMBOTE',
     ),
-    '0219' =>
+    '0219' => 
     array(
       '01' => 'SIHUAS',
       '02' => 'ACOBAMBA',
@@ -628,7 +628,7 @@ return array(
       '09' => 'SAN JUAN',
   '10' => 'SICSIBAMBA',
     ),
-    '0220' =>
+    '0220' => 
     array(
       '01' => 'YUNGAY',
       '02' => 'CASCAPARA',
@@ -639,7 +639,7 @@ return array(
       '07' => 'SHUPLUY',
       '08' => 'YANAMA',
     ),
-    '0301' =>
+    '0301' => 
     array(
       '01' => 'ABANCAY',
       '02' => 'CHACOCHE',
@@ -651,7 +651,7 @@ return array(
       '08' => 'SAN PEDRO DE CACHORA',
       '09' => 'TAMBURCO',
     ),
-    '0302' =>
+    '0302' => 
     array(
       '01' => 'ANDAHUAYLAS',
       '02' => 'ANDARAPA',
@@ -674,7 +674,7 @@ return array(
   '19' => 'KAQUIABAMBA',
   '20' => 'JOSé MARíA ARGUEDAS',
     ),
-    '0303' =>
+    '0303' => 
     array(
       '01' => 'ANTABAMBA',
       '02' => 'EL ORO',
@@ -684,7 +684,7 @@ return array(
       '06' => 'PACHACONAS',
       '07' => 'SABAINO',
     ),
-    '0304' =>
+    '0304' => 
     array(
       '01' => 'CHALHUANCA',
       '02' => 'CAPAYA',
@@ -704,7 +704,7 @@ return array(
   '16' => 'TORAYA',
   '17' => 'YANACA',
     ),
-    '0305' =>
+    '0305' => 
     array(
       '01' => 'TAMBOBAMBA',
       '02' => 'COTABAMBAS',
@@ -713,7 +713,7 @@ return array(
       '05' => 'MARA',
       '06' => 'CHALLHUAHUACHO',
     ),
-    '0306' =>
+    '0306' => 
     array(
       '01' => 'CHINCHEROS',
       '02' => 'ANCO_HUALLO',
@@ -727,7 +727,7 @@ return array(
   '10' => 'EL PORVENIR',
   '11' => 'LOS CHANKAS',
     ),
-    '0307' =>
+    '0307' => 
     array(
       '01' => 'CHUQUIBAMBILLA',
       '02' => 'CURPAHUASI',
@@ -744,7 +744,7 @@ return array(
   '13' => 'VIRUNDO',
   '14' => 'CURASCO',
     ),
-    '0401' =>
+    '0401' => 
     array(
       '01' => 'AREQUIPA',
       '02' => 'ALTO SELVA ALEGRE',
@@ -776,7 +776,7 @@ return array(
   '28' => 'YURA',
   '29' => 'JOSé LUIS BUSTAMANTE Y RIVERO',
     ),
-    '0402' =>
+    '0402' => 
     array(
       '01' => 'CAMANá',
       '02' => 'JOSé MARíA QUIMPER',
@@ -787,7 +787,7 @@ return array(
       '07' => 'QUILCA',
       '08' => 'SAMUEL PASTOR',
     ),
-    '0403' =>
+    '0403' => 
     array(
       '01' => 'CARAVELí',
       '02' => 'ACARí',
@@ -803,7 +803,7 @@ return array(
   '12' => 'QUICACHA',
   '13' => 'YAUCA',
     ),
-    '0404' =>
+    '0404' => 
     array(
       '01' => 'APLAO',
       '02' => 'ANDAGUA',
@@ -820,7 +820,7 @@ return array(
   '13' => 'URACA',
   '14' => 'VIRACO',
     ),
-    '0405' =>
+    '0405' => 
     array(
       '01' => 'CHIVAY',
       '02' => 'ACHOMA',
@@ -843,7 +843,7 @@ return array(
   '19' => 'YANQUE',
   '20' => 'MAJES',
     ),
-    '0406' =>
+    '0406' => 
     array(
       '01' => 'CHUQUIBAMBA',
       '02' => 'ANDARAY',
@@ -854,7 +854,7 @@ return array(
       '07' => 'SALAMANCA',
       '08' => 'YANAQUIHUA',
     ),
-    '0407' =>
+    '0407' => 
     array(
       '01' => 'MOLLENDO',
       '02' => 'COCACHACRA',
@@ -863,7 +863,7 @@ return array(
       '05' => 'MEJIA',
       '06' => 'PUNTA DE BOMBóN',
     ),
-    '0408' =>
+    '0408' => 
     array(
       '01' => 'COTAHUASI',
       '02' => 'ALCA',
@@ -877,7 +877,7 @@ return array(
   '10' => 'TOMEPAMPA',
   '11' => 'TORO',
     ),
-    '0501' =>
+    '0501' => 
     array(
       '01' => 'AYACUCHO',
       '02' => 'ACOCRO',
@@ -896,7 +896,7 @@ return array(
   '15' => 'JESúS NAZARENO',
   '16' => 'ANDRéS AVELINO CáCERES DORREGARAY',
     ),
-    '0502' =>
+    '0502' => 
     array(
       '01' => 'CANGALLO',
       '02' => 'CHUSCHI',
@@ -905,14 +905,14 @@ return array(
       '05' => 'PARAS',
       '06' => 'TOTOS',
     ),
-    '0503' =>
+    '0503' => 
     array(
       '01' => 'SANCOS',
       '02' => 'CARAPO',
       '03' => 'SACSAMARCA',
       '04' => 'SANTIAGO DE LUCANAMARCA',
     ),
-    '0504' =>
+    '0504' => 
     array(
       '01' => 'HUANTA',
       '02' => 'AYAHUANCO',
@@ -927,7 +927,7 @@ return array(
   '11' => 'PUCACOLPA',
   '12' => 'CHACA',
     ),
-    '0505' =>
+    '0505' => 
     array(
       '01' => 'SAN MIGUEL',
       '02' => 'ANCO',
@@ -941,7 +941,7 @@ return array(
   '10' => 'ANCHIHUAY',
   '11' => 'ORONCCOY',
     ),
-    '0506' =>
+    '0506' => 
     array(
       '01' => 'PUQUIO',
       '02' => 'AUCARA',
@@ -965,7 +965,7 @@ return array(
   '20' => 'SANTA ANA DE HUAYCAHUACHO',
   '21' => 'SANTA LUCIA',
     ),
-    '0507' =>
+    '0507' => 
     array(
       '01' => 'CORACORA',
       '02' => 'CHUMPI',
@@ -976,7 +976,7 @@ return array(
       '07' => 'SAN FRANCISCO DE RAVACAYCO',
       '08' => 'UPAHUACHO',
     ),
-    '0508' =>
+    '0508' => 
     array(
       '01' => 'PAUSA',
       '02' => 'COLTA',
@@ -989,7 +989,7 @@ return array(
       '09' => 'SAN JOSé DE USHUA',
   '10' => 'SARA SARA',
     ),
-    '0509' =>
+    '0509' => 
     array(
       '01' => 'QUEROBAMBA',
       '02' => 'BELéN',
@@ -1003,7 +1003,7 @@ return array(
   '10' => 'SANTIAGO DE PAUCARAY',
   '11' => 'SORAS',
     ),
-    '0510' =>
+    '0510' => 
     array(
       '01' => 'HUANCAPI',
       '02' => 'ALCAMENCA',
@@ -1018,7 +1018,7 @@ return array(
   '11' => 'SARHUA',
   '12' => 'VILCANCHOS',
     ),
-    '0511' =>
+    '0511' => 
     array(
       '01' => 'VILCAS HUAMAN',
       '02' => 'ACCOMARCA',
@@ -1029,7 +1029,7 @@ return array(
       '07' => 'SAURAMA',
       '08' => 'VISCHONGO',
     ),
-    '0601' =>
+    '0601' => 
     array(
       '01' => 'CAJAMARCA',
       '02' => 'ASUNCIóN',
@@ -1044,14 +1044,14 @@ return array(
   '11' => 'NAMORA',
   '12' => 'SAN JUAN',
     ),
-    '0602' =>
+    '0602' => 
     array(
       '01' => 'CAJABAMBA',
       '02' => 'CACHACHI',
       '03' => 'CONDEBAMBA',
       '04' => 'SITACOCHA',
     ),
-    '0603' =>
+    '0603' => 
     array(
       '01' => 'CELENDíN',
       '02' => 'CHUMUCH',
@@ -1066,7 +1066,7 @@ return array(
   '11' => 'UTCO',
   '12' => 'LA LIBERTAD DE PALLAN',
     ),
-    '0604' =>
+    '0604' => 
     array(
       '01' => 'CHOTA',
       '02' => 'ANGUIA',
@@ -1088,7 +1088,7 @@ return array(
   '18' => 'TOCMOCHE',
   '19' => 'CHALAMARCA',
     ),
-    '0605' =>
+    '0605' => 
     array(
       '01' => 'CONTUMAZA',
       '02' => 'CHILETE',
@@ -1099,7 +1099,7 @@ return array(
       '07' => 'TANTARICA',
       '08' => 'YONAN',
     ),
-    '0606' =>
+    '0606' => 
     array(
       '01' => 'CUTERVO',
       '02' => 'CALLAYUC',
@@ -1117,13 +1117,13 @@ return array(
   '14' => 'SOCOTA',
   '15' => 'TORIBIO CASANOVA',
     ),
-    '0607' =>
+    '0607' => 
     array(
       '01' => 'BAMBAMARCA',
       '02' => 'CHUGUR',
       '03' => 'HUALGAYOC',
     ),
-    '0608' =>
+    '0608' => 
     array(
       '01' => 'JAéN',
       '02' => 'BELLAVISTA',
@@ -1138,7 +1138,7 @@ return array(
   '11' => 'SAN JOSé DEL ALTO',
   '12' => 'SANTA ROSA',
     ),
-    '0609' =>
+    '0609' => 
     array(
       '01' => 'SAN IGNACIO',
       '02' => 'CHIRINOS',
@@ -1148,7 +1148,7 @@ return array(
       '06' => 'SAN JOSé DE LOURDES',
       '07' => 'TABACONAS',
     ),
-    '0610' =>
+    '0610' => 
     array(
       '01' => 'PEDRO GáLVEZ',
       '02' => 'CHANCAY',
@@ -1158,7 +1158,7 @@ return array(
       '06' => 'JOSé MANUEL QUIROZ',
       '07' => 'JOSé SABOGAL',
     ),
-    '0611' =>
+    '0611' => 
     array(
       '01' => 'SAN MIGUEL',
       '02' => 'BOLíVAR',
@@ -1174,14 +1174,14 @@ return array(
   '12' => 'TONGOD',
   '13' => 'UNIóN AGUA BLANCA',
     ),
-    '0612' =>
+    '0612' => 
     array(
       '01' => 'SAN PABLO',
       '02' => 'SAN BERNARDINO',
       '03' => 'SAN LUIS',
       '04' => 'TUMBADEN',
     ),
-    '0613' =>
+    '0613' => 
     array(
       '01' => 'SANTA CRUZ',
       '02' => 'ANDABAMBA',
@@ -1195,7 +1195,7 @@ return array(
   '10' => 'UTICYACU',
   '11' => 'YAUYUCAN',
     ),
-    '0701' =>
+    '0701' => 
     array(
       '01' => 'CALLAO',
       '02' => 'BELLAVISTA',
@@ -1205,7 +1205,7 @@ return array(
       '06' => 'VENTANILLA',
       '07' => 'MI PERú',
     ),
-    '0801' =>
+    '0801' => 
     array(
       '01' => 'CUSCO',
       '02' => 'CCORCA',
@@ -1216,7 +1216,7 @@ return array(
       '07' => 'SAYLLA',
       '08' => 'WANCHAQ',
     ),
-    '0802' =>
+    '0802' => 
     array(
       '01' => 'ACOMAYO',
       '02' => 'ACOPIA',
@@ -1226,7 +1226,7 @@ return array(
       '06' => 'RONDOCAN',
       '07' => 'SANGARARA',
     ),
-    '0803' =>
+    '0803' => 
     array(
       '01' => 'ANTA',
       '02' => 'ANCAHUASI',
@@ -1238,7 +1238,7 @@ return array(
       '08' => 'PUCYURA',
       '09' => 'ZURITE',
     ),
-    '0804' =>
+    '0804' => 
     array(
       '01' => 'CALCA',
       '02' => 'COYA',
@@ -1249,7 +1249,7 @@ return array(
       '07' => 'TARAY',
       '08' => 'YANATILE',
     ),
-    '0805' =>
+    '0805' => 
     array(
       '01' => 'YANAOCA',
       '02' => 'CHECCA',
@@ -1260,7 +1260,7 @@ return array(
       '07' => 'QUEHUE',
       '08' => 'TUPAC AMARU',
     ),
-    '0806' =>
+    '0806' => 
     array(
       '01' => 'SICUANI',
       '02' => 'CHECACUPE',
@@ -1271,7 +1271,7 @@ return array(
       '07' => 'SAN PEDRO',
       '08' => 'TINTA',
     ),
-    '0807' =>
+    '0807' => 
     array(
       '01' => 'SANTO TOMAS',
       '02' => 'CAPACMARCA',
@@ -1282,7 +1282,7 @@ return array(
       '07' => 'QUIñOTA',
       '08' => 'VELILLE',
     ),
-    '0808' =>
+    '0808' => 
     array(
       '01' => 'ESPINAR',
       '02' => 'CONDOROMA',
@@ -1293,7 +1293,7 @@ return array(
       '07' => 'SUYCKUTAMBO',
       '08' => 'ALTO PICHIGUA',
     ),
-    '0809' =>
+    '0809' => 
     array(
       '01' => 'SANTA ANA',
       '02' => 'ECHARATE',
@@ -1310,7 +1310,7 @@ return array(
   '13' => 'VILLA KINTIARINA',
   '14' => 'MEGANTONI',
     ),
-    '0810' =>
+    '0810' => 
     array(
       '01' => 'PARURO',
       '02' => 'ACCHA',
@@ -1322,7 +1322,7 @@ return array(
       '08' => 'PILLPINTO',
       '09' => 'YAURISQUE',
     ),
-    '0811' =>
+    '0811' => 
     array(
       '01' => 'PAUCARTAMBO',
       '02' => 'CAICAY',
@@ -1331,7 +1331,7 @@ return array(
       '05' => 'HUANCARANI',
       '06' => 'KOSñIPATA',
     ),
-    '0812' =>
+    '0812' => 
     array(
       '01' => 'URCOS',
       '02' => 'ANDAHUAYLILLAS',
@@ -1346,7 +1346,7 @@ return array(
   '11' => 'OROPESA',
   '12' => 'QUIQUIJANA',
     ),
-    '0813' =>
+    '0813' => 
     array(
       '01' => 'URUBAMBA',
       '02' => 'CHINCHERO',
@@ -1356,7 +1356,7 @@ return array(
       '06' => 'OLLANTAYTAMBO',
       '07' => 'YUCAY',
     ),
-    '0901' =>
+    '0901' => 
     array(
       '01' => 'HUANCAVELICA',
       '02' => 'ACOBAMBILLA',
@@ -1378,7 +1378,7 @@ return array(
   '18' => 'ASCENSIóN',
   '19' => 'HUANDO',
     ),
-    '0902' =>
+    '0902' => 
     array(
       '01' => 'ACOBAMBA',
       '02' => 'ANDABAMBA',
@@ -1389,7 +1389,7 @@ return array(
       '07' => 'POMACOCHA',
       '08' => 'ROSARIO',
     ),
-    '0903' =>
+    '0903' => 
     array(
       '01' => 'LIRCAY',
       '02' => 'ANCHONGA',
@@ -1404,7 +1404,7 @@ return array(
   '11' => 'SANTO TOMAS DE PATA',
   '12' => 'SECCLLA',
     ),
-    '0904' =>
+    '0904' => 
     array(
       '01' => 'CASTROVIRREYNA',
       '02' => 'ARMA',
@@ -1420,7 +1420,7 @@ return array(
   '12' => 'TANTARA',
   '13' => 'TICRAPO',
     ),
-    '0905' =>
+    '0905' => 
     array(
       '01' => 'CHURCAMPA',
       '02' => 'ANCO',
@@ -1434,7 +1434,7 @@ return array(
   '10' => 'PACHAMARCA',
   '11' => 'COSME',
     ),
-    '0906' =>
+    '0906' => 
     array(
       '01' => 'HUAYTARA',
       '02' => 'AYAVI',
@@ -1453,7 +1453,7 @@ return array(
   '15' => 'SANTO DOMINGO DE CAPILLAS',
   '16' => 'TAMBO',
     ),
-    '0907' =>
+    '0907' => 
     array(
       '01' => 'PAMPAS',
       '02' => 'ACOSTAMBO',
@@ -1477,7 +1477,7 @@ return array(
   '22' => 'PICHOS',
   '23' => 'SANTIAGO DE TUCUMA',
     ),
-  '1001' =>
+  '1001' => 
     array(
       '01' => 'HUANUCO',
       '02' => 'AMARILIS',
@@ -1493,7 +1493,7 @@ return array(
   '12' => 'YACUS',
   '13' => 'SAN PABLO DE PILLAO',
     ),
-  '1002' =>
+  '1002' => 
     array(
       '01' => 'AMBO',
       '02' => 'CAYNA',
@@ -1504,7 +1504,7 @@ return array(
       '07' => 'SAN RAFAEL',
       '08' => 'TOMAY KICHWA',
     ),
-  '1003' =>
+  '1003' => 
     array(
       '01' => 'LA UNIóN',
       '07' => 'CHUQUIS',
@@ -1516,14 +1516,14 @@ return array(
   '22' => 'SILLAPATA',
   '23' => 'YANAS',
     ),
-  '1004' =>
+  '1004' => 
     array(
       '01' => 'HUACAYBAMBA',
       '02' => 'CANCHABAMBA',
       '03' => 'COCHABAMBA',
       '04' => 'PINRA',
     ),
-  '1005' =>
+  '1005' => 
     array(
       '01' => 'LLATA',
       '02' => 'ARANCAY',
@@ -1537,7 +1537,7 @@ return array(
   '10' => 'SINGA',
   '11' => 'TANTAMAYO',
     ),
-  '1006' =>
+  '1006' => 
     array(
       '01' => 'RUPA-RUPA',
       '02' => 'DANIEL ALOMíA ROBLES',
@@ -1550,7 +1550,7 @@ return array(
       '09' => 'PUEBLO NUEVO',
   '10' => 'SANTO DOMINGO DE ANDA',
     ),
-  '1007' =>
+  '1007' => 
     array(
       '01' => 'HUACRACHUCO',
       '02' => 'CHOLON',
@@ -1558,14 +1558,14 @@ return array(
       '04' => 'LA MORADA',
       '05' => 'SANTA ROSA DE ALTO YANAJANCA',
     ),
-  '1008' =>
+  '1008' => 
     array(
       '01' => 'PANAO',
       '02' => 'CHAGLLA',
       '03' => 'MOLINO',
       '04' => 'UMARI',
     ),
-  '1009' =>
+  '1009' => 
     array(
       '01' => 'PUERTO INCA',
       '02' => 'CODO DEL POZUZO',
@@ -1573,7 +1573,7 @@ return array(
       '04' => 'TOURNAVISTA',
       '05' => 'YUYAPICHIS',
     ),
-  '1010' =>
+  '1010' => 
     array(
       '01' => 'JESúS',
       '02' => 'BAñOS',
@@ -1583,7 +1583,7 @@ return array(
       '06' => 'SAN FRANCISCO DE ASíS',
       '07' => 'SAN MIGUEL DE CAURI',
     ),
-  '1011' =>
+  '1011' => 
     array(
       '01' => 'CHAVINILLO',
       '02' => 'CAHUAC',
@@ -1594,7 +1594,7 @@ return array(
       '07' => 'PAMPAMARCA',
       '08' => 'CHORAS',
     ),
-  '1101' =>
+  '1101' => 
     array(
       '01' => 'ICA',
       '02' => 'LA TINGUIñA',
@@ -1611,7 +1611,7 @@ return array(
   '13' => 'TATE',
   '14' => 'YAUCA DEL ROSARIO',
     ),
-  '1102' =>
+  '1102' => 
     array(
       '01' => 'CHINCHA ALTA',
       '02' => 'ALTO LARAN',
@@ -1625,7 +1625,7 @@ return array(
   '10' => 'SUNAMPE',
   '11' => 'TAMBO DE MORA',
     ),
-  '1103' =>
+  '1103' => 
     array(
       '01' => 'NASCA',
       '02' => 'CHANGUILLO',
@@ -1633,7 +1633,7 @@ return array(
       '04' => 'MARCONA',
       '05' => 'VISTA ALEGRE',
     ),
-  '1104' =>
+  '1104' => 
     array(
       '01' => 'PALPA',
       '02' => 'LLIPATA',
@@ -1641,7 +1641,7 @@ return array(
       '04' => 'SANTA CRUZ',
       '05' => 'TIBILLO',
     ),
-  '1105' =>
+  '1105' => 
     array(
       '01' => 'PISCO',
       '02' => 'HUANCANO',
@@ -1652,7 +1652,7 @@ return array(
       '07' => 'SAN CLEMENTE',
       '08' => 'TUPAC AMARU INCA',
     ),
-  '1201' =>
+  '1201' => 
     array(
       '01' => 'HUANCAYO',
       '04' => 'CARHUACALLANGA',
@@ -1683,7 +1683,7 @@ return array(
   '35' => 'SANTO DOMINGO DE ACOBAMBA',
   '36' => 'VIQUES',
     ),
-  '1202' =>
+  '1202' => 
     array(
       '01' => 'CONCEPCIóN',
       '02' => 'ACO',
@@ -1701,7 +1701,7 @@ return array(
   '14' => 'SAN JOSé DE QUERO',
   '15' => 'SANTA ROSA DE OCOPA',
     ),
-  '1203' =>
+  '1203' => 
     array(
       '01' => 'CHANCHAMAYO',
       '02' => 'PERENE',
@@ -1710,7 +1710,7 @@ return array(
       '05' => 'SAN RAMóN',
       '06' => 'VITOC',
     ),
-  '1204' =>
+  '1204' => 
     array(
       '01' => 'JAUJA',
       '02' => 'ACOLLA',
@@ -1747,14 +1747,14 @@ return array(
   '33' => 'YAULI',
   '34' => 'YAUYOS',
     ),
-  '1205' =>
+  '1205' => 
     array(
       '01' => 'JUNIN',
       '02' => 'CARHUAMAYO',
       '03' => 'ONDORES',
       '04' => 'ULCUMAYO',
     ),
-  '1206' =>
+  '1206' => 
     array(
       '01' => 'SATIPO',
       '02' => 'COVIRIALI',
@@ -1766,7 +1766,7 @@ return array(
       '08' => 'RíO TAMBO',
       '09' => 'VIZCATAN DEL ENE',
     ),
-  '1207' =>
+  '1207' => 
     array(
       '01' => 'TARMA',
       '02' => 'ACOBAMBA',
@@ -1778,7 +1778,7 @@ return array(
       '08' => 'SAN PEDRO DE CAJAS',
       '09' => 'TAPO',
     ),
-  '1208' =>
+  '1208' => 
     array(
       '01' => 'LA OROYA',
       '02' => 'CHACAPALPA',
@@ -1791,7 +1791,7 @@ return array(
       '09' => 'SUITUCANCHA',
   '10' => 'YAULI',
     ),
-  '1209' =>
+  '1209' => 
     array(
       '01' => 'CHUPACA',
       '02' => 'AHUAC',
@@ -1803,7 +1803,7 @@ return array(
       '08' => 'TRES DE DICIEMBRE',
       '09' => 'YANACANCHA',
     ),
-  '1301' =>
+  '1301' => 
     array(
       '01' => 'TRUJILLO',
       '02' => 'EL PORVENIR',
@@ -1817,7 +1817,7 @@ return array(
   '10' => 'SIMBAL',
   '11' => 'VICTOR LARCO HERRERA',
     ),
-  '1302' =>
+  '1302' => 
     array(
       '01' => 'ASCOPE',
       '02' => 'CHICAMA',
@@ -1828,7 +1828,7 @@ return array(
       '07' => 'SANTIAGO DE CAO',
       '08' => 'CASA GRANDE',
     ),
-  '1303' =>
+  '1303' => 
     array(
       '01' => 'BOLíVAR',
       '02' => 'BAMBAMARCA',
@@ -1837,20 +1837,20 @@ return array(
       '05' => 'UCHUMARCA',
       '06' => 'UCUNCHA',
     ),
-  '1304' =>
+  '1304' => 
     array(
       '01' => 'CHEPEN',
       '02' => 'PACANGA',
       '03' => 'PUEBLO NUEVO',
     ),
-  '1305' =>
+  '1305' => 
     array(
       '01' => 'JULCAN',
       '02' => 'CALAMARCA',
       '03' => 'CARABAMBA',
       '04' => 'HUASO',
     ),
-  '1306' =>
+  '1306' => 
     array(
       '01' => 'OTUZCO',
       '02' => 'AGALLPAMPA',
@@ -1863,7 +1863,7 @@ return array(
   '13' => 'SINSICAP',
   '14' => 'USQUIL',
     ),
-  '1307' =>
+  '1307' => 
     array(
       '01' => 'SAN PEDRO DE LLOC',
       '02' => 'GUADALUPE',
@@ -1871,7 +1871,7 @@ return array(
       '04' => 'PACASMAYO',
       '05' => 'SAN JOSé',
     ),
-  '1308' =>
+  '1308' => 
     array(
       '01' => 'TAYABAMBA',
       '02' => 'BULDIBUYO',
@@ -1887,7 +1887,7 @@ return array(
   '12' => 'TAURIJA',
   '13' => 'URPAY',
     ),
-  '1309' =>
+  '1309' => 
     array(
       '01' => 'HUAMACHUCO',
       '02' => 'CHUGAY',
@@ -1898,7 +1898,7 @@ return array(
       '07' => 'SARIN',
       '08' => 'SARTIMBAMBA',
     ),
-  '1310' =>
+  '1310' => 
     array(
       '01' => 'SANTIAGO DE CHUCO',
       '02' => 'ANGASMARCA',
@@ -1909,20 +1909,20 @@ return array(
       '07' => 'SANTA CRUZ DE CHUCA',
       '08' => 'SITABAMBA',
     ),
-  '1311' =>
+  '1311' => 
     array(
       '01' => 'CASCAS',
       '02' => 'LUCMA',
       '03' => 'MARMOT',
       '04' => 'SAYAPULLO',
     ),
-  '1312' =>
+  '1312' => 
     array(
       '01' => 'VIRU',
       '02' => 'CHAO',
       '03' => 'GUADALUPITO',
     ),
-  '1401' =>
+  '1401' => 
     array(
       '01' => 'CHICLAYO',
       '02' => 'CHONGOYAPE',
@@ -1945,7 +1945,7 @@ return array(
   '19' => 'PUCALA',
   '20' => 'TUMAN',
     ),
-  '1402' =>
+  '1402' => 
     array(
       '01' => 'FERREñAFE',
       '02' => 'CAñARIS',
@@ -1954,7 +1954,7 @@ return array(
       '05' => 'PITIPO',
       '06' => 'PUEBLO NUEVO',
     ),
-  '1403' =>
+  '1403' => 
     array(
       '01' => 'LAMBAYEQUE',
       '02' => 'CHOCHOPE',
@@ -1969,7 +1969,7 @@ return array(
   '11' => 'SAN JOSé',
   '12' => 'TUCUME',
     ),
-  '1501' =>
+  '1501' => 
     array(
       '01' => 'LIMA',
       '02' => 'ANCóN',
@@ -2015,7 +2015,7 @@ return array(
   '42' => 'VILLA EL SALVADOR',
   '43' => 'VILLA MARíA DEL TRIUNFO',
     ),
-  '1502' =>
+  '1502' => 
     array(
       '01' => 'BARRANCA',
       '02' => 'PARAMONGA',
@@ -2023,7 +2023,7 @@ return array(
       '04' => 'SUPE',
       '05' => 'SUPE PUERTO',
     ),
-  '1503' =>
+  '1503' => 
     array(
       '01' => 'CAJATAMBO',
       '02' => 'COPA',
@@ -2031,7 +2031,7 @@ return array(
       '04' => 'HUANCAPON',
       '05' => 'MANAS',
     ),
-  '1504' =>
+  '1504' => 
     array(
       '01' => 'CANTA',
       '02' => 'ARAHUAY',
@@ -2041,7 +2041,7 @@ return array(
       '06' => 'SAN BUENAVENTURA',
       '07' => 'SANTA ROSA DE QUIVES',
     ),
-  '1505' =>
+  '1505' => 
     array(
       '01' => 'SAN VICENTE DE CAñETE',
       '02' => 'ASIA',
@@ -2060,7 +2060,7 @@ return array(
   '15' => 'SANTA CRUZ DE FLORES',
   '16' => 'ZúñIGA',
     ),
-  '1506' =>
+  '1506' => 
     array(
       '01' => 'HUARAL',
       '02' => 'ATAVILLOS ALTO',
@@ -2075,7 +2075,7 @@ return array(
   '11' => 'SUMBILCA',
   '12' => 'VEINTISIETE DE NOVIEMBRE',
     ),
-  '1507' =>
+  '1507' => 
     array(
       '01' => 'MATUCANA',
       '02' => 'ANTIOQUIA',
@@ -2110,7 +2110,7 @@ return array(
   '31' => 'SANTO DOMINGO DE LOS OLLEROS',
   '32' => 'SURCO',
     ),
-  '1508' =>
+  '1508' => 
     array(
       '01' => 'HUACHO',
       '02' => 'AMBAR',
@@ -2125,7 +2125,7 @@ return array(
   '11' => 'SAYAN',
   '12' => 'VEGUETA',
     ),
-  '1509' =>
+  '1509' => 
     array(
       '01' => 'OYON',
       '02' => 'ANDAJES',
@@ -2134,7 +2134,7 @@ return array(
       '05' => 'NAVAN',
       '06' => 'PACHANGARA',
     ),
-  '1510' =>
+  '1510' => 
     array(
       '01' => 'YAUYOS',
       '02' => 'ALIS',
@@ -2170,7 +2170,7 @@ return array(
   '32' => 'VIñAC',
   '33' => 'VITIS',
     ),
-  '1601' =>
+  '1601' => 
     array(
       '01' => 'IQUITOS',
       '02' => 'ALTO NANAY',
@@ -2184,7 +2184,7 @@ return array(
   '12' => 'BELéN',
   '13' => 'SAN JUAN BAUTISTA',
     ),
-  '1602' =>
+  '1602' => 
     array(
       '01' => 'YURIMAGUAS',
       '02' => 'BALSAPUERTO',
@@ -2193,7 +2193,7 @@ return array(
   '10' => 'SANTA CRUZ',
   '11' => 'TENIENTE CESAR LóPEZ ROJAS',
     ),
-  '1603' =>
+  '1603' => 
     array(
       '01' => 'NAUTA',
       '02' => 'PARINARI',
@@ -2201,14 +2201,14 @@ return array(
       '04' => 'TROMPETEROS',
       '05' => 'URARINAS',
     ),
-  '1604' =>
+  '1604' => 
     array(
       '01' => 'RAMóN CASTILLA',
       '02' => 'PEBAS',
       '03' => 'YAVARI',
       '04' => 'SAN PABLO',
     ),
-  '1605' =>
+  '1605' => 
     array(
       '01' => 'REQUENA',
       '02' => 'ALTO TAPICHE',
@@ -2222,7 +2222,7 @@ return array(
   '10' => 'JENARO HERRERA',
   '11' => 'YAQUERANA',
     ),
-  '1606' =>
+  '1606' => 
     array(
       '01' => 'CONTAMANA',
       '02' => 'INAHUAYA',
@@ -2231,7 +2231,7 @@ return array(
       '05' => 'SARAYACU',
       '06' => 'VARGAS GUERRA',
     ),
-  '1607' =>
+  '1607' => 
     array(
       '01' => 'BARRANCA',
       '02' => 'CAHUAPANAS',
@@ -2240,34 +2240,34 @@ return array(
       '05' => 'PASTAZA',
       '06' => 'ANDOAS',
     ),
-  '1608' =>
+  '1608' => 
     array(
       '01' => 'PUTUMAYO',
       '02' => 'ROSA PANDURO',
       '03' => 'TENIENTE MANUEL CLAVERO',
       '04' => 'YAGUAS',
     ),
-  '1701' =>
+  '1701' => 
     array(
       '01' => 'TAMBOPATA',
       '02' => 'INAMBARI',
       '03' => 'LAS PIEDRAS',
       '04' => 'LABERINTO',
     ),
-  '1702' =>
+  '1702' => 
     array(
       '01' => 'MANU',
       '02' => 'FITZCARRALD',
       '03' => 'MADRE DE DIOS',
       '04' => 'HUEPETUHE',
     ),
-  '1703' =>
+  '1703' => 
     array(
       '01' => 'IñAPARI',
       '02' => 'IBERIA',
       '03' => 'TAHUAMANU',
     ),
-  '1801' =>
+  '1801' => 
     array(
       '01' => 'MOQUEGUA',
       '02' => 'CARUMAS',
@@ -2276,7 +2276,7 @@ return array(
       '05' => 'SAN CRISTóBAL',
       '06' => 'TORATA',
     ),
-  '1802' =>
+  '1802' => 
     array(
       '01' => 'OMATE',
       '02' => 'CHOJATA',
@@ -2290,13 +2290,13 @@ return array(
   '10' => 'UBINAS',
   '11' => 'YUNGA',
     ),
-  '1803' =>
+  '1803' => 
     array(
       '01' => 'ILO',
       '02' => 'EL ALGARROBAL',
       '03' => 'PACOCHA',
     ),
-  '1901' =>
+  '1901' => 
     array(
       '01' => 'CHAUPIMARCA',
       '02' => 'HUACHON',
@@ -2312,7 +2312,7 @@ return array(
   '12' => 'VICCO',
   '13' => 'YANACANCHA',
     ),
-  '1902' =>
+  '1902' => 
     array(
       '01' => 'YANAHUANCA',
       '02' => 'CHACAYAN',
@@ -2323,7 +2323,7 @@ return array(
       '07' => 'TAPUC',
       '08' => 'VILCABAMBA',
     ),
-  '1903' =>
+  '1903' => 
     array(
       '01' => 'OXAPAMPA',
       '02' => 'CHONTABAMBA',
@@ -2334,7 +2334,7 @@ return array(
       '07' => 'VILLA RICA',
       '08' => 'CONSTITUCIóN',
     ),
-  '2001' =>
+  '2001' => 
     array(
       '01' => 'PIURA',
       '04' => 'CASTILLA',
@@ -2347,7 +2347,7 @@ return array(
   '14' => 'TAMBO GRANDE',
   '15' => 'VEINTISEIS DE OCTUBRE',
     ),
-  '2002' =>
+  '2002' => 
     array(
       '01' => 'AYABACA',
       '02' => 'FRIAS',
@@ -2360,7 +2360,7 @@ return array(
       '09' => 'SICCHEZ',
   '10' => 'SUYO',
     ),
-  '2003' =>
+  '2003' => 
     array(
       '01' => 'HUANCABAMBA',
       '02' => 'CANCHAQUE',
@@ -2371,7 +2371,7 @@ return array(
       '07' => 'SONDOR',
       '08' => 'SONDORILLO',
     ),
-  '2004' =>
+  '2004' => 
     array(
       '01' => 'CHULUCANAS',
       '02' => 'BUENOS AIRES',
@@ -2384,7 +2384,7 @@ return array(
       '09' => 'SANTO DOMINGO',
   '10' => 'YAMANGO',
     ),
-  '2005' =>
+  '2005' => 
     array(
       '01' => 'PAITA',
       '02' => 'AMOTAPE',
@@ -2394,7 +2394,7 @@ return array(
       '06' => 'TAMARINDO',
       '07' => 'VICHAYAL',
     ),
-  '2006' =>
+  '2006' => 
     array(
       '01' => 'SULLANA',
       '02' => 'BELLAVISTA',
@@ -2405,7 +2405,7 @@ return array(
       '07' => 'QUERECOTILLO',
       '08' => 'SALITRAL',
     ),
-  '2007' =>
+  '2007' => 
     array(
       '01' => 'PARIñAS',
       '02' => 'EL ALTO',
@@ -2414,7 +2414,7 @@ return array(
       '05' => 'LOS ORGANOS',
       '06' => 'MANCORA',
     ),
-  '2008' =>
+  '2008' => 
     array(
       '01' => 'SECHURA',
       '02' => 'BELLAVISTA DE LA UNIóN',
@@ -2423,7 +2423,7 @@ return array(
       '05' => 'VICE',
       '06' => 'RINCONADA LLICUAR',
     ),
-  '2101' =>
+  '2101' => 
     array(
       '01' => 'PUNO',
       '02' => 'ACORA',
@@ -2441,7 +2441,7 @@ return array(
   '14' => 'TIQUILLACA',
   '15' => 'VILQUE',
     ),
-  '2102' =>
+  '2102' => 
     array(
       '01' => 'AZáNGARO',
       '02' => 'ACHAYA',
@@ -2459,7 +2459,7 @@ return array(
   '14' => 'SANTIAGO DE PUPUJA',
   '15' => 'TIRAPATA',
     ),
-  '2103' =>
+  '2103' => 
     array(
       '01' => 'MACUSANI',
       '02' => 'AJOYANI',
@@ -2472,7 +2472,7 @@ return array(
       '09' => 'SAN GABAN',
   '10' => 'USICAYOS',
     ),
-  '2104' =>
+  '2104' => 
     array(
       '01' => 'JULI',
       '02' => 'DESAGUADERO',
@@ -2482,7 +2482,7 @@ return array(
       '06' => 'POMATA',
       '07' => 'ZEPITA',
     ),
-  '2105' =>
+  '2105' => 
     array(
       '01' => 'ILAVE',
       '02' => 'CAPAZO',
@@ -2490,7 +2490,7 @@ return array(
       '04' => 'SANTA ROSA',
       '05' => 'CONDURIRI',
     ),
-  '2106' =>
+  '2106' => 
     array(
       '01' => 'HUANCANE',
       '02' => 'COJATA',
@@ -2501,7 +2501,7 @@ return array(
       '07' => 'TARACO',
       '08' => 'VILQUE CHICO',
     ),
-  '2107' =>
+  '2107' => 
     array(
       '01' => 'LAMPA',
       '02' => 'CABANILLA',
@@ -2514,7 +2514,7 @@ return array(
       '09' => 'SANTA LUCIA',
   '10' => 'VILAVILA',
     ),
-  '2108' =>
+  '2108' => 
     array(
       '01' => 'AYAVIRI',
       '02' => 'ANTAUTA',
@@ -2526,14 +2526,14 @@ return array(
       '08' => 'SANTA ROSA',
       '09' => 'UMACHIRI',
     ),
-  '2109' =>
+  '2109' => 
     array(
       '01' => 'MOHO',
       '02' => 'CONIMA',
       '03' => 'HUAYRAPATA',
       '04' => 'TILALI',
     ),
-  '2110' =>
+  '2110' => 
     array(
       '01' => 'PUTINA',
       '02' => 'ANANEA',
@@ -2541,7 +2541,7 @@ return array(
       '04' => 'QUILCAPUNCU',
       '05' => 'SINA',
     ),
-  '2111' =>
+  '2111' => 
     array(
       '01' => 'JULIACA',
       '02' => 'CABANA',
@@ -2549,7 +2549,7 @@ return array(
       '04' => 'CARACOTO',
       '05' => 'SAN MIGUEL',
     ),
-  '2112' =>
+  '2112' => 
     array(
       '01' => 'SANDIA',
       '02' => 'CUYOCUYO',
@@ -2562,7 +2562,7 @@ return array(
       '09' => 'ALTO INAMBARI',
   '10' => 'SAN PEDRO DE PUTINA PUNCO',
     ),
-  '2113' =>
+  '2113' => 
     array(
       '01' => 'YUNGUYO',
       '02' => 'ANAPIA',
@@ -2572,7 +2572,7 @@ return array(
       '06' => 'TINICACHI',
       '07' => 'UNICACHI',
     ),
-  '2201' =>
+  '2201' => 
     array(
       '01' => 'MOYOBAMBA',
       '02' => 'CALZADA',
@@ -2581,7 +2581,7 @@ return array(
       '05' => 'SORITOR',
       '06' => 'YANTALO',
     ),
-  '2202' =>
+  '2202' => 
     array(
       '01' => 'BELLAVISTA',
       '02' => 'ALTO BIAVO',
@@ -2590,7 +2590,7 @@ return array(
       '05' => 'SAN PABLO',
       '06' => 'SAN RAFAEL',
     ),
-  '2203' =>
+  '2203' => 
     array(
       '01' => 'SAN JOSé DE SISA',
       '02' => 'AGUA BLANCA',
@@ -2598,7 +2598,7 @@ return array(
       '04' => 'SANTA ROSA',
       '05' => 'SHATOJA',
     ),
-  '2204' =>
+  '2204' => 
     array(
       '01' => 'SAPOSOA',
       '02' => 'ALTO SAPOSOA',
@@ -2607,7 +2607,7 @@ return array(
       '05' => 'SACANCHE',
       '06' => 'TINGO DE SAPOSOA',
     ),
-  '2205' =>
+  '2205' => 
     array(
       '01' => 'LAMAS',
       '02' => 'ALONSO DE ALVARADO',
@@ -2621,7 +2621,7 @@ return array(
   '10' => 'TABALOSOS',
   '11' => 'ZAPATERO',
     ),
-  '2206' =>
+  '2206' => 
     array(
       '01' => 'JUANJUí',
       '02' => 'CAMPANILLA',
@@ -2629,7 +2629,7 @@ return array(
       '04' => 'PACHIZA',
       '05' => 'PAJARILLO',
     ),
-  '2207' =>
+  '2207' => 
     array(
       '01' => 'PICOTA',
       '02' => 'BUENOS AIRES',
@@ -2642,7 +2642,7 @@ return array(
       '09' => 'TINGO DE PONASA',
   '10' => 'TRES UNIDOS',
     ),
-  '2208' =>
+  '2208' => 
     array(
       '01' => 'RIOJA',
       '02' => 'AWAJUN',
@@ -2654,7 +2654,7 @@ return array(
       '08' => 'YORONGOS',
       '09' => 'YURACYACU',
     ),
-  '2209' =>
+  '2209' => 
     array(
       '01' => 'TARAPOTO',
       '02' => 'ALBERTO LEVEAU',
@@ -2671,7 +2671,7 @@ return array(
   '13' => 'SAUCE',
   '14' => 'SHAPAJA',
     ),
-  '2210' =>
+  '2210' => 
     array(
       '01' => 'TOCACHE',
       '02' => 'NUEVO PROGRESO',
@@ -2679,7 +2679,7 @@ return array(
       '04' => 'SHUNTE',
       '05' => 'UCHIZA',
     ),
-  '2301' =>
+  '2301' => 
     array(
       '01' => 'TACNA',
       '02' => 'ALTO DE LA ALIANZA',
@@ -2693,7 +2693,7 @@ return array(
   '10' => 'CORONEL GREGORIO ALBARRACíN LANCHIPA',
   '11' => 'LA YARADA LOS PALOS',
     ),
-  '2302' =>
+  '2302' => 
     array(
       '01' => 'CANDARAVE',
       '02' => 'CAIRANI',
@@ -2702,13 +2702,13 @@ return array(
       '05' => 'HUANUARA',
       '06' => 'QUILAHUANI',
     ),
-  '2303' =>
+  '2303' => 
     array(
       '01' => 'LOCUMBA',
       '02' => 'ILABAYA',
       '03' => 'ITE',
     ),
-  '2304' =>
+  '2304' => 
     array(
       '01' => 'TARATA',
       '02' => 'HéROES ALBARRACíN',
@@ -2719,7 +2719,7 @@ return array(
       '07' => 'TARUCACHI',
       '08' => 'TICACO',
     ),
-  '2401' =>
+  '2401' => 
     array(
       '01' => 'TUMBES',
       '02' => 'CORRALES',
@@ -2728,20 +2728,20 @@ return array(
       '05' => 'SAN JACINTO',
       '06' => 'SAN JUAN DE LA VIRGEN',
     ),
-  '2402' =>
+  '2402' => 
     array(
       '01' => 'ZORRITOS',
       '02' => 'CASITAS',
       '03' => 'CANOAS DE PUNTA SAL',
     ),
-  '2403' =>
+  '2403' => 
     array(
       '01' => 'ZARUMILLA',
       '02' => 'AGUAS VERDES',
       '03' => 'MATAPALO',
       '04' => 'PAPAYAL',
     ),
-  '2501' =>
+  '2501' => 
     array(
       '01' => 'CALLERIA',
       '02' => 'CAMPOVERDE',
@@ -2751,14 +2751,14 @@ return array(
       '06' => 'NUEVA REQUENA',
       '07' => 'MANANTAY',
     ),
-  '2502' =>
+  '2502' => 
     array(
       '01' => 'RAYMONDI',
       '02' => 'SEPAHUA',
       '03' => 'TAHUANIA',
       '04' => 'YURUA',
     ),
-  '2503' =>
+  '2503' => 
     array(
       '01' => 'PADRE ABAD',
       '02' => 'IRAZOLA',
@@ -2766,7 +2766,7 @@ return array(
       '04' => 'NESHUYA',
       '05' => 'ALEXANDER VON HUMBOLDT',
     ),
-  '2504' =>
+  '2504' => 
     array(
       '01' => 'PURUS',
     ),

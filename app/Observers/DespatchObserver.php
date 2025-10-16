@@ -85,32 +85,24 @@ class DespatchObserver
                         $despatch->travel_allowances + $despatch->variable_salary +
                         $despatch->operations_manager + $despatch->security;
 
-        // Solo crear un registro si hay gastos operativos
-        if ($totalExpenses > 0) {
-            // Buscar o crear el tipo de gasto para "Gastos de Guía"
-            $expenseType = ExpenseType::firstOrCreate(
-                ['name' => 'Gastos de Guía'],
-                ['category' => 'fixed', 'is_active' => true]
-            );
+        $expenseType = ExpenseType::firstOrCreate(
+            ['name' => 'Gastos de Guía'],
+            ['category' => 'fixed', 'is_active' => true]
+        );
 
-            // Crear o actualizar UN SOLO registro por guía
-            OperationalExpense::updateOrCreate([
-                'driver_id' => $despatch->driver_id,
-                'despatch_id' => $despatch->id,
-                'expense_type_id' => $expenseType->id,
-            ], [
-                'vehicle_id' => $despatch->vehicle_id,
-                'client_id' => $despatch->client_id,
-                'expense_date' => $despatch->emission_date,
-                'amount' => $totalExpenses,
-                'description' => $this->generateExpenseDescription($despatch),
-                'supplier' => $despatch->supplier,
-                'status' => 'pending',
-            ]);
-        } else {
-            // Si no hay gastos, eliminar el registro si existe
-            $this->removeOperationalExpenses($despatch);
-        }
+        OperationalExpense::updateOrCreate([
+            'driver_id' => $despatch->driver_id,
+            'despatch_id' => $despatch->id,
+            'expense_type_id' => $expenseType->id,
+        ], [
+            'vehicle_id' => $despatch->vehicle_id,
+            'client_id' => $despatch->client_id,
+            'expense_date' => $despatch->emission_date,
+            'amount' => $totalExpenses,
+            'description' => $this->generateExpenseDescription($despatch),
+            'supplier' => $despatch->supplier,
+            'status' => 'pending',
+        ]);
     }
     /**
      * Eliminar gastos operativos asociados a una guía
