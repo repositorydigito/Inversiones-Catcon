@@ -353,7 +353,9 @@ class OperationalExpenseResource extends Resource
             ->filters([
                 SelectFilter::make('driver_id')
                     ->label('Conductor')
-                    ->options(Driver::all()->pluck('full_name', 'id')),
+                    ->options(Driver::all()->pluck('full_name', 'id'))
+                    ->placeholder('Buscar conductor...')
+                    ->searchable(),
 
                 SelectFilter::make('expenseType.category')
                     ->relationship('expenseType', 'category')
@@ -362,21 +364,7 @@ class OperationalExpenseResource extends Resource
                         'variable' => 'Variable',
                         default => $record->category
                     })
-                    ->label('Categoría'),
-
-
-                /* ->query(function (Builder $query, $state) {
-                    // Solo aplicamos el filtro si se ha seleccionado una categoría
-                    if ($state) {
-                        $query->whereHas('expenseType', function ($q) use ($state) {
-                            $q->where('category', $state);
-                        });
-                    }
-                    // Si no hay filtro seleccionado, mostramos todos los resultados
-                    else {
-                        $query->with('expenseType'); // Cargamos la relación por defecto
-                    }
-                }), */
+                    ->label('Categoría'),                
 
                 Filter::make('expense_date')
                     ->form([
