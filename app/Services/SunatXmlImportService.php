@@ -16,7 +16,7 @@ class SunatXmlImportService
     public function importMultipleFromXml(array $xmlFiles): array
     {
         set_time_limit(300);
-        
+
         $results = [
             'success' => true,
             'total' => count($xmlFiles),
@@ -29,9 +29,9 @@ class SunatXmlImportService
         foreach ($xmlFiles as $index => $xmlContent) {
             try {
                 Log::info("Procesando XML " . ($index + 1) . " de " . count($xmlFiles));
-                
+
                 $result = $this->importFromXml($xmlContent);
-                
+
                 if ($result['success']) {
                     $results['imported']++;
                     $results['details'][] = [
@@ -39,7 +39,7 @@ class SunatXmlImportService
                         'serie_numero' => $result['despatch']->series . '-' . $result['despatch']->number,
                         'message' => 'Importado exitosamente'
                     ];
-                    
+
                     if (!empty($result['created_entities'])) {
                         $results['created_entities'] = array_merge(
                             $results['created_entities'],
@@ -53,7 +53,7 @@ class SunatXmlImportService
                         'message' => $result['error']
                     ];
                 }
-                
+
             } catch (Exception $e) {
                 $results['failed']++;
                 $results['details'][] = [
@@ -95,17 +95,17 @@ class SunatXmlImportService
         foreach ($grouped as $group) {
             foreach ($group->values() as $index => $despatch) {
                 $dailyTravelAllowance = 30.00;
-                
+
                 // Buscar configuración si existe
-                if ($despatch->loading_point && $despatch->departure_location && 
+                if ($despatch->loading_point && $despatch->departure_location &&
                     $despatch->arrival_location && $despatch->unloading_point) {
-                    
+
                     $config = \App\Models\OperationalExpenseConfig::where('departure_point', $despatch->loading_point)
                         ->where('departure_location', $despatch->departure_location)
                         ->where('arrival_location', $despatch->arrival_location)
                         ->where('destination_point', $despatch->unloading_point)
                         ->first();
-                    
+
                     if ($config && $config->travel_allowances > 0) {
                         $dailyTravelAllowance = $config->travel_allowances;
                     }
@@ -113,7 +113,7 @@ class SunatXmlImportService
 
                 // Solo la primera guía del día debe tener viáticos
                 $newTravelAllowances = ($index === 0) ? $dailyTravelAllowance : 0;
-                
+
                 if ($despatch->travel_allowances != $newTravelAllowances) {
                     $despatch->updateQuietly(['travel_allowances' => $newTravelAllowances]);
                     // Forzar creación de gastos operativos
@@ -574,6 +574,10 @@ class SunatXmlImportService
             'arrival_ubigeo' => $xmlData['llegada']['ubigeo'],
             'arrival_address' => $xmlData['llegada']['address'],
 
+            // Inferir departure_location y arrival_location desde frequent_locations
+            'departure_location' => $this->inferLocationPoint($xmlData['partida']['address']),
+            'arrival_location' => $this->inferLocationPoint($xmlData['llegada']['address']),
+
             // Documentos de remitente y destinatario
             'sender_document_number' => $entities['remitente']->document_number,
             'client_document_number' => $entities['destinatario']->document_number,
@@ -667,6 +671,22 @@ class SunatXmlImportService
             'first_name' => $this->normalizeText($firstName),
             'last_name' => $this->normalizeText($lastName)
         ];
+    }
+    /**
+     * Infiere el punto de ruta (point) basándose en una dirección
+     * Busca match EXACTO en frequent_locations
+     */
+    protected function inferLocationPoint(?string $address): ?string
+    {
+        if (!$address) {
+            return null;
+        }
+
+        $frequentLocation = \App\Models\FrequentLocation::where('name', $address)
+            ->where('is_active', true)
+            ->first();
+
+        return $frequentLocation?->point;
     }
     /**
      * Divide un nombre completo en nombres y apellidos

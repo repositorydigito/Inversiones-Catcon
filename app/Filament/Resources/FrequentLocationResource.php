@@ -26,11 +26,15 @@ class FrequentLocationResource extends Resource
     public static function form(Form $form): Form
     {
         return $form
-            ->schema([                
+            ->schema([
                 Forms\Components\TextInput::make('name')
                     ->label('Nombre')
                     ->required()
                     ->maxLength(255),
+                Forms\Components\TextInput::make('point')
+                    ->label('Punto de Ruta')
+                    ->maxLength(255)
+                    ->nullable(),
                 Forms\Components\Toggle::make('is_active')
                     ->label('Activo')
                     ->default(true),
@@ -45,6 +49,11 @@ class FrequentLocationResource extends Resource
                     ->label('Nombre')
                     ->searchable()
                     ->sortable(),
+                Tables\Columns\TextColumn::make('point')
+                    ->label('Punto de Ruta')
+                    ->searchable()
+                    ->sortable()
+                    ->placeholder('Sin asignar'),
                 Tables\Columns\IconColumn::make('is_active')
                     ->label('Activo')
                     ->boolean(),
@@ -62,7 +71,7 @@ class FrequentLocationResource extends Resource
                 Tables\Actions\DeleteAction::make(),
             ])
             ->bulkActions([
-                
+
             ]);
     }
 
