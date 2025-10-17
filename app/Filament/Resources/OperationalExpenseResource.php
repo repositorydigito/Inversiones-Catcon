@@ -150,7 +150,7 @@ class OperationalExpenseResource extends Resource
                             });
                     })
                     ->sortable(false),
-                
+
                 // 7. Punto de Carga - Punto 1
                 Tables\Columns\TextColumn::make('loading_point')
                     ->label('Punto 1')
@@ -186,7 +186,7 @@ class OperationalExpenseResource extends Resource
                         return $record->despatch?->arrival_location;
                     })
                     ->toggleable(isToggledHiddenByDefault: true),
-                
+
                 // 8. Punto de Descarga - Punto 4
                 Tables\Columns\TextColumn::make('unloading_point')
                     ->label('Punto 4')
@@ -224,7 +224,7 @@ class OperationalExpenseResource extends Resource
                         return null;
                     })
                     ->toggleable(isToggledHiddenByDefault: true),
-                
+
                 // 10.1 Venta Neta (Tarifa x Peso Neto)
                 Tables\Columns\TextColumn::make('net_sale')
                     ->label('Venta Neta')
@@ -233,6 +233,14 @@ class OperationalExpenseResource extends Resource
                             return 'S/. ' . number_format($record->despatch->net_sale, 2);
                         }
                         return 'S/. 0.00';
+                    })
+                    ->toggleable(isToggledHiddenByDefault: true),
+
+                // 10.2 Venta Bruta (Venta Neta x 0.18)
+                Tables\Columns\TextColumn::make('gross_sale')
+                    ->label('Venta Bruta')
+                    ->getStateUsing(function (OperationalExpense $record): ?string {
+                        return 'S/. ' . number_format($record->despatch->gross_sale, 2);
                     })
                     ->toggleable(isToggledHiddenByDefault: true),
 
@@ -364,7 +372,7 @@ class OperationalExpenseResource extends Resource
                         'variable' => 'Variable',
                         default => $record->category
                     })
-                    ->label('Categoría'),                
+                    ->label('Categoría'),
 
                 Filter::make('expense_date')
                     ->form([
@@ -509,7 +517,7 @@ class OperationalExpenseResource extends Resource
                     ->label('Editar Ruta')
                     ->icon('heroicon-o-map-pin')
                     ->color('primary')
-                    ->visible(fn(OperationalExpense $record): bool => 
+                    ->visible(fn(OperationalExpense $record): bool =>
                         $record->despatch && $record->expenseType->name === 'Gastos de Guía'
                     )
                     ->fillForm(fn (OperationalExpense $record): array => [
@@ -539,7 +547,7 @@ class OperationalExpenseResource extends Resource
                                     ->afterStateUpdated(function ($state, callable $get, callable $set) {
                                         static::autoCompleteFromRouteFields($get, $set);
                                     }),
-                                
+
                                 Forms\Components\Select::make('departure_location')
                                     ->label('Punto de Partida')
                                     ->options(OperationalExpenseConfig::distinct()->pluck('departure_location', 'departure_location'))
@@ -548,7 +556,7 @@ class OperationalExpenseResource extends Resource
                                     ->afterStateUpdated(function ($state, callable $get, callable $set) {
                                         static::autoCompleteFromRouteFields($get, $set);
                                     }),
-                                
+
                                 Forms\Components\Select::make('arrival_location')
                                     ->label('Punto de Llegada')
                                     ->options(OperationalExpenseConfig::distinct()->pluck('arrival_location', 'arrival_location'))
@@ -557,7 +565,7 @@ class OperationalExpenseResource extends Resource
                                     ->afterStateUpdated(function ($state, callable $get, callable $set) {
                                         static::autoCompleteFromRouteFields($get, $set);
                                     }),
-                                
+
                                 Forms\Components\Select::make('unloading_point')
                                     ->label('Punto 4')
                                     ->options(OperationalExpenseConfig::distinct()->pluck('destination_point', 'destination_point'))
@@ -566,16 +574,10 @@ class OperationalExpenseResource extends Resource
                                     ->afterStateUpdated(function ($state, callable $get, callable $set) {
                                         static::autoCompleteFromRouteFields($get, $set);
                                     }),
-                                
+
                                 Forms\Components\TextInput::make('product')
                                     ->label('Producto')
                                     ->maxLength(255),
-
-                                Forms\Components\TextInput::make('gross_sale')
-                                    ->label('Venta Bruta')
-                                    ->numeric()
-                                    ->prefix('S/.')
-                                    ->step(0.01),
 
                                 Forms\Components\Fieldset::make('Gastos Calculados Automáticamente')
                                     ->schema([
@@ -609,7 +611,7 @@ class OperationalExpenseResource extends Resource
                                             ->prefix('S/.')
                                             ->disabled()
                                             ->dehydrated(),
-                                        Forms\Components\TextInput::make('travel_allowances') 
+                                        Forms\Components\TextInput::make('travel_allowances')
                                             ->label('Viáticos')
                                             ->prefix('S/.')
                                             ->disabled()
@@ -625,7 +627,7 @@ class OperationalExpenseResource extends Resource
                             $data['net_sale'] = $record->despatch->total_gross_weight * $data['rate'];
                         }
                         $record->despatch->update($data);
-                        
+
                         Notification::make()
                             ->title('Información de ruta actualizada')
                             ->body('Los gastos operativos se recalcularán automáticamente')

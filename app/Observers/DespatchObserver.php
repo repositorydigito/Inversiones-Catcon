@@ -11,6 +11,13 @@ class DespatchObserver
 {
     public function saving(Despatch $despatch): void
     {
+        // Calcular Venta Bruta automáticamente
+        if ($despatch->net_sale && $despatch->net_sale > 0) {
+            $despatch->gross_sale = $despatch->net_sale * 0.18;
+        } else {
+            $despatch->gross_sale = 0;
+        }
+
         // Solo aplicar automatización si tiene conductor asignado
         if ($despatch->driver_id) {
             $this->automatizeTravelAllowances($despatch);
@@ -65,7 +72,7 @@ class DespatchObserver
             if (!$wasAccepted && $isNowAccepted && $despatch->driver_id) {
                 // Se manejará en el método saved()
             }
-            
+
             // Si antes estaba aceptada y ahora no, eliminar gastos operativos
             if ($wasAccepted && !$isNowAccepted && $despatch->driver_id) {
                 $this->removeOperationalExpenses($despatch);
@@ -79,7 +86,7 @@ class DespatchObserver
             $this->removeOperationalExpenses($despatch);
             return;
         }
-        
+
         // Calcular el total de gastos operativos
         $totalExpenses = $despatch->tolls + $despatch->loading_expenses +
                         $despatch->travel_allowances + $despatch->variable_salary +
@@ -142,16 +149,16 @@ class DespatchObserver
     {
         // Obtener el monto de viáticos desde la configuración de ruta
         $dailyTravelAllowance = 30.00; // Valor por defecto
-        
-        if ($despatch->loading_point && $despatch->departure_location && 
+
+        if ($despatch->loading_point && $despatch->departure_location &&
             $despatch->arrival_location && $despatch->unloading_point) {
-            
+
             $config = \App\Models\OperationalExpenseConfig::where('departure_point', $despatch->loading_point)
                                             ->where('departure_location', $despatch->departure_location)
                                             ->where('arrival_location', $despatch->arrival_location)
                                             ->where('destination_point', $despatch->unloading_point)
                                             ->first();
-            
+
             if ($config && $config->travel_allowances > 0) {
                 $dailyTravelAllowance = $config->travel_allowances;
             }
@@ -195,16 +202,16 @@ class DespatchObserver
         foreach ($guidesOfTheDay as $index => $guide) {
             // Obtener el monto de viáticos desde la configuración de cada guía
             $dailyTravelAllowance = 30.00;
-            
-            if ($guide->loading_point && $guide->departure_location && 
+
+            if ($guide->loading_point && $guide->departure_location &&
                 $guide->arrival_location && $guide->unloading_point) {
-                
+
                 $config = \App\Models\OperationalExpenseConfig::where('departure_point', $guide->loading_point)
                                                 ->where('departure_location', $guide->departure_location)
                                                 ->where('arrival_location', $guide->arrival_location)
                                                 ->where('destination_point', $guide->unloading_point)
                                                 ->first();
-                
+
                 if ($config && $config->travel_allowances > 0) {
                     $dailyTravelAllowance = $config->travel_allowances;
                 }
@@ -235,16 +242,16 @@ class DespatchObserver
         foreach ($remainingGuides as $index => $guide) {
             // Obtener el monto de viáticos desde la configuración de cada guía
             $dailyTravelAllowance = 30.00;
-            
-            if ($guide->loading_point && $guide->departure_location && 
+
+            if ($guide->loading_point && $guide->departure_location &&
                 $guide->arrival_location && $guide->unloading_point) {
-                
+
                 $config = \App\Models\OperationalExpenseConfig::where('departure_point', $guide->loading_point)
                                                 ->where('departure_location', $guide->departure_location)
                                                 ->where('arrival_location', $guide->arrival_location)
                                                 ->where('destination_point', $guide->unloading_point)
                                                 ->first();
-                
+
                 if ($config && $config->travel_allowances > 0) {
                     $dailyTravelAllowance = $config->travel_allowances;
                 }
