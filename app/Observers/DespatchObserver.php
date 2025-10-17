@@ -13,7 +13,7 @@ class DespatchObserver
     {
         // Calcular Venta Bruta automáticamente
         if ($despatch->net_sale && $despatch->net_sale > 0) {
-            $despatch->gross_sale = $despatch->net_sale * 0.18;
+            $despatch->gross_sale = $despatch->net_sale * 1.18;
         } else {
             $despatch->gross_sale = 0;
         }

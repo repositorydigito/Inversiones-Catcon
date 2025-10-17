@@ -236,7 +236,7 @@ class OperationalExpenseResource extends Resource
                     })
                     ->toggleable(isToggledHiddenByDefault: true),
 
-                // 10.2 Venta Bruta (Venta Neta x 0.18)
+                // 10.2 Venta Bruta (Venta Neta x 1.18)
                 Tables\Columns\TextColumn::make('gross_sale')
                     ->label('Venta Bruta')
                     ->getStateUsing(function (OperationalExpense $record): ?string {
