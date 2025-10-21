@@ -44,30 +44,37 @@ class OperationalExpenseSettings extends Page implements HasTable
                 Tables\Columns\TextColumn::make('tolls')
                     ->label('Peajes')
                     ->money('PEN')
+                    ->formatStateUsing(fn ($state) => 'S/. ' . number_format($state, 3, '.', ','))
                     ->sortable(),
                 Tables\Columns\TextColumn::make('loading_expenses')
                     ->label('G.Carga')
                     ->money('PEN')
+                    ->formatStateUsing(fn ($state) => 'S/. ' . number_format($state, 3, '.', ','))
                     ->sortable(),
                 Tables\Columns\TextColumn::make('variable_salary')
                     ->label('S.V.CH')
                     ->money('PEN')
+                    ->formatStateUsing(fn ($state) => 'S/. ' . number_format($state, 3, '.', ','))
                     ->sortable(),
                 Tables\Columns\TextColumn::make('operations_manager')
                     ->label('J.OPE')
                     ->money('PEN')
+                    ->formatStateUsing(fn ($state) => 'S/. ' . number_format($state, 3, '.', ','))
                     ->sortable(),
                 Tables\Columns\TextColumn::make('security')
                     ->label('SEG.')
                     ->money('PEN')
+                    ->formatStateUsing(fn ($state) => 'S/. ' . number_format($state, 3, '.', ','))
                     ->sortable(),
                 Tables\Columns\TextColumn::make('rate')
                     ->label('Tarifa')
                     ->money('PEN')
+                    ->formatStateUsing(fn ($state) => 'S/. ' . number_format($state, 3, '.', ','))
                     ->sortable(),
                 Tables\Columns\TextColumn::make('travel_allowances')
                     ->label('Viáticos')
                     ->money('PEN')
+                    ->formatStateUsing(fn ($state) => 'S/. ' . number_format($state, 3, '.', ','))
                     ->sortable(),
             ])
             ->headerActions([
@@ -237,7 +244,7 @@ class OperationalExpenseSettings extends Page implements HasTable
                 Tables\Actions\DeleteAction::make(),
             ])
             ->bulkActions([
-                
+
             ])
             ->emptyStateHeading('No hay configuraciones de gastos')
             ->emptyStateDescription('Comienza agregando tu primera configuración de gastos operativos por ruta.')
