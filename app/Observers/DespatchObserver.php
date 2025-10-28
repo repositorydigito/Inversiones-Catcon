@@ -153,11 +153,11 @@ class DespatchObserver
         if ($despatch->loading_point && $despatch->departure_location &&
             $despatch->arrival_location && $despatch->unloading_point) {
 
-            $config = \App\Models\OperationalExpenseConfig::where('departure_point', $despatch->loading_point)
-                                            ->where('departure_location', $despatch->departure_location)
-                                            ->where('arrival_location', $despatch->arrival_location)
-                                            ->where('destination_point', $despatch->unloading_point)
-                                            ->first();
+            $config = \App\Models\OperationalExpenseConfig::whereRaw('LOWER(departure_point) = ?', [strtolower($despatch->loading_point)])
+                                ->whereRaw('LOWER(departure_location) = ?', [strtolower($despatch->departure_location)])
+                                ->whereRaw('LOWER(arrival_location) = ?', [strtolower($despatch->arrival_location)])
+                                ->whereRaw('LOWER(destination_point) = ?', [strtolower($despatch->unloading_point)])
+                                ->first();
 
             if ($config && $config->travel_allowances > 0) {
                 $dailyTravelAllowance = $config->travel_allowances;
@@ -206,11 +206,11 @@ class DespatchObserver
             if ($guide->loading_point && $guide->departure_location &&
                 $guide->arrival_location && $guide->unloading_point) {
 
-                $config = \App\Models\OperationalExpenseConfig::where('departure_point', $guide->loading_point)
-                                                ->where('departure_location', $guide->departure_location)
-                                                ->where('arrival_location', $guide->arrival_location)
-                                                ->where('destination_point', $guide->unloading_point)
-                                                ->first();
+                $config = \App\Models\OperationalExpenseConfig::whereRaw('LOWER(departure_point) = ?', [strtolower($guide->loading_point)])
+                                ->whereRaw('LOWER(departure_location) = ?', [strtolower($guide->departure_location)])
+                                ->whereRaw('LOWER(arrival_location) = ?', [strtolower($guide->arrival_location)])
+                                ->whereRaw('LOWER(destination_point) = ?', [strtolower($guide->unloading_point)])
+                                ->first();
 
                 if ($config && $config->travel_allowances > 0) {
                     $dailyTravelAllowance = $config->travel_allowances;
@@ -246,11 +246,11 @@ class DespatchObserver
             if ($guide->loading_point && $guide->departure_location &&
                 $guide->arrival_location && $guide->unloading_point) {
 
-                $config = \App\Models\OperationalExpenseConfig::where('departure_point', $guide->loading_point)
-                                                ->where('departure_location', $guide->departure_location)
-                                                ->where('arrival_location', $guide->arrival_location)
-                                                ->where('destination_point', $guide->unloading_point)
-                                                ->first();
+                $config = \App\Models\OperationalExpenseConfig::whereRaw('LOWER(departure_point) = ?', [strtolower($guide->loading_point)])
+                                ->whereRaw('LOWER(departure_location) = ?', [strtolower($guide->departure_location)])
+                                ->whereRaw('LOWER(arrival_location) = ?', [strtolower($guide->arrival_location)])
+                                ->whereRaw('LOWER(destination_point) = ?', [strtolower($guide->unloading_point)])
+                                ->first();
 
                 if ($config && $config->travel_allowances > 0) {
                     $dailyTravelAllowance = $config->travel_allowances;

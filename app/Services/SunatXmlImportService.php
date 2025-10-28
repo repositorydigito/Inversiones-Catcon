@@ -100,10 +100,10 @@ class SunatXmlImportService
                 if ($despatch->loading_point && $despatch->departure_location &&
                     $despatch->arrival_location && $despatch->unloading_point) {
 
-                    $config = \App\Models\OperationalExpenseConfig::where('departure_point', $despatch->loading_point)
-                        ->where('departure_location', $despatch->departure_location)
-                        ->where('arrival_location', $despatch->arrival_location)
-                        ->where('destination_point', $despatch->unloading_point)
+                    $config = \App\Models\OperationalExpenseConfig::whereRaw('LOWER(departure_point) = ?', [strtolower($despatch->loading_point)])
+                        ->whereRaw('LOWER(departure_location) = ?', [strtolower($despatch->departure_location)])
+                        ->whereRaw('LOWER(arrival_location) = ?', [strtolower($despatch->arrival_location)])
+                        ->whereRaw('LOWER(destination_point) = ?', [strtolower($despatch->unloading_point)])
                         ->first();
 
                     if ($config && $config->travel_allowances > 0) {
@@ -682,7 +682,7 @@ class SunatXmlImportService
             return null;
         }
 
-        $frequentLocation = \App\Models\FrequentLocation::where('name', $address)
+        $frequentLocation = \App\Models\FrequentLocation::whereRaw('LOWER(name) = ?', [strtolower($address)])
             ->where('is_active', true)
             ->first();
 
