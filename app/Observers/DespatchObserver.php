@@ -153,11 +153,12 @@ class DespatchObserver
         if ($despatch->loading_point && $despatch->departure_location &&
             $despatch->arrival_location && $despatch->unloading_point) {
 
-            $config = \App\Models\OperationalExpenseConfig::whereRaw('LOWER(departure_point) = ?', [strtolower($despatch->loading_point)])
-                                ->whereRaw('LOWER(departure_location) = ?', [strtolower($despatch->departure_location)])
-                                ->whereRaw('LOWER(arrival_location) = ?', [strtolower($despatch->arrival_location)])
-                                ->whereRaw('LOWER(destination_point) = ?', [strtolower($despatch->unloading_point)])
-                                ->first();
+            $config = $this->findOperationalConfig(
+                $despatch->loading_point,
+                $despatch->departure_location,
+                $despatch->arrival_location,
+                $despatch->unloading_point
+            );
 
             if ($config && $config->travel_allowances > 0) {
                 $dailyTravelAllowance = $config->travel_allowances;
@@ -206,11 +207,12 @@ class DespatchObserver
             if ($guide->loading_point && $guide->departure_location &&
                 $guide->arrival_location && $guide->unloading_point) {
 
-                $config = \App\Models\OperationalExpenseConfig::whereRaw('LOWER(departure_point) = ?', [strtolower($guide->loading_point)])
-                                ->whereRaw('LOWER(departure_location) = ?', [strtolower($guide->departure_location)])
-                                ->whereRaw('LOWER(arrival_location) = ?', [strtolower($guide->arrival_location)])
-                                ->whereRaw('LOWER(destination_point) = ?', [strtolower($guide->unloading_point)])
-                                ->first();
+                $config = $this->findOperationalConfig(
+                    $guide->loading_point,
+                    $guide->departure_location,
+                    $guide->arrival_location,
+                    $guide->unloading_point
+                );
 
                 if ($config && $config->travel_allowances > 0) {
                     $dailyTravelAllowance = $config->travel_allowances;
@@ -246,11 +248,12 @@ class DespatchObserver
             if ($guide->loading_point && $guide->departure_location &&
                 $guide->arrival_location && $guide->unloading_point) {
 
-                $config = \App\Models\OperationalExpenseConfig::whereRaw('LOWER(departure_point) = ?', [strtolower($guide->loading_point)])
-                                ->whereRaw('LOWER(departure_location) = ?', [strtolower($guide->departure_location)])
-                                ->whereRaw('LOWER(arrival_location) = ?', [strtolower($guide->arrival_location)])
-                                ->whereRaw('LOWER(destination_point) = ?', [strtolower($guide->unloading_point)])
-                                ->first();
+                $config = $this->findOperationalConfig(
+                    $guide->loading_point,
+                    $guide->departure_location,
+                    $guide->arrival_location,
+                    $guide->unloading_point
+                );
 
                 if ($config && $config->travel_allowances > 0) {
                     $dailyTravelAllowance = $config->travel_allowances;
@@ -264,5 +267,68 @@ class DespatchObserver
                 $guide->updateQuietly(['travel_allowances' => $newTravelAllowance]);
             }
         }
+    }
+    /**
+     * Normaliza una cadena para comparación flexible
+     */
+    private function normalizeForComparison(string $text): string
+    {
+        $text = strtolower($text);
+        
+        // Eliminar palabras comunes
+        $commonWords = ['s/n', 'ref:', 'referencia:', 'km', 'km.', 'alt', 'altura'];
+        foreach ($commonWords as $word) {
+            $text = str_replace($word, '', $text);
+        }
+        
+        // Eliminar puntos, comas, guiones y caracteres especiales
+        $text = preg_replace('/[.,\-()\/]/', ' ', $text);
+        
+        // Eliminar tildes
+        $text = $this->removeAccents($text);
+        
+        // Reemplazar múltiples espacios por uno solo
+        $text = preg_replace('/\s+/', ' ', $text);
+        
+        return trim($text);
+    }
+    /**
+     * Elimina tildes y acentos
+     */
+    private function removeAccents(string $text): string
+    {
+        $unwanted = [
+            'á' => 'a', 'é' => 'e', 'í' => 'i', 'ó' => 'o', 'ú' => 'u',
+            'Á' => 'a', 'É' => 'e', 'Í' => 'i', 'Ó' => 'o', 'Ú' => 'u',
+            'ñ' => 'n', 'Ñ' => 'n'
+        ];
+        
+        return strtr($text, $unwanted);
+    }
+    /**
+     * Busca configuración con normalización flexible
+     */
+    private function findOperationalConfig($loadingPoint, $departureLocation, $arrivalLocation, $unloadingPoint)
+    {
+        if (!$loadingPoint || !$departureLocation || !$arrivalLocation || !$unloadingPoint) {
+            return null;
+        }
+
+        // Normalizar los valores de entrada
+        $normalizedInput = [
+            'loading_point' => $this->normalizeForComparison($loadingPoint),
+            'departure_location' => $this->normalizeForComparison($departureLocation),
+            'arrival_location' => $this->normalizeForComparison($arrivalLocation),
+            'unloading_point' => $this->normalizeForComparison($unloadingPoint),
+        ];
+
+        // Buscar en todas las configuraciones activas
+        return \App\Models\OperationalExpenseConfig::all()
+            ->first(function ($config) use ($normalizedInput) {
+                return $this->normalizeForComparison($config->departure_point) === $normalizedInput['loading_point']
+                    && $this->normalizeForComparison($config->departure_location) === $normalizedInput['departure_location']
+                    && $this->normalizeForComparison($config->arrival_location) === $normalizedInput['arrival_location']
+                    && $this->normalizeForComparison($config->destination_point) === $normalizedInput['unloading_point'];
+            });
     }
 }

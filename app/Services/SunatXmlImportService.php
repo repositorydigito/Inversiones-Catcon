@@ -673,8 +673,49 @@ class SunatXmlImportService
         ];
     }
     /**
+     * Normaliza una cadena para comparación flexible
+     * Elimina puntos, comas, guiones, espacios extras y convierte a minúsculas
+     */
+    protected function normalizeForComparison(string $text): string
+    {
+        // Convertir a minúsculas
+        $text = strtolower($text);
+        
+        // Eliminar palabras comunes que no aportan (como S/N, REF, KM, etc.)
+        $commonWords = ['s/n', 'ref:', 'referencia:', 'km', 'km.', 'alt', 'altura'];
+        foreach ($commonWords as $word) {
+            $text = str_replace($word, '', $text);
+        }
+        
+        // Eliminar puntos, comas, guiones y caracteres especiales
+        $text = preg_replace('/[.,\-()\/]/', ' ', $text);
+        
+        // Eliminar tildes/acentos
+        $text = $this->removeAccents($text);
+        
+        // Reemplazar múltiples espacios por uno solo
+        $text = preg_replace('/\s+/', ' ', $text);
+        
+        // Trim final
+        return trim($text);
+    }
+
+    /**
+     * Elimina tildes y acentos de una cadena
+     */
+    protected function removeAccents(string $text): string
+    {
+        $unwanted = [
+            'á' => 'a', 'é' => 'e', 'í' => 'i', 'ó' => 'o', 'ú' => 'u',
+            'Á' => 'a', 'É' => 'e', 'Í' => 'i', 'Ó' => 'o', 'Ú' => 'u',
+            'ñ' => 'n', 'Ñ' => 'n'
+        ];
+        
+        return strtr($text, $unwanted);
+    }
+    /**
      * Infiere el punto de ruta (point) basándose en una dirección
-     * Busca match EXACTO en frequent_locations
+     * Usa normalización flexible para encontrar coincidencias
      */
     protected function inferLocationPoint(?string $address): ?string
     {
@@ -682,9 +723,28 @@ class SunatXmlImportService
             return null;
         }
 
-        $frequentLocation = \App\Models\FrequentLocation::whereRaw('LOWER(name) = ?', [strtolower($address)])
-            ->where('is_active', true)
-            ->first();
+        // Normalizar la dirección de entrada
+        $normalizedAddress = $this->normalizeForComparison($address);
+
+        // Buscar coincidencia exacta primero (normalizada)
+        $frequentLocation = \App\Models\FrequentLocation::where('is_active', true)
+            ->get()
+            ->first(function ($location) use ($normalizedAddress) {
+                return $this->normalizeForComparison($location->name) === $normalizedAddress;
+            });
+
+        // Si no hay coincidencia exacta, buscar por similitud parcial
+        if (!$frequentLocation) {
+            $frequentLocation = \App\Models\FrequentLocation::where('is_active', true)
+                ->get()
+                ->first(function ($location) use ($normalizedAddress) {
+                    $normalizedLocationName = $this->normalizeForComparison($location->name);
+                    
+                    // Si la dirección contiene el nombre de la ubicación o viceversa
+                    return str_contains($normalizedAddress, $normalizedLocationName) 
+                        || str_contains($normalizedLocationName, $normalizedAddress);
+                });
+        }
 
         return $frequentLocation?->point;
     }
