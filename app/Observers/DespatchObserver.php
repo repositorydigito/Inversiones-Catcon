@@ -274,22 +274,22 @@ class DespatchObserver
     private function normalizeForComparison(string $text): string
     {
         $text = strtolower($text);
-        
+
         // Eliminar palabras comunes
         $commonWords = ['s/n', 'ref:', 'referencia:', 'km', 'km.', 'alt', 'altura'];
         foreach ($commonWords as $word) {
             $text = str_replace($word, '', $text);
         }
-        
+
         // Eliminar puntos, comas, guiones y caracteres especiales
         $text = preg_replace('/[.,\-()\/]/', ' ', $text);
-        
+
         // Eliminar tildes
         $text = $this->removeAccents($text);
-        
+
         // Reemplazar múltiples espacios por uno solo
         $text = preg_replace('/\s+/', ' ', $text);
-        
+
         return trim($text);
     }
     /**
@@ -302,11 +302,11 @@ class DespatchObserver
             'Á' => 'a', 'É' => 'e', 'Í' => 'i', 'Ó' => 'o', 'Ú' => 'u',
             'ñ' => 'n', 'Ñ' => 'n'
         ];
-        
+
         return strtr($text, $unwanted);
     }
     /**
-     * Busca configuración con normalización flexible
+     * Busca configuración con normalización flexible y similitud
      */
     private function findOperationalConfig($loadingPoint, $departureLocation, $arrivalLocation, $unloadingPoint)
     {
@@ -322,13 +322,89 @@ class DespatchObserver
             'unloading_point' => $this->normalizeForComparison($unloadingPoint),
         ];
 
-        // Buscar en todas las configuraciones activas
-        return \App\Models\OperationalExpenseConfig::all()
+        // Umbral de similitud (85% = bastante flexible, 90% = más estricto)
+        $threshold = 85;
+
+        // Buscar coincidencia exacta primero
+        $exactMatch = \App\Models\OperationalExpenseConfig::all()
             ->first(function ($config) use ($normalizedInput) {
                 return $this->normalizeForComparison($config->departure_point) === $normalizedInput['loading_point']
                     && $this->normalizeForComparison($config->departure_location) === $normalizedInput['departure_location']
                     && $this->normalizeForComparison($config->arrival_location) === $normalizedInput['arrival_location']
                     && $this->normalizeForComparison($config->destination_point) === $normalizedInput['unloading_point'];
             });
+
+        if ($exactMatch) {
+            return $exactMatch;
+        }
+
+        // Si no hay coincidencia exacta, buscar por similitud
+        $bestMatch = null;
+        $bestScore = 0;
+
+        foreach (\App\Models\OperationalExpenseConfig::all() as $config) {
+            $score = $this->calculateSimilarityScore($config, $normalizedInput);
+
+            if ($score >= $threshold && $score > $bestScore) {
+                $bestScore = $score;
+                $bestMatch = $config;
+            }
+        }
+
+        return $bestMatch;
+    }
+
+    /**
+     * Calcula un score de similitud entre la configuración y los valores de entrada
+     * Retorna un porcentaje de 0 a 100
+     */
+    private function calculateSimilarityScore($config, array $normalizedInput): float
+    {
+        $scores = [];
+
+        // Comparar cada campo
+        $scores[] = $this->stringSimilarity(
+            $this->normalizeForComparison($config->departure_point),
+            $normalizedInput['loading_point']
+        );
+
+        $scores[] = $this->stringSimilarity(
+            $this->normalizeForComparison($config->departure_location),
+            $normalizedInput['departure_location']
+        );
+
+        $scores[] = $this->stringSimilarity(
+            $this->normalizeForComparison($config->arrival_location),
+            $normalizedInput['arrival_location']
+        );
+
+        $scores[] = $this->stringSimilarity(
+            $this->normalizeForComparison($config->destination_point),
+            $normalizedInput['unloading_point']
+        );
+
+        // Retornar el promedio de similitud de todos los campos
+        return array_sum($scores) / count($scores);
+    }
+
+    /**
+     * Calcula similitud entre dos strings (0-100)
+     */
+    private function stringSimilarity(string $str1, string $str2): float
+    {
+        // Si son exactamente iguales, 100%
+        if ($str1 === $str2) {
+            return 100;
+        }
+
+        // Si alguno está vacío, 0%
+        if (empty($str1) || empty($str2)) {
+            return 0;
+        }
+
+        // Usar similar_text que es más rápido que levenshtein
+        similar_text($str1, $str2, $percent);
+
+        return $percent;
     }
 }
