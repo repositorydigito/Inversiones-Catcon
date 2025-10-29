@@ -9,7 +9,7 @@
             margin: 1.5cm;
             size: A4;
         }
-        
+
         body {
             font-family: Arial, sans-serif;
             font-size: 14px;
@@ -18,60 +18,60 @@
             margin: 0;
             padding: 0;
         }
-        
+
         table {
             width: 100%;
             border-collapse: collapse;
             margin-bottom: 15px;
         }
-        
+
         th, td {
             border: 1px solid #000;
             padding: 8px;
             text-align: left;
         }
-        
+
         th {
             background-color: #f0f0f0;
             font-weight: bold;
             text-align: center;
         }
-        
+
         .header {
             border: 2px solid #000;
         }
-        
+
         .company-info {
             width: 65%;
             vertical-align: top;
             padding: 15px;
         }
-        
+
         .invoice-info {
             width: 35%;
             text-align: center;
             background-color: #f8f8f8;
             padding: 15px;
         }
-        
+
         .company-name {
             font-size: 16px;
             font-weight: bold;
             margin-bottom: 10px;
         }
-        
+
         .invoice-type {
             font-size: 14px;
             font-weight: bold;
             margin-bottom: 10px;
         }
-        
+
         .invoice-number {
             font-size: 18px;
             font-weight: bold;
             margin-bottom: 10px;
         }
-        
+
         .section-title {
             background-color: #f0f0f0;
             font-weight: bold;
@@ -80,58 +80,58 @@
             margin-bottom: 10px;
             border: 1px solid #000;
         }
-        
+
         .items-table th {
             background-color: #000;
             color: #fff;
             font-size: 12px;
         }
-        
+
         .items-table td {
             font-size: 12px;
             text-align: center;
         }
-        
+
         .items-table .desc {
             text-align: left;
         }
-        
+
         .items-table .amount {
             text-align: right;
         }
-        
+
         .totals-section {
             border: 2px solid #000;
         }
-        
+
         .amount-words {
             width: 60%;
             padding: 15px;
             vertical-align: top;
         }
-        
+
         .totals {
             width: 40%;
             padding: 0;
         }
-        
+
         .total-row td:first-child {
             background-color: #f0f0f0;
             font-weight: bold;
             text-align: right;
         }
-        
+
         .total-row td:last-child {
             text-align: right;
             font-weight: bold;
         }
-        
+
         .total-final {
             background-color: #000;
             color: #fff;
             font-weight: bold;
         }
-        
+
         .footer {
             margin-top: 20px;
             text-align: center;
@@ -139,7 +139,7 @@
             border-top: 1px solid #000;
             padding-top: 10px;
         }
-        
+
         .text-center { text-align: center; }
         .text-right { text-align: right; }
         .font-bold { font-weight: bold; }
@@ -246,7 +246,7 @@
             <td class="amount-words">
                 <strong>Son:</strong><br>
                 {{ $amount_in_words }}
-                
+
                 @if($invoice->observations)
                 <div style="margin-top: 15px; padding: 8px; border: 1px solid #000; background-color: #f0f0f0;">
                     <strong>Observaciones:</strong><br>
@@ -276,7 +276,7 @@
                         <td>I.G.V. ({{ $invoice->igv_percentage ?? 18 }}%):</td>
                         <td>{{ $currency_symbol }} {{ number_format($invoice->total_igv ?? 0, 2) }}</td>
                     </tr>
-                    <tr class="total-row total-final">
+                    <tr class="total-row">
                         <td>TOTAL:</td>
                         <td>{{ $currency_symbol }} {{ number_format($invoice->total, 2) }}</td>
                     </tr>
@@ -289,7 +289,7 @@
     @if($detraction)
     <div style="border: 2px solid #000; padding: 15px; margin: 15px 0; background-color: #f0f0f0; text-align: center;">
         <strong>OPERACIÓN SUJETA A DETRACCIÓN</strong><br><br>
-        Detracción {{ $detraction['percentage'] }}%: {{ $currency_symbol }} {{ number_format($detraction['amount'], 2) }}<br>
+        Detracción {{ $detraction['percentage'] }}%{{-- : {{ $currency_symbol }} {{ number_format($detraction['amount'], 2) }} --}}<br>
         Importe Neto a Pagar: {{ $currency_symbol }} {{ number_format($detraction['net_payable'], 2) }}<br>
         {{ $detraction['account'] }}
     </div>
@@ -353,10 +353,10 @@
 
     <!-- Footer -->
     <div class="footer">
-        <strong>COMPROBANTE ELECTRÓNICO - {{ $company['name'] }}</strong><br>
-        Fecha: {{ $despatch->emission_date->format('d/m/Y') }} 
-        {{-- | 
-        Estado SUNAT: 
+        {{-- <strong>COMPROBANTE ELECTRÓNICO - {{ $company['name'] }}</strong><br> --}}
+        {{-- Fecha: {{ $despatch->emission_date->format('d/m/Y') }}  --}}
+        {{-- |
+        Estado SUNAT:
         @if($invoice->sunat_accepted === true)
             ACEPTADO
         @elseif($invoice->sunat_accepted === false)
@@ -364,11 +364,11 @@
         @else
             PENDIENTE
         @endif
-        
+
         @if($invoice->hash_code)
         <br><br>Código Hash: {{ $invoice->hash_code }}
         @endif --}}
-        
+
         {{-- <br><small>Resolución SUNAT N° 097-2012/SUNAT</small> --}}
     </div>
 </body>

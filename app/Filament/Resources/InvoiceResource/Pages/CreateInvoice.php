@@ -197,7 +197,7 @@ class CreateInvoice extends CreateRecord
             'send_automatically_to_sunat' => true,
             'send_automatically_to_client' => false,
             'exchange_rate' => null,
-            
+
             'detraction_service_code' => $data['detraction_service_code'] ?? '027',
             'detraction_payment_method' => $data['detraction_payment_method'] ?? '001',
             'detraction_percentage' => $data['detraction_percentage'] ?? 4.00,
@@ -232,12 +232,18 @@ class CreateInvoice extends CreateRecord
         }
 
         $installments = $data['installments'] ?? [];
-        $invoiceTotal = (float) ($data['total'] ?? 0);
+        $hasDetraction = $data['detraction'] ?? false;
+        $total = (float) ($data['total'] ?? 0);
+        $netPayableAmount = (float) ($data['net_payable_amount'] ?? 0);
+
+        // CRÍTICO: Usar monto neto si hay detracción, sino usar total
+        $invoiceAmount = $hasDetraction ? $netPayableAmount : $total;
+
         $emissionDate = \Carbon\Carbon::parse($data['emission_date']);
         $totalInstallments = 0; // Definir variable al inicio para evitar scope issues
 
         // Si no hay cuotas, generar una por defecto con fecha VÁLIDA
-        if (empty($installments) && $invoiceTotal > 0) {
+        if (empty($installments) && $invoiceAmount > 0) {
             // CRITICAL FIX: Asegurar que la fecha sea POSTERIOR a emission_date
             // Para facturas de contado convertidas a crédito, usar +7 días (estándar Greenter)
             $validDueDate = $emissionDate->copy()->addDays(7);
@@ -245,7 +251,7 @@ class CreateInvoice extends CreateRecord
             $data['installments'] = [
                 [
                     'installment_number' => 'Cuota001',
-                    'amount' => $invoiceTotal,
+                    'amount' => $invoiceAmount, // Usar monto correcto (neto si hay detracción)
                     'due_date' => $validDueDate->format('Y-m-d'),
                     'order' => 1,
                 ]
@@ -257,7 +263,8 @@ class CreateInvoice extends CreateRecord
             Log::info('Generada cuota automática con fecha válida para SUNAT:', [
                 'emission_date' => $emissionDate->format('Y-m-d'),
                 'due_date' => $validDueDate->format('Y-m-d'),
-                'amount' => $invoiceTotal
+                'amount' => $invoiceAmount,
+                'uses_net_amount' => $hasDetraction
             ]);
             return;
         }
@@ -272,7 +279,7 @@ class CreateInvoice extends CreateRecord
                 'emission_date_parsed' => $emissionDate->format('Y-m-d H:i:s'),
                 'es_posterior' => $dueDate->gt($emissionDate)
             ]);
-            
+
             if ($dueDate->lte($emissionDate)) {
                 // AUTO-CORREGIR fecha inválida agregando días suficientes
                 $correctedDate = $emissionDate->copy()->addDays(($index + 1) * 7); // +7, +14, +21 días según cuota
@@ -300,37 +307,40 @@ class CreateInvoice extends CreateRecord
             }
         }
 
-        // Validar que la suma de cuotas coincida con el total (solo si el total > 0)
-        if ($invoiceTotal > 0) {
+        // Validar que la suma de cuotas coincida con el monto correcto (solo si > 0)
+        if ($invoiceAmount > 0) {
             // Calcular total de cuotas
             foreach ($installments as $installment) {
                 $totalInstallments += (float) ($installment['amount'] ?? 0);
             }
 
-            $difference = abs($totalInstallments - $invoiceTotal);
+            $difference = abs($totalInstallments - $invoiceAmount);
             if ($difference > 0.01) {
+                $amountLabel = $hasDetraction ? 'monto neto a pagar' : 'total de la factura';
                 throw new \Exception(
                     "La suma de las cuotas (S/ " . number_format($totalInstallments, 2) .
-                    ") no coincide con el total de la factura (S/ " . number_format($invoiceTotal, 2) . "). " .
+                    ") no coincide con el {$amountLabel} (S/ " . number_format($invoiceAmount, 2) . "). " .
                     "Diferencia: S/ " . number_format($difference, 2)
                 );
             }
 
             Log::info('Validación de montos exitosa:', [
                 'total_cuotas' => $totalInstallments,
-                'total_factura' => $invoiceTotal,
-                'diferencia' => $difference
+                'invoice_amount' => $invoiceAmount,
+                'diferencia' => $difference,
+                'uses_net_amount' => $hasDetraction
             ]);
         } else {
-            Log::warning('Omitiendo validación de montos - total de factura es 0.00');
+            Log::warning('Omitiendo validación de montos - monto de factura es 0.00');
         }
 
         Log::info('Cuotas validadas correctamente para SUNAT:', [
             'total_cuotas' => $totalInstallments,
-            'total_factura' => $invoiceTotal,
+            'invoice_amount' => $invoiceAmount,
             'num_cuotas' => count($installments),
             'emission_date' => $emissionDate->format('Y-m-d'),
-            'fechas_validas' => array_map(fn($i) => $i['due_date'], $installments)
+            'fechas_validas' => array_map(fn($i) => $i['due_date'], $installments),
+            'uses_net_amount' => $hasDetraction
         ]);
     }
 
@@ -363,7 +373,7 @@ class CreateInvoice extends CreateRecord
             ]);
 
             $invoiceService = new InvoiceService();
-            
+
             // Enviar a Nubefact usando Laravel Greenter
             $result = $invoiceService->sendToNubefact($this->record);
 
@@ -548,11 +558,11 @@ class CreateInvoice extends CreateRecord
             throw new \Exception("Ya existe una factura con serie {$data['series']} y número {$data['number']}.");
         }
 
-        
+
         if (isset($data['is_credit_payment']) && !$data['is_credit_payment']) {
             $data['due_date'] = null; // Si no es crédito, limpiar fecha de vencimiento
         }
-        
+
         Log::info('Datos validados antes de crear:', [
             'series' => $data['series'],
             'number' => $data['number'],

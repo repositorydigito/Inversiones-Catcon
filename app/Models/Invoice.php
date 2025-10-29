@@ -11,7 +11,7 @@ class Invoice extends Model
         'series',
         'number',
         'invoice_type',
-        'transaction_type',        
+        'transaction_type',
         'emission_date',
         'due_date',
         'currency',
@@ -27,6 +27,8 @@ class Invoice extends Model
         'total_gratuitous',
         'total_other_charges',
         'total',
+        'total_detraction',
+        'net_payable_amount',
         'perception_type',
         'perception_taxable_base',
         'total_perception',
@@ -53,7 +55,7 @@ class Invoice extends Model
         'sunat_response_code',
         'sunat_soap_error',
         'pdf_link',
-        'xml_link', 
+        'xml_link',
         'cdr_link',
         'nubefact_key',
         'pdf_zip_base64',
@@ -83,7 +85,8 @@ class Invoice extends Model
         'send_automatically_to_client' => 'boolean',
         'sunat_accepted' => 'boolean',
         'detraction_percentage' => 'decimal:2',
-        'detraction' => 'boolean',
+        'total_detraction' => 'decimal:2',
+        'net_payable_amount' => 'decimal:2',
         'distancia_km' => 'decimal:2',
         'peso_toneladas' => 'decimal:2',
         'retorno_vacio' => 'boolean',
@@ -93,12 +96,12 @@ class Invoice extends Model
     {
         return $this->hasMany(InvoiceItem::class);
     }
-    
+
     public function installments()
     {
         return $this->hasMany(InvoiceInstallment::class)->ordered();
     }
-    
+
     public function client()
     {
         return $this->belongsTo(Client::class);

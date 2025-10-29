@@ -77,17 +77,17 @@ class InvoiceResource extends Resource
                                     // Obtener la primera guía seleccionada
                                     $firstDespatchId = $state[0];
                                     $despatch = Despatch::with('client')->find($firstDespatchId);
-                                    
+
                                     if ($despatch && $despatch->client) {
                                         $client = $despatch->client;
-                                        
+
                                         // Llenar automáticamente los datos del cliente
                                         $set('client_id', $client->id);
                                         $set('client_document_type', $client->document_type);
                                         $set('client_document_number', $client->document_number);
                                         $set('client_name', $client->name);
                                         $set('client_address', $client->address);
-                                        $set('client_email', $client->email);                                                                                
+                                        $set('client_email', $client->email);
                                     }
                                 } else {
                                     // Si se deseleccionan todas las guías, limpiar los datos del cliente
@@ -98,11 +98,11 @@ class InvoiceResource extends Resource
                                     $set('client_address', null);
                                     $set('client_email', null);
                                 }
-                            })                            
+                            })
                             ->helperText('Selecciona una o más guías de remisión. ✅ = Aceptada por SUNAT, ❌ = Rechazada, ⏳ = Pendiente')
-                            ->columnSpanFull(),                       
+                            ->columnSpanFull(),
                     ])
-                    ->visible(fn (string $operation): bool => $operation === 'create'),               
+                    ->visible(fn (string $operation): bool => $operation === 'create'),
 
                 Section::make('Datos de la Factura')
                     ->description('Información general del comprobante.')
@@ -206,14 +206,14 @@ class InvoiceResource extends Resource
                                     $subtotal = ($quantity * $unitValue) - $discount;
                                     $igv = 0;
                                     $unitPrice = 0;
-                                    
+
                                     if ($igvType === '1' && $igvPercentage > 0) {
                                         $igv = $subtotal * ($igvPercentage / 100);
                                         $unitPrice = $unitValue * (1 + ($igvPercentage / 100));
                                     } else {
                                         $unitPrice = $unitValue;
                                     }
-                                    
+
                                     $total = $subtotal + $igv;
 
                                     $set("items.{$index}.subtotal", round($subtotal, 2));
@@ -323,8 +323,8 @@ class InvoiceResource extends Resource
                                             if ($service) {
                                                 $set('code', $service->code);
                                                 $set('description', $service->name);
-                
-                                                $defaultUnit = \App\Models\MeasureUnit::where('code', 'ZZ')->first();
+
+                                                $defaultUnit = \App\Models\MeasureUnit::where('code', 'TNE')->first();
                                                 if ($defaultUnit) {
                                                     $set('unit_of_measure_id', $defaultUnit->id);
                                                 }
@@ -421,6 +421,40 @@ class InvoiceResource extends Resource
                                     ->readOnly()
                                     ->dehydrated()
                                     ->columnSpan(1),
+
+                                // NUEVO: Campo de Valor de Referencia para Detracción
+                                TextInput::make('reference_value')
+                                    ->label('Valor de Referencia')
+                                    ->helperText('Ingrese el valor de referencia para cálculo de detracción')
+                                    ->numeric()
+                                    ->step(0.01)
+                                    ->default(0.00)
+                                    ->required(fn ($get) => $get('../../detraction'))
+                                    ->visible(fn ($get) => $get('../../detraction'))
+                                    ->live()
+                                    ->afterStateUpdated(function ($state, $set, $get) {
+                                        // Calcular detracción del ítem automáticamente
+                                        $referenceValue = (float) ($state ?? 0);
+                                        $detractionPercentage = (float) ($get('../../detraction_percentage') ?? 4.00);
+                                        $itemDetraction = $referenceValue * ($detractionPercentage / 100);
+
+                                        $set('item_detraction_amount', round($itemDetraction, 2));
+
+                                        // Recalcular totales de la factura
+                                        static::calculateInvoiceTotals($set, $get);
+                                    })
+                                    ->columnSpan(2),
+
+                                // Campo calculado: Monto de Detracción del Ítem
+                                TextInput::make('item_detraction_amount')
+                                    ->label('Detracción del Ítem')
+                                    ->numeric()
+                                    ->readOnly()
+                                    ->dehydrated()
+                                    ->default(0.00)
+                                    ->visible(fn ($get) => $get('../../detraction'))
+                                    ->prefix('S/')
+                                    ->columnSpan(1),
                             ])
                             ->columns(6)
                             ->defaultItems(1)
@@ -429,7 +463,7 @@ class InvoiceResource extends Resource
                             ->collapsible()
                             ->cloneable()
                             ->addActionLabel('Añadir Nuevo Ítem')
-                            ->itemLabel(fn (array $state): ?string => 
+                            ->itemLabel(fn (array $state): ?string =>
                                 $state['description'] ?? 'Nuevo ítem'
                             )
                             ->columnSpanFull(),
@@ -482,18 +516,19 @@ class InvoiceResource extends Resource
                                 $emissionDate = $get('emission_date');
                                 $isCreditPayment = $get('is_credit_payment');
                                 $existingInstallments = $get('installments') ?? [];
-                                
+                                $netPayableAmount = (float) ($get('net_payable_amount') ?? $newTotal); // NUEVO: Usar monto neto
 
-                                if ($isCreditPayment && $newTotal > 0 && $emissionDate && !empty($existingInstallments)) {
-                                    // Calcular montos en partes iguales
-                                    $amountPerInstallment = round($newTotal / $numberOfInstallments, 2);
-                                    $lastInstallmentAmount = $newTotal - ($amountPerInstallment * ($numberOfInstallments - 1));
-                                    
+
+                                if ($isCreditPayment && $netPayableAmount > 0 && $emissionDate && !empty($existingInstallments)) {
+                                    // Calcular montos en partes iguales usando MONTO NETO (no total)
+                                    $amountPerInstallment = round($netPayableAmount / $numberOfInstallments, 2);
+                                    $lastInstallmentAmount = $netPayableAmount - ($amountPerInstallment * ($numberOfInstallments - 1));
+
 
                                     $updatedInstallments = [];
                                     for ($i = 0; $i < $numberOfInstallments && $i < count($existingInstallments); $i++) {
                                         $amount = ($i === $numberOfInstallments - 1) ? $lastInstallmentAmount : $amountPerInstallment;
-                                        
+
                                         $updatedInstallments[] = [
                                             'installment_number' => $existingInstallments[$i]['installment_number'] ?? 'Cuota' . str_pad($i + 1, 3, '0', STR_PAD_LEFT),
                                             'amount' => $amount,
@@ -501,7 +536,59 @@ class InvoiceResource extends Resource
                                             'order' => $existingInstallments[$i]['order'] ?? ($i + 1),
                                         ];
                                     }
-                                    
+
+                                    $set('installments', $updatedInstallments);
+                                }
+                            }),
+
+                        // NUEVO: Total Detracción
+                        TextInput::make('total_detraction')
+                            ->label('TOTAL DETRACCIÓN')
+                            ->numeric()
+                            ->readOnly()
+                            ->default(0.00)
+                            ->dehydrated()
+                            ->visible(fn ($get) => $get('detraction'))
+                            ->prefix('S/')
+                            ->extraAttributes(['class' => 'font-bold text-orange-600']),
+
+                        // NUEVO: Monto Neto a Pagar
+                        TextInput::make('net_payable_amount')
+                            ->label('MONTO NETO A PAGAR')
+                            ->numeric()
+                            ->readOnly()
+                            ->default(0.00)
+                            ->dehydrated()
+                            ->visible(fn ($get) => $get('detraction'))
+                            ->prefix('S/')
+                            ->extraAttributes(['class' => 'font-bold text-green-600'])
+                            ->helperText('Total - Detracción = Monto que el cliente debe pagar')
+                            ->live() // CRÍTICO: Debe ser live para disparar recálculo de cuotas
+                            ->afterStateUpdated(function ($state, $set, $get) {
+                                // Recalcular cuotas cuando cambie el monto neto
+                                $netPayableAmount = (float) ($state ?? 0);
+                                $numberOfInstallments = (int) ($get('number_of_installments') ?? 1);
+                                $emissionDate = $get('emission_date');
+                                $isCreditPayment = $get('is_credit_payment');
+                                $existingInstallments = $get('installments') ?? [];
+
+                                if ($isCreditPayment && $netPayableAmount > 0 && $emissionDate && !empty($existingInstallments)) {
+                                    // Calcular montos en partes iguales usando MONTO NETO
+                                    $amountPerInstallment = round($netPayableAmount / $numberOfInstallments, 2);
+                                    $lastInstallmentAmount = $netPayableAmount - ($amountPerInstallment * ($numberOfInstallments - 1));
+
+                                    $updatedInstallments = [];
+                                    for ($i = 0; $i < $numberOfInstallments && $i < count($existingInstallments); $i++) {
+                                        $amount = ($i === $numberOfInstallments - 1) ? $lastInstallmentAmount : $amountPerInstallment;
+
+                                        $updatedInstallments[] = [
+                                            'installment_number' => $existingInstallments[$i]['installment_number'] ?? 'Cuota' . str_pad($i + 1, 3, '0', STR_PAD_LEFT),
+                                            'amount' => $amount,
+                                            'due_date' => $existingInstallments[$i]['due_date'] ?? null,
+                                            'order' => $existingInstallments[$i]['order'] ?? ($i + 1),
+                                        ];
+                                    }
+
                                     $set('installments', $updatedInstallments);
                                 }
                             }),
@@ -514,7 +601,7 @@ class InvoiceResource extends Resource
                     ->schema([
                         Toggle::make('is_credit_payment')
                             ->label('¿Pago a Crédito?')
-                            ->default(false)
+                            ->default(true)
                             ->live()
                             ->helperText('Activa para configurar fecha de vencimiento')
                             ->columnSpan(1),
@@ -543,6 +630,23 @@ class InvoiceResource extends Resource
                             ->suffix('%')
                             ->visible(fn ($get) => $get('detraction'))
                             ->required(fn ($get) => $get('detraction'))
+                            ->live()
+                            ->afterStateUpdated(function ($state, $set, $get) {
+                                // Recalcular todas las detracciones de items cuando cambie el porcentaje
+                                $items = $get('items') ?? [];
+                                $newPercentage = (float) ($state ?? 4.00);
+
+                                foreach ($items as $index => $item) {
+                                    $referenceValue = (float) ($item['reference_value'] ?? 0);
+                                    if ($referenceValue > 0) {
+                                        $itemDetraction = $referenceValue * ($newPercentage / 100);
+                                        $set("items.{$index}.item_detraction_amount", round($itemDetraction, 2));
+                                    }
+                                }
+
+                                // Recalcular totales después de actualizar detracciones
+                                // Esto se hará automáticamente por el flujo de items
+                            })
                             ->columnSpan(1),
 
                         // Información calculada de pago
@@ -554,13 +658,15 @@ class InvoiceResource extends Resource
                                 $isCredit = $get('is_credit_payment');
                                 $hasDetraction = $get('detraction');
                                 $detractionPercentage = (float) ($get('detraction_percentage') ?? 4.00);
-                                
+                                $totalDetraction = (float) ($get('total_detraction') ?? 0); // NUEVO: Obtener del campo calculado
+                                $netPayableAmount = (float) ($get('net_payable_amount') ?? $total); // NUEVO
+
                                 if ($total <= 0) {
                                     return 'Complete los items para ver el resumen de pago.';
                                 }
 
                                 $content = '';
-                                
+
                                 // Tipo de pago
                                 if ($isCredit && $dueDate) {
                                     $daysCredit = now()->diffInDays(\Carbon\Carbon::parse($dueDate), false);
@@ -569,20 +675,18 @@ class InvoiceResource extends Resource
                                 } else {
                                     $content .= "**Pago:** CONTADO\n\n";
                                 }
-                                
+
                                 // Información financiera
                                 $content .= "**Información Financiera:**\n";
                                 $content .= "• Total factura: S/ " . number_format($total, 2) . "\n";
-                                
-                                if ($hasDetraction && $total > 0) {
-                                    $detractionAmount = $total * ($detractionPercentage / 100);
-                                    $netPayable = $total - $detractionAmount;
-                                    $content .= "• Detracción ({$detractionPercentage}%): S/ " . number_format($detractionAmount, 2) . "\n";
-                                    $content .= "• **Monto neto a pagar: S/ " . number_format($netPayable, 2) . "**\n";
+
+                                if ($hasDetraction && $totalDetraction > 0) {
+                                    $content .= "• Detracción ({$detractionPercentage}%): S/ " . number_format($totalDetraction, 2) . "\n";
+                                    $content .= "• **Monto neto a pagar: S/ " . number_format($netPayableAmount, 2) . "**\n";
                                 } else {
                                     $content .= "• **Monto a pagar: S/ " . number_format($total, 2) . "**\n";
                                 }
-                                
+
                                 return $content;
                             })
                             ->columnSpanFull(),
@@ -592,7 +696,7 @@ class InvoiceResource extends Resource
                 Section::make('Información de Detracción')
                     ->description('Configuración específica para el sistema de detracciones de SUNAT.')
                     ->visible(fn ($get) => $get('detraction'))
-                    ->columns(2)
+                    ->columns(3)
                     ->schema([
                         Select::make('detraction_service_code')
                             ->label('Código de Bien/Servicio')
@@ -609,6 +713,7 @@ class InvoiceResource extends Resource
                             ])
                             ->default('027')
                             ->required()
+                            ->searchable()
                             ->columnSpan(1),
 
                         Select::make('detraction_payment_method')
@@ -629,119 +734,6 @@ class InvoiceResource extends Resource
                             ->required()
                             ->placeholder('Ej: 00000012345')
                             ->columnSpan(1),
-
-                        Select::make('tipo_carga')
-                            ->label('Tipo de Carga')
-                            ->options([
-                                'contenedor_lleno' => 'Contenedor lleno',
-                                'carga_general_liquidos' => 'Carga general/líquidos',
-                            ])
-                            ->default('carga_general_liquidos')
-                            ->live()
-                            ->columnSpan(1),
-
-                        TextInput::make('distancia_km')
-                            ->label('Distancia (km)')
-                            ->numeric()
-                            ->step(0.01)
-                            ->default(0)
-                            ->live()
-                            ->helperText('Distancia del recorrido en kilómetros')
-                            ->columnSpan(1),
-
-                        TextInput::make('peso_toneladas')
-                            ->label('Peso (toneladas)')
-                            ->numeric()
-                            ->step(0.01)
-                            ->visible(fn ($get) => $get('tipo_carga') === 'carga_general_liquidos')
-                            ->required(fn ($get) => $get('tipo_carga') === 'carga_general_liquidos')
-                            ->live()
-                            ->helperText('Peso de la carga en toneladas')
-                            ->columnSpan(1),
-
-                        Toggle::make('retorno_vacio')
-                            ->label('Retorno en vacío')
-                            ->helperText('Aplica factor 1.4 si distancia > 200km')
-                            ->live()
-                            ->columnSpan(1),
-
-                        TextInput::make('ubigeo')
-                            ->label('Código Ubigeo SUNAT')
-                            ->helperText('Código de 6 dígitos para geolocalización (requerido por SUNAT)')
-                            ->maxLength(6)
-                            ->minLength(6)
-                            ->placeholder('Ej: 150101')
-                            ->regex('/^[0-9]{6}$/')
-                            ->validationMessages([
-                                'regex' => 'El ubigeo debe tener exactamente 6 dígitos numéricos.',
-                            ])
-                            ->columnSpan(1),
-
-                        Placeholder::make('detraction_info')
-                            ->label('📊 Cálculo SUNAT Automático')
-                            ->content(function ($get) {
-                                $total = (float) ($get('total') ?? 0);
-                                $tipoCarga = $get('tipo_carga') ?? 'carga_general_liquidos';
-                                $distancia = (float) ($get('distancia_km') ?? 0);
-                                $peso = (float) ($get('peso_toneladas') ?? 0);
-                                $retornoVacio = $get('retorno_vacio') ?? false;
-                                $percentage = (float) ($get('detraction_percentage') ?? 4.00);
-                                $serviceCode = $get('detraction_service_code') ?? '027';
-                                $bankAccount = $get('detraction_bank_account') ?? '';
-                                
-                                if ($total <= 0) {
-                                    return '⏳ Complete los montos para ver el cálculo SUNAT.';
-                                }
-                                
-
-                                $valorReferencial = 0;
-                                if ($distancia > 0) {
-                                    if ($tipoCarga === 'contenedor_lleno') {
-                                        $valorReferencial = $distancia * 1.31; // S/ por km
-                                    } else { // carga_general_liquidos
-                                        if ($peso > 0) {
-                                            $valorReferencial = $distancia * $peso * 0.157; // S/ por km*tn
-                                        }
-                                    }
-                                    
-                                    // Factor retorno vacío (1.4 si > 200km)
-                                    if ($retornoVacio && $distancia > 200) {
-                                        $valorReferencial *= 1.4;
-                                    }
-                                }
-                                
-                                // Base para detracción: mayor entre facturado y referencial
-                                $baseDetraccion = max($total, $valorReferencial);
-                                $detractionAmount = $baseDetraccion * ($percentage / 100);
-                                
-                                $content = "**🚛 Datos del Transporte:**\n";
-                                $content .= "• Tipo: " . ($tipoCarga === 'contenedor_lleno' ? 'Contenedor lleno' : 'Carga general/líquidos') . "\n";
-                                $content .= "• Distancia: {$distancia} km\n";
-                                if ($tipoCarga === 'carga_general_liquidos') {
-                                    $content .= "• Peso: {$peso} tn\n";
-                                }
-                                if ($retornoVacio && $distancia > 200) {
-                                    $content .= "• Retorno vacío: Sí (factor 1.4)\n";
-                                }
-                                
-                                $content .= "\n**💰 Cálculo SUNAT:**\n";
-                                $content .= "• Valor facturado: S/ " . number_format($total, 2) . "\n";
-                                if ($valorReferencial > 0) {
-                                    $content .= "• Valor referencial: S/ " . number_format($valorReferencial, 2) . "\n";
-                                    $content .= "• Base detracción: S/ " . number_format($baseDetraccion, 2) . " (mayor)\n";
-                                } else {
-                                    $content .= "• Base detracción: S/ " . number_format($baseDetraccion, 2) . "\n";
-                                }
-                                $content .= "• Detracción ({$percentage}%): S/ " . number_format($detractionAmount, 2) . "\n";
-                                $content .= "• **Neto a pagar: S/ " . number_format($total - $detractionAmount, 2) . "**\n";
-                                
-                                if ($bankAccount) {
-                                    $content .= "\n• Cuenta BN: {$bankAccount}";
-                                }
-                                
-                                return $content;
-                            })
-                            ->columnSpan(2),
                     ]),
 
 
@@ -765,25 +757,30 @@ class InvoiceResource extends Resource
                             ->live()
                             ->afterStateUpdated(function ($state, $set, $get) {
                                 $numberOfInstallments = (int) $state;
+                                $hasDetraction = $get('detraction') ?? false;
                                 $total = (float) ($get('total') ?? 0);
+                                $netPayableAmount = (float) ($get('net_payable_amount') ?? 0);
                                 $emissionDate = $get('emission_date');
-                                
-                                if ($total <= 0 || !$emissionDate) {
+
+                                // CRÍTICO: Usar monto neto si hay detracción, sino usar total
+                                $amountToDistribute = $hasDetraction ? $netPayableAmount : $total;
+
+                                if ($amountToDistribute <= 0 || !$emissionDate) {
                                     return;
                                 }
-                                
-                                // Calcular montos en partes iguales
-                                $amountPerInstallment = round($total / $numberOfInstallments, 2);
-                                $lastInstallmentAmount = $total - ($amountPerInstallment * ($numberOfInstallments - 1));
-                                
+
+                                // Calcular montos en partes iguales usando el monto correcto
+                                $amountPerInstallment = round($amountToDistribute / $numberOfInstallments, 2);
+                                $lastInstallmentAmount = $amountToDistribute - ($amountPerInstallment * ($numberOfInstallments - 1));
+
                                 // Generar cuotas con fechas válidas
                                 $installments = [];
                                 $baseDate = \Carbon\Carbon::parse($emissionDate);
-                                
+
                                 for ($i = 0; $i < $numberOfInstallments; $i++) {
                                     $amount = ($i === $numberOfInstallments - 1) ? $lastInstallmentAmount : $amountPerInstallment;
-                                    
-    
+
+
                                     if ($numberOfInstallments === 1) {
                                         // Para pago único, usar +7 días (mínimo seguro)
                                         $daysToAdd = 7;
@@ -791,9 +788,9 @@ class InvoiceResource extends Resource
                                         // Para múltiples cuotas, usar patrón +7, +14, +21, etc.
                                         $daysToAdd = ($i + 1) * 7;
                                     }
-                                    
+
                                     $dueDate = $baseDate->copy()->addDays($daysToAdd);
-                                    
+
                                     $installments[] = [
                                         'installment_number' => 'Cuota' . str_pad($i + 1, 3, '0', STR_PAD_LEFT),
                                         'amount' => $amount,
@@ -801,15 +798,13 @@ class InvoiceResource extends Resource
                                         'order' => $i + 1,
                                     ];
                                 }
-                                
-                                $set('installments', $installments);
-                                
 
-                                $set('due_date', end($installments)['due_date']);
+                                $set('installments', $installments);
+                                // $set('due_date', end($installments)['due_date']);
                             })
-                            ->helperText('Al cambiar el número de cuotas se auto-calculará la división del monto total')
+                            ->helperText('Al cambiar el número de cuotas se auto-calculará la división del monto neto a pagar (si hay detracción)')
                             ->columnSpanFull(),
-                            
+
                         // NUEVO: Botón para recalcular cuotas cuando el total haya cambiado
                         Actions::make([
                             Action::make('recalculate_installments')
@@ -818,10 +813,15 @@ class InvoiceResource extends Resource
                                 ->color('warning')
                                 ->action(function ($set, $get) {
                                     $numberOfInstallments = (int) ($get('number_of_installments') ?? 1);
+                                    $hasDetraction = $get('detraction') ?? false;
                                     $total = (float) ($get('total') ?? 0);
+                                    $netPayableAmount = (float) ($get('net_payable_amount') ?? 0);
                                     $emissionDate = $get('emission_date');
-                                    
-                                    if ($total <= 0) {
+
+                                    // CRÍTICO: Usar monto neto si hay detracción, sino usar total
+                                    $amountToDistribute = $hasDetraction ? $netPayableAmount : $total;
+
+                                    if ($amountToDistribute <= 0) {
                                         \Filament\Notifications\Notification::make()
                                             ->title('Error')
                                             ->body('No hay total para calcular. Primero configure los items de la factura.')
@@ -829,7 +829,7 @@ class InvoiceResource extends Resource
                                             ->send();
                                         return;
                                     }
-                                    
+
                                     if (!$emissionDate) {
                                         \Filament\Notifications\Notification::make()
                                             ->title('Error')
@@ -838,54 +838,46 @@ class InvoiceResource extends Resource
                                             ->send();
                                         return;
                                     }
-                                    
-                                    // Calcular montos en partes iguales
-                                    $amountPerInstallment = round($total / $numberOfInstallments, 2);
-                                    $lastInstallmentAmount = $total - ($amountPerInstallment * ($numberOfInstallments - 1));
-                                    
+
+                                    // Calcular montos en partes iguales usando el monto correcto
+                                    $amountPerInstallment = round($amountToDistribute / $numberOfInstallments, 2);
+                                    $lastInstallmentAmount = $amountToDistribute - ($amountPerInstallment * ($numberOfInstallments - 1));
+
                                     // Generar cuotas con fechas válidas
                                     $installments = [];
-                                    $baseDate = \Carbon\Carbon::parse($emissionDate);
-                                    
+                                    $dueDate = $get('due_date');
+
                                     for ($i = 0; $i < $numberOfInstallments; $i++) {
                                         $amount = ($i === $numberOfInstallments - 1) ? $lastInstallmentAmount : $amountPerInstallment;
-                                        
-                                        // Siguiendo patrón Greenter: +7 días por cuota
-                                        if ($numberOfInstallments === 1) {
-                                            $daysToAdd = 7; // Pago único a +7 días
-                                        } else {
-                                            $daysToAdd = ($i + 1) * 7; // Múltiples cuotas: +7, +14, +21, etc.
-                                        }
-                                        
-                                        $dueDate = $baseDate->copy()->addDays($daysToAdd);
-                                        
+
                                         $installments[] = [
                                             'installment_number' => 'Cuota' . str_pad($i + 1, 3, '0', STR_PAD_LEFT),
                                             'amount' => $amount,
-                                            'due_date' => $dueDate->format('Y-m-d'),
+                                            'due_date' => $dueDate,
                                             'order' => $i + 1,
                                         ];
                                     }
-                                    
+
                                     $set('installments', $installments);
-                                    $set('due_date', end($installments)['due_date']);
-                                    
+                                    // $set('due_date', end($installments)['due_date']);
+
+                                    $amountLabel = $hasDetraction ? 'monto neto a pagar' : 'total';
                                     \Filament\Notifications\Notification::make()
                                         ->title('Cuotas Recalculadas')
-                                        ->body('Las cuotas han sido recalculadas con el total actual de S/ ' . number_format($total, 2))
+                                        ->body("Las cuotas han sido recalculadas con el {$amountLabel} actual de S/ " . number_format($amountToDistribute, 2))
                                         ->success()
                                         ->send();
                                 })
                                 ->visible(fn ($get) => (float) ($get('total') ?? 0) > 0)
                         ])->columnSpanFull(),
-                            
+
                         Repeater::make('installments')
                             ->label('Cuotas de Pago')
                             // ->relationship('installments') // REMOVIDO: En CREATE no existe la relación aún
                             ->schema([
                                 Hidden::make('installment_number'),
                                 Hidden::make('order'),
-                                
+
                                 TextInput::make('amount')
                                     ->label('Monto')
                                     ->numeric()
@@ -909,7 +901,7 @@ class InvoiceResource extends Resource
                                     })
                                     ->helperText('Monto editable - se calculó automáticamente pero puedes ajustarlo')
                                     ->columnSpan(1),
-                                    
+
                                 DatePicker::make('due_date')
                                     ->label('Fecha de Vencimiento')
                                     ->native(false)
@@ -927,55 +919,57 @@ class InvoiceResource extends Resource
                             ->deleteAction(
                                 fn (Action $action) => $action->requiresConfirmation()
                             )
-                            ->itemLabel(fn (array $state): ?string => 
+                            ->itemLabel(fn (array $state): ?string =>
                                 ($state['installment_number'] ?? 'Nueva cuota') . ': S/ ' . number_format($state['amount'] ?? 0, 2)
                             ),
-                            
+
                         Placeholder::make('installments_summary')
                             ->label('Resumen de Cuotas')
                             ->content(function ($get) {
                                 try {
                                     $installments = $get('installments') ?? [];
+                                    $hasDetraction = $get('detraction') ?? false;
                                     $rawTotal = $get('total') ?? 0;
-                                    
-    
-                                    if (!is_numeric($rawTotal) || $rawTotal === '' || $rawTotal === null || is_array($rawTotal) || is_object($rawTotal)) {
-                                        $invoiceTotal = 0.0;
-                                    } else {
-                                        $invoiceTotal = (float) $rawTotal;
+                                    $rawNetPayable = $get('net_payable_amount') ?? 0;
+
+                                    // CRÍTICO: Si hay detracción, usar monto neto; si no, usar total
+                                    $invoiceAmount = $hasDetraction ? (float) $rawNetPayable : (float) $rawTotal;
+
+                                    if (!is_numeric($invoiceAmount) || $invoiceAmount === '' || $invoiceAmount === null || is_array($invoiceAmount) || is_object($invoiceAmount)) {
+                                        $invoiceAmount = 0.0;
                                     }
-                                    
-                                    if (empty($installments) || $invoiceTotal <= 0) {
+
+                                    if (empty($installments) || $invoiceAmount <= 0) {
                                         return '⏳ Configure las cuotas para ver el resumen.';
                                     }
-                                    
+
                                     $totalCuotas = 0.0; // EXPLICIT FLOAT INITIALIZATION
                                     $content = "**📋 Cuotas configuradas:**\n";
-                                    
+
                                     foreach ($installments as $index => $installment) {
-        
+
                                         $rawAmount = $installment['amount'] ?? 0;
                                         $dueDate = $installment['due_date'] ?? '';
-                                        
+
                                         // VALIDATION: Verificar que no sea array, object y que sea numérico válido
                                         if (!is_numeric($rawAmount) || $rawAmount === '' || $rawAmount === null || is_array($rawAmount) || is_object($rawAmount)) {
                                             $amount = 0.0;
                                         } else {
                                             $amount = (float) $rawAmount;
                                         }
-                                        
+
                                         // SAFE ACCUMULATION: Asegurar que siempre se sume un float
                                         $totalCuotas = (float) $totalCuotas + (float) $amount;
-                                        
+
                                         // FIX: Asegurar que $index sea entero antes de sumar
                                         $cuotaNum = (int) $index + 1;
                                         $content .= "• Cuota {$cuotaNum}: S/ " . number_format($amount, 2);
-                                        
+
                                         if ($dueDate && !empty($dueDate)) {
                                             try {
                                                 $parsedDate = \Carbon\Carbon::parse($dueDate);
                                                 $content .= " (Vence: " . $parsedDate->format('d/m/Y') . ")";
-                                                
+
                                                 // Validar fecha
                                                 $emissionDate = $get('emission_date');
                                                 if ($emissionDate && $parsedDate->lte(\Carbon\Carbon::parse($emissionDate))) {
@@ -987,39 +981,40 @@ class InvoiceResource extends Resource
                                         }
                                         $content .= "\n";
                                     }
-                                    
+
                                     // SAFE NUMBER FORMATTING: Asegurar que ambos valores sean float válidos
                                     $totalCuotas = (float) $totalCuotas;
-                                    $invoiceTotal = (float) $invoiceTotal;
-                                    
+                                    $invoiceAmount = (float) $invoiceAmount;
+
+                                    $amountLabel = $hasDetraction ? "monto neto a pagar" : "total factura";
                                     $content .= "\n**💰 Total cuotas:** S/ " . number_format($totalCuotas, 2) . "\n";
-                                    $content .= "**🧾 Total factura:** S/ " . number_format($invoiceTotal, 2) . "\n";
-                                    
+                                    $content .= "**🧾 Total {$amountLabel}:** S/ " . number_format($invoiceAmount, 2) . "\n";
+
                                     // TRIPLE VALIDATION: Verificar que ambos valores sean numéricos válidos
-                                    if (is_numeric($totalCuotas) && is_numeric($invoiceTotal) && is_float($totalCuotas) && is_float($invoiceTotal)) {
-                                        $difference = $totalCuotas - $invoiceTotal;
+                                    if (is_numeric($totalCuotas) && is_numeric($invoiceAmount) && is_float($totalCuotas) && is_float($invoiceAmount)) {
+                                        $difference = $totalCuotas - $invoiceAmount;
                                     } else {
                                         $difference = 0.0; // Valor seguro por defecto
                                     }
-                                    
+
                                     // SAFE DIFFERENCE FORMATTING
                                     $difference = (float) $difference;
-                                    
+
                                     if (abs($difference) > 0.01) {
                                         $content .= "\n\n🚨 **ALERTA: CUOTAS DESINCRONIZADAS**";
                                         $content .= "\n⚠️ **Diferencia:** S/ " . number_format($difference, 2);
                                         if ($difference > 0) {
-                                            $content .= " (Las cuotas exceden el total)";
+                                            $content .= " (Las cuotas exceden el {$amountLabel})";
                                         } else {
-                                            $content .= " (Las cuotas son menores al total)";
+                                            $content .= " (Las cuotas son menores al {$amountLabel})";
                                         }
-                                        $content .= "\n\n🔄 **SOLUCIÓN:** Use el botón 'Recalcular Cuotas' para sincronizar con el total actual.";
-                                        $content .= "\n📝 **CAUSA:** El total de la factura cambió después de configurar las cuotas.";
+                                        $content .= "\n\n🔄 **SOLUCIÓN:** Use el botón 'Recalcular Cuotas' para sincronizar con el {$amountLabel} actual.";
+                                        $content .= "\n📝 **CAUSA:** El {$amountLabel} cambió después de configurar las cuotas.";
                                     } else {
-                                        $content .= "\n\n✅ **Las cuotas coinciden con el total de la factura**";
+                                        $content .= "\n\n✅ **Las cuotas coinciden con el {$amountLabel}**";
                                     }
-                                    
-        
+
+
                                     $emissionDate = $get('emission_date');
                                     if ($emissionDate) {
                                         $invalidDates = false;
@@ -1037,7 +1032,7 @@ class InvoiceResource extends Resource
                                                 }
                                             }
                                         }
-                                        
+
                                         if ($invalidDates) {
                                             $content .= "\n\n🚨 **ERROR SUNAT**: Hay fechas de vencimiento iguales o anteriores a la fecha de emisión.";
                                             $content .= "\n   Esto causará el error 3267 al enviar a SUNAT.";
@@ -1045,9 +1040,9 @@ class InvoiceResource extends Resource
                                             $content .= "\n\n✅ **Fechas válidas para SUNAT** (todas posteriores a emisión)";
                                         }
                                     }
-                                    
+
                                     return $content;
-                                    
+
                                 } catch (\Exception $e) {
                                     // FALLBACK SEGURO: En caso de cualquier error no previsto
                                     return '⚠️ Error al generar resumen de cuotas. Verifique que los valores sean numéricos válidos.';
@@ -1056,7 +1051,7 @@ class InvoiceResource extends Resource
                             ->columnSpanFull(),
                     ]),
             ]);
-    }    
+    }
 
     protected static function calculateItemTotals($set, $get): void
     {
@@ -1068,16 +1063,16 @@ class InvoiceResource extends Resource
 
         // Calcular subtotal (sin IGV)
         $subtotal = ($quantity * $unitValue) - $discount;
-        
+
         // Calcular IGV usando la fórmula: Subtotal * Porcentaje IGV
         $igv = 0;
         if ($igvType === '1' && $igvPercentage > 0) {
             $igv = $subtotal * ($igvPercentage / 100);
         }
-        
+
         // Calcular total (subtotal + IGV)
         $total = $subtotal + $igv;
-        
+
         // Calcular precio unitario con IGV: (Valor Unitario * (1 + IGV%))
         $unitPrice = 0;
         if ($igvType === '1' && $igvPercentage > 0) {
@@ -1090,7 +1085,7 @@ class InvoiceResource extends Resource
         $set('igv', round($igv, 2));
         $set('total', round($total, 2));
         $set('unit_price', round($unitPrice, 2));
-        
+
         // NUEVO: Recalcular automáticamente el total general de la factura
         static::calculateInvoiceTotals($set, $get);
     }
@@ -1104,6 +1099,7 @@ class InvoiceResource extends Resource
         $totalIgv = 0;
         $totalGeneral = 0;
         $totalDiscount = (float) ($get('../../global_discount') ?? 0);
+        $totalDetraction = 0; // NUEVO: Total de detracciones
 
         foreach ($items as $item) {
             $itemTotal = (float) ($item['total'] ?? 0);
@@ -1111,10 +1107,12 @@ class InvoiceResource extends Resource
             $itemIgv = (float) ($item['igv'] ?? 0);
             $itemDiscount = (float) ($item['discount'] ?? 0);
             $itemIgvType = $item['igv_type'] ?? '1';
+            $itemDetraction = (float) ($item['item_detraction_amount'] ?? 0); // NUEVO
 
             $totalGeneral += $itemTotal;
             $totalIgv += $itemIgv;
             $totalDiscount += $itemDiscount;
+            $totalDetraction += $itemDetraction; // NUEVO: Sumar detracciones
 
             switch ($itemIgvType) {
                 case '1':
@@ -1129,12 +1127,20 @@ class InvoiceResource extends Resource
             }
         }
 
+        // Calcular total final con descuento global
+        $finalTotal = $totalGeneral - $totalDiscount;
+
+        // NUEVO: Calcular monto neto a pagar (Total - Detracción)
+        $netPayableAmount = $finalTotal - $totalDetraction;
+
         $set('../../total_taxable', round($totalTaxable, 2));
         $set('../../total_unaffected', round($totalUnaffected, 2));
         $set('../../total_exonerated', round($totalExonerated, 2));
         $set('../../total_igv', round($totalIgv, 2));
         $set('../../total_discount', round($totalDiscount, 2));
-        $set('../../total', round($totalGeneral - $totalDiscount, 2)); // CRITICAL: Esto disparará el afterStateUpdated del total
+        $set('../../total', round($finalTotal, 2)); // CRITICAL: Esto disparará el afterStateUpdated del total
+        $set('../../total_detraction', round($totalDetraction, 2)); // NUEVO
+        $set('../../net_payable_amount', round($netPayableAmount, 2)); // NUEVO
     }
 
     public static function table(Table $table): Table
@@ -1235,7 +1241,7 @@ class InvoiceResource extends Resource
                     ->modalSubmitAction(false)
                     ->modalCancelActionLabel('Cerrar')
                     ->visible(fn (Invoice $record): bool => $record->despatches->count() > 0),
-                
+
                 //Acción de enviar a Nubefact OSE
                 Tables\Actions\Action::make('enviar_nubefact')
                     ->label('Enviar a Nubefact')
@@ -1260,17 +1266,15 @@ class InvoiceResource extends Resource
                     ->modalHeading('Confirmar envío a Nubefact')
                     ->modalDescription('¿Está seguro de que desea enviar esta factura a Nubefact OSE?')
                     ->color('primary'),
-                
-                
+
+
                 Tables\Actions\Action::make('generate_pdf')
                     ->label('Generar PDF')
                     ->icon('heroicon-o-document-arrow-down')
                     ->url(fn (Invoice $record): string => route('invoice.pdf', $record))
                     ->openUrlInNewTab()
-                    ->color('danger')
-                    ->tooltip('Generar y descargar PDF local de la factura'),
-                
-               
+                    ->color('danger'),
+
                 Tables\Actions\Action::make('download_nubefact_pdf')
                     ->label('PDF Nubefact')
                     ->icon('heroicon-o-document-text')
@@ -1284,21 +1288,22 @@ class InvoiceResource extends Resource
                     ->label('XML')
                     ->icon('heroicon-o-code-bracket')
                     ->color('success')
-                    ->url(fn (Invoice $record): string => $record->xml_link)                    
+                    ->url(fn (Invoice $record): string => $record->xml_link)
                     ->openUrlInNewTab()
                     ->tooltip('Descargar XML de la factura')
-                    ->visible(fn (Invoice $record): bool => !empty($record->xml_link) || !empty($record->xml_zip_base64)),                                               
+                    ->visible(fn (Invoice $record): bool => !empty($record->xml_link) || !empty($record->xml_zip_base64)),
 
                 Tables\Actions\Action::make('download_cdr')
                     ->label('CDR')
                     ->icon('heroicon-o-document-check')
                     ->color('warning')
-                    ->url(fn (Invoice $record): string => $record->cdr_link)                     
+                    ->url(fn (Invoice $record): string => $record->cdr_link)
                     ->openUrlInNewTab()
                     ->tooltip('Descargar CDR (Constancia de Recepción)')
                     ->visible(fn (Invoice $record): bool => !empty($record->cdr_link) || !empty($record->cdr_zip_base64)),
             ])
-            ->bulkActions([                
+            ->defaultSort('created_at', 'desc')
+            ->bulkActions([
             ]);
     }
 
@@ -1326,7 +1331,7 @@ class InvoiceResource extends Resource
         $lastInvoice = Invoice::where('series', $series)
             ->orderBy('number', 'desc')
             ->first();
-        
+
         return $lastInvoice ? $lastInvoice->number + 1 : 1;
     }
 }
