@@ -8,7 +8,7 @@ class OperationalExpenseConfig extends Model
 {
     protected $fillable = [
         'departure_point',
-        'departure_location', 
+        'departure_location',
         'arrival_location',
         'destination_point',
         'tolls',
@@ -25,7 +25,7 @@ class OperationalExpenseConfig extends Model
         'variable_salary' => 'decimal:2',
         'operations_manager' => 'decimal:2',
         'security' => 'decimal:2',
-        'rate' => 'decimal:2',
+        'rate' => 'decimal:3',
     ];
 
     /**
@@ -43,7 +43,7 @@ class OperationalExpenseConfig extends Model
      */
     public function getTotalExpensesAttribute(): float
     {
-        return $this->tolls + $this->loading_expenses + $this->variable_salary + 
+        return $this->tolls + $this->loading_expenses + $this->variable_salary +
                $this->operations_manager + $this->security;
     }
 }

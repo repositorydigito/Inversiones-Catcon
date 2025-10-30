@@ -53,7 +53,7 @@ class Despatch extends Model
         'enlace_del_xml',
         'enlace_del_cdr',
         'cdr_pdf_url',
-        'cdr_status', 
+        'cdr_status',
         'cdr_description',
         'cdr_notes_count',
         'cdr_has_errors',
@@ -66,8 +66,8 @@ class Despatch extends Model
         //Gastos operativos
         'loading_point',
         'unloading_point',
-        'departure_location',  
-        'arrival_location', 
+        'departure_location',
+        'arrival_location',
         'product',
         'supplier',
         'tolls',
@@ -97,6 +97,8 @@ class Despatch extends Model
         'security' => 'decimal:2',
         'net_weight' => 'decimal:2',
         'net_sale' => 'decimal:2',
+        'rate' => 'decimal:3',
+        'gross_sale' => 'decimal:3',
     ];
 
     // Relación con la empresa remitente
@@ -184,15 +186,15 @@ class Despatch extends Model
         if ($this->isAcceptedBySunat()) {
             return 'success';
         }
-        
+
         if ($this->isPendingInSunat()) {
             return 'warning';
         }
-        
+
         if ($this->hasError()) {
             return 'danger';
         }
-        
+
         return 'secondary';
     }
 
@@ -201,15 +203,15 @@ class Despatch extends Model
         if ($this->isAcceptedBySunat()) {
             return 'Aceptado por SUNAT';
         }
-        
+
         if ($this->isPendingInSunat()) {
             return 'Pendiente en SUNAT';
         }
-        
+
         if ($this->hasError()) {
             return 'Error en SUNAT';
         }
-        
+
         return 'No enviado';
     }
 }

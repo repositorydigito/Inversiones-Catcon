@@ -138,7 +138,7 @@ class OperationalExpenseSettings extends Page implements HasTable
                                     ->label('Tarifa')
                                     ->numeric()
                                     ->prefix('S/.')
-                                    ->step(0.01)
+                                    ->step(0.001)
                                     ->default(0),
                             ])
                             ->columns(3),
@@ -227,7 +227,7 @@ class OperationalExpenseSettings extends Page implements HasTable
                                     ->label('Tarifa')
                                     ->numeric()
                                     ->prefix('S/.')
-                                    ->step(0.01)
+                                    ->step(0.001)
                                     ->default(0),
                             ])
                             ->columns(3),
