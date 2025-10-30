@@ -431,7 +431,7 @@ class InvoiceResource extends Resource
                                     ->default(0.00)
                                     ->required(fn ($get) => $get('../../detraction'))
                                     ->visible(fn ($get) => $get('../../detraction'))
-                                    ->live()
+                                    ->live(onBlur: true)
                                     ->afterStateUpdated(function ($state, $set, $get) {
                                         // Calcular detracción del ítem automáticamente
                                         $referenceValue = (float) ($state ?? 0);
@@ -449,7 +449,7 @@ class InvoiceResource extends Resource
                                 TextInput::make('item_detraction_amount')
                                     ->label('Detracción del Ítem')
                                     ->numeric()
-                                    ->readOnly()
+                                    // ->readOnly()
                                     ->dehydrated()
                                     ->default(0.00)
                                     ->visible(fn ($get) => $get('../../detraction'))
@@ -1096,7 +1096,7 @@ class InvoiceResource extends Resource
         $totalTaxable = 0;
         $totalUnaffected = 0;
         $totalExonerated = 0;
-        $totalIgv = 0;
+        // $totalIgv = 0; // ❌ NO sumar IGVs individuales (causa errores de redondeo)
         $totalGeneral = 0;
         $totalDiscount = (float) ($get('../../global_discount') ?? 0);
         $totalDetraction = 0; // NUEVO: Total de detracciones
@@ -1104,13 +1104,13 @@ class InvoiceResource extends Resource
         foreach ($items as $item) {
             $itemTotal = (float) ($item['total'] ?? 0);
             $itemSubtotal = (float) ($item['subtotal'] ?? 0);
-            $itemIgv = (float) ($item['igv'] ?? 0);
+            // $itemIgv = (float) ($item['igv'] ?? 0); // ❌ NO usar (sumar IGVs redondeados causa error)
             $itemDiscount = (float) ($item['discount'] ?? 0);
             $itemIgvType = $item['igv_type'] ?? '1';
             $itemDetraction = (float) ($item['item_detraction_amount'] ?? 0); // NUEVO
 
             $totalGeneral += $itemTotal;
-            $totalIgv += $itemIgv;
+            // ❌ ELIMINADO: $totalIgv += $itemIgv; (esta línea causaba el error de 0.01 centavos)
             $totalDiscount += $itemDiscount;
             $totalDetraction += $itemDetraction; // NUEVO: Sumar detracciones
 
@@ -1127,8 +1127,14 @@ class InvoiceResource extends Resource
             }
         }
 
-        // Calcular total final con descuento global
-        $finalTotal = $totalGeneral - $totalDiscount;
+        // ✅ CORRECCIÓN: Recalcular IGV sobre el total gravado (evita errores de redondeo)
+        // IMPORTANTE: Calcular IGV sobre la suma total de subtotales, NO sumar IGVs individuales
+        $igvPercentage = (float) ($get('../../igv_percentage') ?? 18.00);
+        $totalIgv = $totalTaxable * ($igvPercentage / 100);
+
+        // ✅ CORRECCIÓN: Calcular total usando subtotales + IGV recalculado (NO sumar totales de items)
+        // El total debe ser: (subtotal gravado + subtotal inafecto + subtotal exonerado) + IGV - descuentos
+        $finalTotal = $totalTaxable + $totalUnaffected + $totalExonerated + $totalIgv - $totalDiscount;
 
         // NUEVO: Calcular monto neto a pagar (Total - Detracción)
         $netPayableAmount = $finalTotal - $totalDetraction;
@@ -1136,9 +1142,9 @@ class InvoiceResource extends Resource
         $set('../../total_taxable', round($totalTaxable, 2));
         $set('../../total_unaffected', round($totalUnaffected, 2));
         $set('../../total_exonerated', round($totalExonerated, 2));
-        $set('../../total_igv', round($totalIgv, 2));
+        $set('../../total_igv', round($totalIgv, 2)); // ✅ Ahora usa el IGV recalculado correctamente
         $set('../../total_discount', round($totalDiscount, 2));
-        $set('../../total', round($finalTotal, 2)); // CRITICAL: Esto disparará el afterStateUpdated del total
+        $set('../../total', round($finalTotal, 2)); // ✅ Ahora usa subtotales + IGV (no suma de totales de items)
         $set('../../total_detraction', round($totalDetraction, 2)); // NUEVO
         $set('../../net_payable_amount', round($netPayableAmount, 2)); // NUEVO
     }

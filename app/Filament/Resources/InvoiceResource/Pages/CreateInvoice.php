@@ -123,7 +123,7 @@ class CreateInvoice extends CreateRecord
         $totalItems = 0;
         $totalItemsDiscount = 0;
 
-        foreach ($items as $index => $item) {
+        foreach ($items as $index => &$item) {
             $itemTotal = (float) ($item['total'] ?? 0);
             $itemSubtotal = (float) ($item['subtotal'] ?? 0);
             $itemIgv = (float) ($item['igv'] ?? 0);
@@ -139,7 +139,7 @@ class CreateInvoice extends CreateRecord
             ]);
 
             $totalItems += $itemTotal;
-            $totalIgv += $itemIgv;
+            // $totalIgv += $itemIgv; // No sumar IGV por ítem (se calculará sobre el total)
             $totalItemsDiscount += $itemDiscount;
 
             switch ($itemIgvType) {
@@ -155,13 +155,20 @@ class CreateInvoice extends CreateRecord
             }
         }
 
+        // Recalcular IGV sobre el total gravado (evita errores de redondeo)
+        $igvRate = (float) ($data['igv_percentage'] ?? 18);
+        $totalIgv = round($totalTaxable * ($igvRate / 100), 2);
+
         // Actualizar totales
         $data['total_taxable'] = round($totalTaxable, 2);
         $data['total_unaffected'] = round($totalUnaffected, 2);
         $data['total_exonerated'] = round($totalExonerated, 2);
-        $data['total_igv'] = round($totalIgv, 2);
+        $data['total_igv'] = round($totalIgv, 2); // Ahora usa el IGV recalculado sobre el total
         $data['total_discount'] = round($globalDiscount + $totalItemsDiscount, 2);
-        $data['total'] = round($totalItems - $globalDiscount, 2);
+
+        // CORRECCIÓN: Calcular total usando subtotales + IGV recalculado (no sumar totales de items)
+        // El total debe ser: (subtotal gravado + subtotal inafecto + subtotal exonerado) + IGV - descuentos
+        $data['total'] = round($totalTaxable + $totalUnaffected + $totalExonerated + $totalIgv - ($globalDiscount + $totalItemsDiscount), 2);
 
         Log::info('=== TOTALES FINALES CALCULADOS ===', [
             'total_items_bruto' => $totalItems,
