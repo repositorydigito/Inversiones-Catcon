@@ -61,7 +61,8 @@ class InvoicePdfService
         $company = [
             'name' => 'INVERSIONES CATCON S.A.C.',
             'ruc' => '20123456789',
-            'address' => 'Av. República de Panamá 3531, San Isidro, Lima 15047, Perú',
+            'address' => 'CAL. GERMAN SCHEREIBER 276 URB. SANTA ANA ENTRE LA CUADRA 1 Y 2 CANAVAL Y MOREYRA.',
+            'ubigeo' => 'SAN ISIDRO - LIMA - LIMA',
             'phone' => '(01) 987-654-321',
             'email' => 'facturacion@inversionescatcon.com',
             'website' => 'www.inversionescatcon.com',

@@ -12,7 +12,7 @@
 
         body {
             font-family: Arial, sans-serif;
-            font-size: 14px;
+            font-size: 15px;
             line-height: 1.4;
             color: #000;
             margin: 0;
@@ -84,11 +84,11 @@
         .items-table th {
             background-color: #000;
             color: #fff;
-            font-size: 12px;
+            font-size: 13px;
         }
 
         .items-table td {
-            font-size: 12px;
+            font-size: 13px;
             text-align: center;
         }
 
@@ -132,10 +132,49 @@
             font-weight: bold;
         }
 
+        .detraction-box {
+            border: 2px solid #000;
+            margin: 15px 0;
+            background-color: #fff;
+        }
+
+        .detraction-title {
+            font-weight: bold;
+            text-align: center;
+            font-size: 14px;
+            padding: 10px;
+            background-color: #f0f0f0;
+            border-bottom: 1px solid #000;
+        }
+
+        .detraction-content {
+            padding: 15px;
+        }
+
+        .detraction-row {
+            display: table;
+            width: 100%;
+            margin-bottom: 8px;
+        }
+
+        .detraction-label {
+            display: table-cell;
+            width: 35%;
+            font-weight: bold;
+            padding-right: 10px;
+            vertical-align: top;
+        }
+
+        .detraction-value {
+            display: table-cell;
+            width: 65%;
+            vertical-align: top;
+        }
+
         .footer {
             margin-top: 20px;
             text-align: center;
-            font-size: 12px;
+            font-size: 13px;
             border-top: 1px solid #000;
             padding-top: 10px;
         }
@@ -152,10 +191,11 @@
             <td class="company-info">
                 <div class="company-name">{{ $company['name'] }}</div>
                 <div>{{ $company['address'] }}</div>
-                <div>Tel: {{ $company['phone'] }} | Email: {{ $company['email'] }}</div>
+                <div>{{ $company['ubigeo'] }}</div>
+                {{-- <div>Tel: {{ $company['phone'] }} | Email: {{ $company['email'] }}</div>
                 @if(isset($company['website']))
                 <div>{{ $company['website'] }}</div>
-                @endif
+                @endif --}}
             </td>
             <td class="invoice-info">
                 <div class="invoice-type">
@@ -208,7 +248,7 @@
         @endif
         <tr>
             <td style="background-color: #f0f0f0; font-weight: bold;">Moneda:</td>
-            <td>{{ $invoice->currency === 'USD' ? 'DÓLARES AMERICANOS' : 'SOLES PERUANOS' }}</td>
+            <td>{{ $invoice->currency === 'USD' ? 'DÓLARES AMERICANOS' : 'SOLES' }}</td>
         </tr>
     </table>
 
@@ -216,13 +256,14 @@
     <table class="items-table">
         <thead>
             <tr>
-                <th style="width: 5%">ITEM</th>
-                <th style="width: 15%">CÓDIGO</th>
-                <th style="width: 40%">DESCRIPCIÓN</th>
-                <th style="width: 8%">U.M.</th>
-                <th style="width: 8%">CANT.</th>
-                <th style="width: 12%">P. UNIT.</th>
-                <th style="width: 12%">TOTAL</th>
+                <th style="width: 4%">ITEM</th>
+                <th style="width: 10%">CÓDIGO</th>
+                <th style="width: 32%">DESCRIPCIÓN</th>
+                <th style="width: 6%">U.M.</th>
+                <th style="width: 7%">CANT.</th>
+                <th style="width: 11%">VALOR REF.</th>
+                <th style="width: 10%">P. UNIT.</th>
+                <th style="width: 10%">TOTAL</th>
             </tr>
         </thead>
         <tbody>
@@ -233,6 +274,7 @@
                 <td class="desc">{{ $item->description }}</td>
                 <td class="text-center">{{ $item->unitOfMeasure->code ?? 'UND' }}</td>
                 <td class="text-center">{{ number_format($item->quantity, 2) }}</td>
+                <td class="amount">{{ $currency_symbol }} {{ number_format($item->reference_value ?? 0, 2) }}</td>
                 <td class="amount">{{ $currency_symbol }} {{ number_format($item->unit_value, 2) }}</td>
                 <td class="amount">{{ $currency_symbol }} {{ number_format($item->total, 2) }}</td>
             </tr>
@@ -287,11 +329,38 @@
 
     <!-- Detraction -->
     @if($detraction)
-    <div style="border: 2px solid #000; padding: 15px; margin: 15px 0; background-color: #f0f0f0; text-align: center;">
-        <strong>OPERACIÓN SUJETA A DETRACCIÓN</strong><br><br>
-        Detracción {{ $detraction['percentage'] }}%{{-- : {{ $currency_symbol }} {{ number_format($detraction['amount'], 2) }} --}}<br>
-        Importe Neto a Pagar: {{ $currency_symbol }} {{ number_format($detraction['net_payable'], 2) }}<br>
-        {{ $detraction['account'] }}
+    <div class="detraction-box">
+        <div class="detraction-title">INFORMACIÓN DE LA DETRACCIÓN</div>
+        <div class="detraction-content">
+            <div class="detraction-row">
+                <div class="detraction-label">Leyenda:</div>
+                <div class="detraction-value">Operación sujeta al Sistema de Pago de Obligaciones Tributarias con el Gobierno Central – Servicio de Transporte de Carga</div>
+            </div>
+            <div class="detraction-row">
+                <div class="detraction-label">Bien o Servicio:</div>
+                <div class="detraction-value">027 Servicio de transporte de carga</div>
+            </div>
+            <div class="detraction-row">
+                <div class="detraction-label">Medio Pago:</div>
+                <div class="detraction-value">001 Depósito en cuenta</div>
+            </div>
+            <div class="detraction-row">
+                <div class="detraction-label">Nro. Cta. Banco de la Nación:</div>
+                <div class="detraction-value">{{ $detraction['account'] }}</div>
+            </div>
+            <div class="detraction-row">
+                <div class="detraction-label">Porcentaje de detracción:</div>
+                <div class="detraction-value">{{ $detraction['percentage'] }}%</div>
+            </div>
+            <div class="detraction-row">
+                <div class="detraction-label">Monto detracción:</div>
+                <div class="detraction-value">{{ $currency_symbol }} {{ number_format($detraction['amount'], 2) }}</div>
+            </div>
+            <div class="detraction-row">
+                <div class="detraction-label">Monto neto pendiente de pago:</div>
+                <div class="detraction-value">{{ $currency_symbol }} {{ number_format($detraction['net_payable'], 2) }}</div>
+            </div>
+        </div>
     </div>
     @endif
 
