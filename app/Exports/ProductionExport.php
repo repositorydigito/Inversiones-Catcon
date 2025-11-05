@@ -54,14 +54,14 @@ class ProductionExport implements FromQuery, WithHeadings, WithMapping, WithColu
             'Fecha',
             'Guía',
             'Producto',
-            'Peso Bruto',
+            'Peso Bruto (KGM)',
             'Punto 1',
             'Punto Partida',
             'Punto Descarga',
             'Punto 4',
-            'Valor Unitario',
-            'Venta Neta',
-            'Venta Bruta',
+            'Valor Unitario (S/.)',
+            'Venta Neta (S/.)',
+            'Venta Bruta (S/.)',
         ];
     }
 
@@ -81,9 +81,8 @@ class ProductionExport implements FromQuery, WithHeadings, WithMapping, WithColu
             // Producto
             $expense->despatch?->product ?? '',
 
-            // Peso Bruto
-            $expense->despatch && $expense->despatch->total_gross_weight ?
-                number_format($expense->despatch->total_gross_weight, 2) . ' ' . $expense->despatch->total_gross_weight_unit_of_measure : '',
+            // Peso Bruto - SOLO NÚMERO
+            $expense->despatch?->total_gross_weight ?? '',
 
             // Punto 1
             $expense->despatch?->loading_point ?? '',
@@ -97,17 +96,14 @@ class ProductionExport implements FromQuery, WithHeadings, WithMapping, WithColu
             // Punto 4
             $expense->despatch?->unloading_point ?? '',
 
-            // Valor Unitario
-            $expense->despatch && $expense->despatch->rate ?
-                'S/. ' . number_format($expense->despatch->rate, 2) : 'S/. 0.00',
+            // Valor Unitario - SOLO NÚMERO
+            $expense->despatch?->rate ?? 0,
 
-            // Venta Neta
-            $expense->despatch && $expense->despatch->net_sale ?
-                'S/. ' . number_format($expense->despatch->net_sale, 2) : 'S/. 0.00',
-            
-            // Venta Bruta (NUEVO)
-            $expense->despatch && $expense->despatch->gross_sale ?
-                'S/. ' . number_format($expense->despatch->gross_sale, 2) : 'S/. 0.00',
+            // Venta Neta - SOLO NÚMERO
+            $expense->despatch?->net_sale ?? 0,
+
+            // Venta Bruta - SOLO NÚMERO
+            $expense->despatch?->gross_sale ?? 0,
         ];
     }
 
