@@ -61,30 +61,32 @@ class OperationalExpensesExport implements FromQuery, WithHeadings, WithMapping,
             'Conductor',
             'Unidad',
             'Fecha',
-            'Categoría Gasto',
             'Guía/Doc',
             'Punto 1',
             'Punto de Partida',
-            'Punto de Llegada',            
+            'Punto de Llegada',
             'Punto 4',
             'Peso Bruto',
-            'Peso Neto',
             'Producto',
             'Peajes',
             'Gastos de Carga',
             'Viáticos',
+            'Gastos Operativos',
             'Sueldo Variable',
             'Jefe de Operaciones',
             'Seguridad',
-            'Proveedor',
             'Monto Total',
-            'Descripción',
-            'Estado',
         ];
     }
 
     public function map($expense): array
     {
+        // Calcular gastos operativos
+        $peajes = $expense->despatch->tolls ?? 0;
+        $gastosCarga = $expense->despatch->loading_expenses ?? 0;
+        $viaticos = $expense->despatch->travel_allowances ?? 0;
+        $gastosOperativos = $peajes + $gastosCarga + $viaticos;
+
         return [
             // Conductor
             $expense->driver?->full_name ?? '',
@@ -94,10 +96,6 @@ class OperationalExpensesExport implements FromQuery, WithHeadings, WithMapping,
 
             // Fecha
             $expense->expense_date?->format('d/m/Y') ?? '',
-
-            // Categoría Gasto
-            $expense->expenseType ?
-                ($expense->expenseType->category === 'fixed' ? 'Regular' : 'Variable') : '',
 
             // Guía/Doc
             $expense->despatch ?
@@ -112,17 +110,13 @@ class OperationalExpensesExport implements FromQuery, WithHeadings, WithMapping,
 
             // Punto de Llegada
             $expense->despatch?->arrival_location ?? '',
-            
+
             // Punto 4 (Descarga)
             $expense->despatch?->unloading_point ?? '',
 
             // Peso Bruto
             $expense->despatch && $expense->despatch->total_gross_weight ?
                 number_format($expense->despatch->total_gross_weight, 2) . ' ' . $expense->despatch->total_gross_weight_unit_of_measure : '',
-
-            // Peso Neto
-            $expense->despatch && $expense->despatch->net_weight ?
-                number_format($expense->despatch->net_weight, 2) . ' ' . $expense->despatch->total_gross_weight_unit_of_measure : '',           
 
             // Producto
             $expense->despatch?->product ?? '',
@@ -136,6 +130,9 @@ class OperationalExpensesExport implements FromQuery, WithHeadings, WithMapping,
             // Viáticos
             $expense->despatch ? 'S/. ' . number_format($expense->despatch->travel_allowances ?? 0, 2) : 'S/. 0.00',
 
+            // Gastos Operativos
+            'S/. ' . number_format($gastosOperativos, 2),
+
             // Sueldo Variable
             $expense->despatch ? 'S/. ' . number_format($expense->despatch->variable_salary ?? 0, 2) : 'S/. 0.00',
 
@@ -145,23 +142,10 @@ class OperationalExpensesExport implements FromQuery, WithHeadings, WithMapping,
             // Seguridad
             $expense->despatch ? 'S/. ' . number_format($expense->despatch->security ?? 0, 2) : 'S/. 0.00',
 
-            // Proveedor
-            $expense->supplier ?? '',
-
             // Monto Total
             'S/. ' . number_format($expense->amount ?? 0, 2),
-
-            // Descripción
-            $expense->description ?? '',
-
-            // Estado
-            match($expense->status) {
-                'pending' => 'Pendiente',
-                'paid' => 'Pagado',
-                default => $expense->status ?? ''
-            },
         ];
-    }    
+    }
 
     public function columnWidths(): array
     {
@@ -169,25 +153,21 @@ class OperationalExpensesExport implements FromQuery, WithHeadings, WithMapping,
             'A' => 20, // Conductor
             'B' => 12, // Unidad
             'C' => 12, // Fecha
-            'D' => 15, // Categoría Gasto
-            'E' => 15, // Guía/Doc
-            'F' => 25, // Punto 1
-            'G' => 30, // Punto de Partida
-            'H' => 30, // Punto de Llegada
-            'I' => 25, // Punto 4
-            'J' => 15, // Peso Bruto
-            'K' => 15, // Peso Neto
-            'L' => 20, // Producto
-            'M' => 12, // Peajes
-            'N' => 15, // Gastos de Carga
-            'O' => 12, // Viáticos
-            'P' => 15, // Sueldo Variable
-            'Q' => 18, // Jefe de Operaciones
-            'R' => 12, // Seguridad
-            'S' => 20, // Proveedor
-            'T' => 15, // Monto Total
-            'U' => 30, // Descripción
-            'V' => 12, // Estado
+            'D' => 15, // Guía/Doc
+            'E' => 25, // Punto 1
+            'F' => 30, // Punto de Partida
+            'G' => 30, // Punto de Llegada
+            'H' => 25, // Punto 4
+            'I' => 15, // Peso Bruto
+            'J' => 20, // Producto
+            'K' => 12, // Peajes
+            'L' => 15, // Gastos de Carga
+            'M' => 12, // Viáticos
+            'N' => 18, // Gastos Operativos (NUEVA)
+            'O' => 15, // Sueldo Variable
+            'P' => 18, // Jefe de Operaciones
+            'Q' => 12, // Seguridad
+            'R' => 15, // Monto Total
         ];
     }
 
