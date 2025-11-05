@@ -599,6 +599,7 @@ class SunatXmlImportService
 
             // Observaciones
             'observations' => $xmlData['observations'],
+            'product' => $xmlData['observations'],
 
             // Indicador de envío SUNAT
             'sunat_envio_indicador' => '01',
