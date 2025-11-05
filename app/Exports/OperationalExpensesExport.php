@@ -66,16 +66,16 @@ class OperationalExpensesExport implements FromQuery, WithHeadings, WithMapping,
             'Punto de Partida',
             'Punto de Llegada',
             'Punto 4',
-            'Peso Bruto',
+            'Peso Bruto (KGM)',
             'Producto',
-            'Peajes',
-            'Gastos de Carga',
-            'Viáticos',
-            'Gastos Operativos',
-            'Sueldo Variable',
-            'Jefe de Operaciones',
-            'Seguridad',
-            'Monto Total',
+            'Peajes (S/.)',
+            'Gastos de Carga (S/.)',
+            'Viáticos (S/.)',
+            'Gastos Operativos (S/.)',
+            'Sueldo Variable (S/.)',
+            'Jefe de Operaciones (S/.)',
+            'Seguridad (S/.)',
+            'Monto Total (S/.)',
         ];
     }
 
@@ -115,35 +115,34 @@ class OperationalExpensesExport implements FromQuery, WithHeadings, WithMapping,
             $expense->despatch?->unloading_point ?? '',
 
             // Peso Bruto
-            $expense->despatch && $expense->despatch->total_gross_weight ?
-                number_format($expense->despatch->total_gross_weight, 2) . ' ' . $expense->despatch->total_gross_weight_unit_of_measure : '',
+            $expense->despatch?->total_gross_weight ?? '',
 
             // Producto
             $expense->despatch?->product ?? '',
 
-            // Peajes
-            $expense->despatch ? 'S/. ' . number_format($expense->despatch->tolls ?? 0, 2) : 'S/. 0.00',
+            // Peajes - SOLO NÚMERO
+            $peajes,
 
-            // Gastos de Carga
-            $expense->despatch ? 'S/. ' . number_format($expense->despatch->loading_expenses ?? 0, 2) : 'S/. 0.00',
+            // Gastos de Carga - SOLO NÚMERO
+            $gastosCarga,
 
-            // Viáticos
-            $expense->despatch ? 'S/. ' . number_format($expense->despatch->travel_allowances ?? 0, 2) : 'S/. 0.00',
+            // Viáticos - SOLO NÚMERO
+            $viaticos,
 
-            // Gastos Operativos
-            'S/. ' . number_format($gastosOperativos, 2),
+            // Gastos Operativos - SOLO NÚMERO
+            $gastosOperativos,
 
-            // Sueldo Variable
-            $expense->despatch ? 'S/. ' . number_format($expense->despatch->variable_salary ?? 0, 2) : 'S/. 0.00',
+            // Sueldo Variable - SOLO NÚMERO
+            $expense->despatch->variable_salary ?? 0,
 
-            // Jefe de Operaciones
-            $expense->despatch ? 'S/. ' . number_format($expense->despatch->operations_manager ?? 0, 2) : 'S/. 0.00',
+            // Jefe de Operaciones - SOLO NÚMERO
+            $expense->despatch->operations_manager ?? 0,
 
-            // Seguridad
-            $expense->despatch ? 'S/. ' . number_format($expense->despatch->security ?? 0, 2) : 'S/. 0.00',
+            // Seguridad - SOLO NÚMERO
+            $expense->despatch->security ?? 0,
 
-            // Monto Total
-            'S/. ' . number_format($expense->amount ?? 0, 2),
+            // Monto Total - SOLO NÚMERO
+            $expense->amount ?? 0,
         ];
     }
 
