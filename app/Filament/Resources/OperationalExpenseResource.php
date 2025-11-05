@@ -134,22 +134,32 @@ class OperationalExpenseResource extends Resource
                         return "{$category}";
                     }),
 
-                // 4. Guía/Doc
-                Tables\Columns\TextColumn::make('despatch_reference')
-                    ->label('Guía/Doc')
+                // 4. Guía Serie
+                Tables\Columns\TextColumn::make('despatch.series')
+                    ->label('Serie')
                     ->getStateUsing(function (OperationalExpense $record): string {
-                        if ($record->despatch) {
-                            return $record->despatch->series . '-' . $record->despatch->number;
-                        }
-                        return $record->document_number ?? '';
+                        return $record->despatch?->series ?? ($record->document_number ?? '');
                     })
                     ->searchable(query: function (Builder $query, string $search): Builder {
                         return $query->where('document_number', 'like', "%{$search}%")
                             ->orWhereHas('despatch', function ($query) use ($search) {
-                                $query->where(DB::raw("CONCAT(series, '-', number)"), 'like', "%{$search}%");
+                                $query->where('series', 'like', "%{$search}%");
                             });
                     })
                     ->sortable(false),
+
+                // 4.1 Guía Número
+                Tables\Columns\TextColumn::make('despatch.number')
+                    ->label('Número')
+                    ->getStateUsing(function (OperationalExpense $record): string {
+                        return $record->despatch?->number ?? '';
+                    })
+                    ->searchable(query: function (Builder $query, string $search): Builder {
+                        return $query->whereHas('despatch', function ($query) use ($search) {
+                            $query->where('number', 'like', "%{$search}%");
+                        });
+                    })
+                    ->sortable(),
 
                 // 7. Punto de Carga - Punto 1
                 Tables\Columns\TextColumn::make('loading_point')
