@@ -60,7 +60,7 @@ class InvoicePdfService
         // Información de la empresa (debería venir de configuración o base de datos)
         $company = [
             'name' => 'INVERSIONES CATCON S.A.C.',
-            'ruc' => '20123456789',
+            'ruc' => '20601921023',
             'address' => 'CAL. GERMAN SCHEREIBER 276 URB. SANTA ANA ENTRE LA CUADRA 1 Y 2 CANAVAL Y MOREYRA.',
             'ubigeo' => 'SAN ISIDRO - LIMA - LIMA',
             'phone' => '(01) 987-654-321',
