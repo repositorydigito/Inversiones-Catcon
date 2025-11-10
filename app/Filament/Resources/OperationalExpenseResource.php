@@ -59,10 +59,6 @@ class OperationalExpenseResource extends Resource
                             ->options(Vehicle::all()->pluck('plate_number', 'id'))
                             ->nullable(),
 
-                        Forms\Components\Select::make('client_id')
-                            ->label('Cliente')
-                            ->options(Client::all()->pluck('name', 'id'))
-                            ->nullable(),
 
                         Forms\Components\DatePicker::make('expense_date')
                             ->label('Fecha del Gasto')
@@ -90,8 +86,6 @@ class OperationalExpenseResource extends Resource
                                 'required' => 'El monto es obligatorio.',
                             ]),
 
-                        Forms\Components\TextInput::make('supplier')
-                            ->label('Proveedor'),
 
                         Forms\Components\Textarea::make('description')
                             ->label('Descripción')

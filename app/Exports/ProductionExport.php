@@ -25,6 +25,7 @@ class ProductionExport implements FromQuery, WithHeadings, WithMapping, WithColu
                 'driver',
                 'vehicle',
                 'despatch',
+                'expenseType',
             ]);
 
         // Aplicar filtros
@@ -44,7 +45,7 @@ class ProductionExport implements FromQuery, WithHeadings, WithMapping, WithColu
             $query->whereDate('expense_date', '<=', $this->filters['date_to']);
         }
 
-        return $query->orderBy('expense_date', 'desc');
+        return $query->orderBy('expense_date', 'asc');
     }
 
     public function headings(): array
@@ -62,6 +63,8 @@ class ProductionExport implements FromQuery, WithHeadings, WithMapping, WithColu
             'Valor Unitario (S/.)',
             'Venta Neta (S/.)',
             'Venta Bruta (S/.)',
+            'Descripción',
+            'Gastos Variables (S/.)',
         ];
     }
 
@@ -104,6 +107,12 @@ class ProductionExport implements FromQuery, WithHeadings, WithMapping, WithColu
 
             // Venta Bruta - SOLO NÚMERO
             $expense->despatch?->gross_sale ?? 0,
+
+            // Descripción (solo para variables)
+            ($expense->expenseType?->category === 'variable') ? ($expense->description ?? '') : '',
+
+            // Gastos Variables - SOLO NÚMERO
+            ($expense->expenseType?->category === 'variable') ? ($expense->amount ?? 0) : 0,
         ];
     }
 
@@ -122,6 +131,8 @@ class ProductionExport implements FromQuery, WithHeadings, WithMapping, WithColu
             'J' => 15, // Valor Unitario
             'K' => 15, // Venta Neta
             'L' => 15, // Venta Bruta
+            'M' => 30, // Descripción
+            'N' => 15, // Gastos Variables
         ];
     }
 

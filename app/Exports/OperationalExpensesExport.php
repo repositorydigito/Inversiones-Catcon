@@ -52,7 +52,7 @@ class OperationalExpensesExport implements FromQuery, WithHeadings, WithMapping,
             $query->whereDate('expense_date', '<=', $this->filters['date_to']);
         }
 
-        return $query->orderBy('expense_date', 'desc');
+        return $query->orderBy('expense_date', 'asc');
     }
 
     public function headings(): array
@@ -75,6 +75,9 @@ class OperationalExpensesExport implements FromQuery, WithHeadings, WithMapping,
             'Sueldo Variable (S/.)',
             'Jefe de Operaciones (S/.)',
             'Seguridad (S/.)',
+            'Tipo de Gasto',
+            'Descripción',
+            'Gastos Variables (S/.)',
             'Monto Total (S/.)',
         ];
     }
@@ -141,6 +144,15 @@ class OperationalExpensesExport implements FromQuery, WithHeadings, WithMapping,
             // Seguridad - SOLO NÚMERO
             $expense->despatch->security ?? 0,
 
+            // Tipo de Gasto
+            $expense->expenseType?->name ?? '',
+
+            // Descripción (solo para variables)
+            ($expense->expenseType?->category === 'variable') ? ($expense->description ?? '') : '',
+
+            // Gastos Variables - SOLO NÚMERO
+            ($expense->expenseType?->category === 'variable') ? ($expense->amount ?? 0) : 0,
+
             // Monto Total - SOLO NÚMERO
             $expense->amount ?? 0,
         ];
@@ -166,7 +178,10 @@ class OperationalExpensesExport implements FromQuery, WithHeadings, WithMapping,
             'O' => 15, // Sueldo Variable
             'P' => 18, // Jefe de Operaciones
             'Q' => 12, // Seguridad
-            'R' => 15, // Monto Total
+            'R' => 15, // Tipo de Gasto
+            'S' => 30, // Descripción
+            'T' => 15, // Gastos Variables
+            'U' => 15, // Monto Total
         ];
     }
 
