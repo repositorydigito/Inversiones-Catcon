@@ -552,6 +552,14 @@ class SunatXmlImportService
         $departureUbigeoData = $this->parseUbigeoCode($xmlData['partida']['ubigeo']);
         $arrivalUbigeoData = $this->parseUbigeoCode($xmlData['llegada']['ubigeo']);
 
+        // Determinar Punto 1 (loading_point) basado en el último Punto 4 (unloading_point)
+        // del último viaje del mismo conductor. Si no existe, queda null.
+        $previousDespatch = \App\Models\Despatch::where('driver_id', $entities['conductor']->id)
+            ->orderBy('emission_date', 'desc')
+            ->orderBy('created_at', 'desc')
+            ->first();
+        $autoLoadingPoint = $previousDespatch?->unloading_point;
+
         $despatch = Despatch::create([
             // Datos básicos
             'document_type' => 8, // GRE Transportista
@@ -578,6 +586,9 @@ class SunatXmlImportService
             // Inferir departure_location y arrival_location desde frequent_locations
             'departure_location' => $this->inferLocationPoint($xmlData['partida']['address']),
             'arrival_location' => $this->inferLocationPoint($xmlData['llegada']['address']),
+
+            // Punto 1 (carga) automatizado desde el último viaje del conductor
+            'loading_point' => $autoLoadingPoint,
 
             // Documentos de remitente y destinatario
             'sender_document_number' => $entities['remitente']->document_number,
