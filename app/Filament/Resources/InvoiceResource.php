@@ -1250,52 +1250,8 @@ class InvoiceResource extends Resource
                     ->modalCancelActionLabel('Cerrar')
                     ->visible(fn (Invoice $record): bool => $record->despatches->count() > 0),
 
-                //Acción de consultar estado
-                Tables\Actions\Action::make('consultar_estado')
-                    ->label('Consultar Estado')
-                    ->icon('heroicon-o-magnifying-glass')
-                    ->color('info')
-                    ->visible(fn (Invoice $record) =>
-                        // Mostrar solo si está pendiente o fue rechazada con error 1033
-                        $record->sunat_accepted === null ||
-                        ($record->sunat_accepted === false && str_contains($record->sunat_description ?? '', '1033'))
-                    )
-                    ->action(function (Invoice $record) {
-                        $result = app(InvoiceService::class)->consultarEstado($record);
-
-                        if ($result['success']) {
-                            $record->refresh(); // Recargar el registro
-
-                            if ($record->sunat_accepted === true) {
-                                Notification::make()
-                                    ->title('✅ Factura Aceptada por SUNAT')
-                                    ->body("La factura {$record->series}-{$record->number} fue aceptada. Código: {$record->sunat_response_code}")
-                                    ->success()
-                                    ->send();
-                            } elseif ($record->sunat_accepted === false) {
-                                Notification::make()
-                                    ->title('❌ Factura Rechazada por SUNAT')
-                                    ->body("La factura {$record->series}-{$record->number} fue rechazada. {$record->sunat_description}")
-                                    ->danger()
-                                    ->send();
-                            } else {
-                                Notification::make()
-                                    ->title('⏳ Factura en Proceso')
-                                    ->body($result['message'] ?? 'La factura aún está siendo procesada por SUNAT')
-                                    ->warning()
-                                    ->send();
-                            }
-                        } else {
-                            Notification::make()
-                                ->title('Error al consultar estado')
-                                ->body($result['message'] ?? 'No se pudo consultar el estado')
-                                ->danger()
-                                ->send();
-                        }
-                    }),
-
                 Tables\Actions\Action::make('generate_pdf')
-                    ->label('Generar PDF')
+                    ->label('PDF')
                     ->icon('heroicon-o-document-arrow-down')
                     ->url(fn (Invoice $record): string => route('invoice.pdf', $record))
                     ->openUrlInNewTab()
@@ -1314,10 +1270,45 @@ class InvoiceResource extends Resource
                     ->label('XML')
                     ->icon('heroicon-o-code-bracket')
                     ->color('success')
-                    ->url(fn (Invoice $record): string => $record->xml_link)
-                    ->openUrlInNewTab()
-                    ->tooltip('Descargar XML de la factura')
-                    ->visible(fn (Invoice $record): bool => !empty($record->xml_link) || !empty($record->xml_zip_base64)),
+                    ->action(function (Invoice $record) {
+                        if (!$record->xml_zip_base64) {
+                            Notification::make()
+                                ->title('XML no disponible')
+                                ->body('Esta factura aún no tiene XML generado')
+                                ->warning()
+                                ->send();
+                            return;
+                        }
+
+                        try {
+                            // Decodificar el base64 y descomprimir
+                            $xmlCompressed = base64_decode($record->xml_zip_base64);
+                            $xmlContent = gzdecode($xmlCompressed);
+
+                            if ($xmlContent === false) {
+                                throw new \Exception('Error al descomprimir el XML');
+                            }
+
+                            // Nombre del archivo: {RUC}-{TIPO}-{SERIE}-{NUMERO}.xml
+                            // Ejemplo: 20601921023-01-F001-9911.xml
+                            $filename = config('greenter.company.ruc') . "-{$record->invoice_type}-{$record->series}-{$record->number}.xml";
+
+                            return response()->streamDownload(function () use ($xmlContent) {
+                                echo $xmlContent;
+                            }, $filename, [
+                                'Content-Type' => 'application/xml',
+                            ]);
+
+                        } catch (\Exception $e) {
+                            Notification::make()
+                                ->title('Error al descargar XML')
+                                ->body('Error: ' . $e->getMessage())
+                                ->danger()
+                                ->send();
+                        }
+                    })
+                    ->tooltip('Descargar XML firmado de la factura')
+                    ->visible(fn (Invoice $record): bool => !empty($record->xml_zip_base64)),
 
                 Tables\Actions\Action::make('download_cdr')
                     ->label('CDR')

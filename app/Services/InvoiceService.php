@@ -400,21 +400,69 @@ class InvoiceService
                     $updateData['sunat_notes'] = implode(' | ', $cdrNotes);
                 }
 
-                // CDR en base64 (Constancia de Recepción)
+                // ============================================
+                // GUARDAR CDR ZIP en base64
+                // ============================================
                 try {
                     $cdrZip = $result->getCdrZip();
                     if ($cdrZip) {
                         $updateData['cdr_zip_base64'] = base64_encode($cdrZip);
+                        Log::info('CDR Zip guardado:', [
+                            'invoice_id' => $invoice->id,
+                            'size' => strlen($cdrZip)
+                        ]);
                     }
                 } catch (\Exception $e) {
                     Log::warning('No se pudo obtener CDR Zip:', ['error' => $e->getMessage()]);
+                }
+
+                // ============================================
+                // GUARDAR XML COMPRIMIDO en base64
+                // ============================================
+                try {
+                    $xml = $result->getXml();
+                    if ($xml) {
+                        // Comprimir el XML con gzip y convertir a base64
+                        $xmlCompressed = gzencode($xml, 9); // Nivel 9 = máxima compresión
+                        $updateData['xml_zip_base64'] = base64_encode($xmlCompressed);
+
+                        Log::info('XML comprimido y guardado:', [
+                            'invoice_id' => $invoice->id,
+                            'original_size' => strlen($xml),
+                            'compressed_size' => strlen($xmlCompressed),
+                            'compression_ratio' => round((1 - strlen($xmlCompressed) / strlen($xml)) * 100, 2) . '%'
+                        ]);
+                    }
+                } catch (\Exception $e) {
+                    Log::warning('No se pudo obtener/comprimir XML:', ['error' => $e->getMessage()]);
+                }
+
+                // ============================================
+                // GUARDAR HASH del XML
+                // ============================================
+                try {
+                    $hash = $result->getHash();
+                    if ($hash) {
+                        $updateData['xml_hash'] = $hash;
+                        Log::info('Hash XML guardado:', [
+                            'invoice_id' => $invoice->id,
+                            'hash' => $hash
+                        ]);
+                    }
+                } catch (\Exception $e) {
+                    Log::warning('No se pudo obtener Hash:', ['error' => $e->getMessage()]);
                 }
 
                 Log::info($isAccepted ? 'Factura aceptada por SUNAT:' : 'Factura rechazada por SUNAT:', [
                     'invoice_id' => $invoice->id,
                     'cdr_code' => $cdrCode,
                     'cdr_description' => $cdrDescription,
-                    'cdr_id' => $cdrId
+                    'cdr_id' => $cdrId,
+                    'files_saved' => [
+                        'cdr' => isset($updateData['cdr_zip_base64']),
+                        'xml' => isset($updateData['xml_zip_base64']),
+                        'hash' => isset($updateData['xml_hash'])
+                    ]
                 ]);
             } else {
                 // No hay CDR Response = pendiente
