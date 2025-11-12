@@ -9,6 +9,7 @@ use App\Models\Client;
 use App\Models\MeasureUnit;
 use App\Models\Despatch;
 use App\Models\Service;
+use App\Services\InvoiceService;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
@@ -32,6 +33,7 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\Filter;
 use Filament\Forms\Components\DatePicker as FilterDatePicker;
+use Filament\Notifications\Notification;
 
 class InvoiceResource extends Resource
 {
@@ -1191,15 +1193,15 @@ class InvoiceResource extends Resource
                         false => 'Rechazado',
                         default => 'Pendiente',
                     }),
-                TextColumn::make('sunat_response_code')
+                /* TextColumn::make('sunat_response_code')
                     ->label('Cód. SUNAT')
-                    ->searchable(),
-                TextColumn::make('ubigeo')
+                    ->searchable(), */
+                /* TextColumn::make('ubigeo')
                     ->label('Ubigeo')
                     ->searchable()
                     ->placeholder('Sin ubigeo')
                     ->badge()
-                    ->color('gray'),
+                    ->color('gray'), */
             ])
             ->filters([
                 SelectFilter::make('client_id')
@@ -1248,31 +1250,49 @@ class InvoiceResource extends Resource
                     ->modalCancelActionLabel('Cerrar')
                     ->visible(fn (Invoice $record): bool => $record->despatches->count() > 0),
 
-                //Acción de enviar a Nubefact OSE
-                Tables\Actions\Action::make('enviar_nubefact')
-                    ->label('Enviar a Nubefact')
-                    ->icon('heroicon-o-paper-airplane')
+                //Acción de consultar estado
+                Tables\Actions\Action::make('consultar_estado')
+                    ->label('Consultar Estado')
+                    ->icon('heroicon-o-magnifying-glass')
+                    ->color('info')
+                    ->visible(fn (Invoice $record) =>
+                        // Mostrar solo si está pendiente o fue rechazada con error 1033
+                        $record->sunat_accepted === null ||
+                        ($record->sunat_accepted === false && str_contains($record->sunat_description ?? '', '1033'))
+                    )
                     ->action(function (Invoice $record) {
-                        try {
-                            app(\App\Services\InvoiceService::class)->sendToNubefact($record);
-                            \Filament\Notifications\Notification::make()
-                                ->title('Factura enviada a Nubefact')
-                                ->body("La factura {$record->series}-{$record->number} se envió correctamente.")
-                                ->success()
-                                ->send();
-                        } catch (\Exception $e) {
-                            \Filament\Notifications\Notification::make()
-                                ->title('Error al enviar a Nubefact')
-                                ->body('Error: ' . $e->getMessage())
+                        $result = app(InvoiceService::class)->consultarEstado($record);
+
+                        if ($result['success']) {
+                            $record->refresh(); // Recargar el registro
+
+                            if ($record->sunat_accepted === true) {
+                                Notification::make()
+                                    ->title('✅ Factura Aceptada por SUNAT')
+                                    ->body("La factura {$record->series}-{$record->number} fue aceptada. Código: {$record->sunat_response_code}")
+                                    ->success()
+                                    ->send();
+                            } elseif ($record->sunat_accepted === false) {
+                                Notification::make()
+                                    ->title('❌ Factura Rechazada por SUNAT')
+                                    ->body("La factura {$record->series}-{$record->number} fue rechazada. {$record->sunat_description}")
+                                    ->danger()
+                                    ->send();
+                            } else {
+                                Notification::make()
+                                    ->title('⏳ Factura en Proceso')
+                                    ->body($result['message'] ?? 'La factura aún está siendo procesada por SUNAT')
+                                    ->warning()
+                                    ->send();
+                            }
+                        } else {
+                            Notification::make()
+                                ->title('Error al consultar estado')
+                                ->body($result['message'] ?? 'No se pudo consultar el estado')
                                 ->danger()
                                 ->send();
                         }
-                    })
-                    ->requiresConfirmation()
-                    ->modalHeading('Confirmar envío a Nubefact')
-                    ->modalDescription('¿Está seguro de que desea enviar esta factura a Nubefact OSE?')
-                    ->color('primary'),
-
+                    }),
 
                 Tables\Actions\Action::make('generate_pdf')
                     ->label('Generar PDF')
@@ -1303,10 +1323,26 @@ class InvoiceResource extends Resource
                     ->label('CDR')
                     ->icon('heroicon-o-document-check')
                     ->color('warning')
-                    ->url(fn (Invoice $record): string => $record->cdr_link)
-                    ->openUrlInNewTab()
+                    ->action(function (Invoice $record) {
+                        if (!$record->cdr_zip_base64) {
+                            Notification::make()
+                                ->title('CDR no disponible')
+                                ->warning()
+                                ->send();
+                            return;
+                        }
+
+                        $cdrContent = base64_decode($record->cdr_zip_base64);
+                        $filename = "R-{$record->series}-{$record->number}.zip";
+
+                        return response()->streamDownload(function () use ($cdrContent) {
+                            echo $cdrContent;
+                        }, $filename, [
+                            'Content-Type' => 'application/zip',
+                        ]);
+                    })
                     ->tooltip('Descargar CDR (Constancia de Recepción)')
-                    ->visible(fn (Invoice $record): bool => !empty($record->cdr_link) || !empty($record->cdr_zip_base64)),
+                    ->visible(fn (Invoice $record): bool => !empty($record->cdr_zip_base64)),
             ])
             ->defaultSort('created_at', 'desc')
             ->bulkActions([
