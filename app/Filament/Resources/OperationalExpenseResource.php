@@ -579,10 +579,6 @@ class OperationalExpenseResource extends Resource
                                         static::autoCompleteFromRouteFields($get, $set);
                                     }),
 
-                                Forms\Components\TextInput::make('product')
-                                    ->label('Producto')
-                                    ->maxLength(255),
-
                                 Forms\Components\Fieldset::make('Gastos Calculados Automáticamente')
                                     ->schema([
                                         Forms\Components\TextInput::make('tolls')

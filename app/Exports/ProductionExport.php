@@ -8,8 +8,10 @@ use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Concerns\WithMapping;
 use Maatwebsite\Excel\Concerns\WithColumnWidths;
 use Maatwebsite\Excel\Concerns\WithTitle;
+use Maatwebsite\Excel\Concerns\WithColumnFormatting;
+use PhpOffice\PhpSpreadsheet\Style\NumberFormat;
 
-class ProductionExport implements FromQuery, WithHeadings, WithMapping, WithColumnWidths, WithTitle
+class ProductionExport implements FromQuery, WithHeadings, WithMapping, WithColumnWidths, WithTitle, WithColumnFormatting
 {
     protected $filters;
 
@@ -45,6 +47,11 @@ class ProductionExport implements FromQuery, WithHeadings, WithMapping, WithColu
             $query->whereDate('expense_date', '<=', $this->filters['date_to']);
         }
 
+        // Incluir solo gastos fijos
+        $query->whereHas('expenseType', function ($q) {
+            $q->where('category', 'fixed');
+        });
+
         return $query->orderBy('expense_date', 'asc');
     }
 
@@ -63,8 +70,6 @@ class ProductionExport implements FromQuery, WithHeadings, WithMapping, WithColu
             'Valor Unitario (S/.)',
             'Venta Neta (S/.)',
             'Venta Bruta (S/.)',
-            'Descripción',
-            'Gastos Variables (S/.)',
         ];
     }
 
@@ -81,11 +86,13 @@ class ProductionExport implements FromQuery, WithHeadings, WithMapping, WithColu
             $expense->despatch ?
                 $expense->despatch->series . '-' . $expense->despatch->number : '',
 
-            // Producto
-            $expense->despatch?->product ?? '',
+            // Producto (para gastos variables se muestra la descripción)
+            ($expense->expenseType?->category === 'variable')
+                ? ($expense->description ?? '')
+                : ($expense->despatch?->product ?? ''),
 
             // Peso Bruto - SOLO NÚMERO
-            $expense->despatch?->total_gross_weight ?? '',
+            round((float)($expense->despatch?->total_gross_weight ?? 0), 2),
 
             // Punto 1
             $expense->despatch?->loading_point ?? '',
@@ -99,20 +106,15 @@ class ProductionExport implements FromQuery, WithHeadings, WithMapping, WithColu
             // Punto 4
             $expense->despatch?->unloading_point ?? '',
 
-            // Valor Unitario - SOLO NÚMERO
-            $expense->despatch?->rate ?? 0,
+            // Valor Unitario - SOLO NÚMERO (3 decimales)
+            round((float)($expense->despatch?->rate ?? 0), 3),
 
             // Venta Neta - SOLO NÚMERO
-            $expense->despatch?->net_sale ?? 0,
+            round((float)($expense->despatch?->net_sale ?? 0), 2),
 
             // Venta Bruta - SOLO NÚMERO
-            $expense->despatch?->gross_sale ?? 0,
+            round((float)($expense->despatch?->gross_sale ?? 0), 2),
 
-            // Descripción (solo para variables)
-            ($expense->expenseType?->category === 'variable') ? ($expense->description ?? '') : '',
-
-            // Gastos Variables - SOLO NÚMERO
-            ($expense->expenseType?->category === 'variable') ? ($expense->amount ?? 0) : 0,
         ];
     }
 
@@ -131,8 +133,16 @@ class ProductionExport implements FromQuery, WithHeadings, WithMapping, WithColu
             'J' => 15, // Valor Unitario
             'K' => 15, // Venta Neta
             'L' => 15, // Venta Bruta
-            'M' => 30, // Descripción
-            'N' => 15, // Gastos Variables
+        ];
+    }
+
+    public function columnFormats(): array
+    {
+        return [
+            'E' => NumberFormat::FORMAT_NUMBER_00, // Peso Bruto
+            'J' => '0.000', // Valor Unitario (3 decimales)
+            'K' => NumberFormat::FORMAT_NUMBER_00, // Venta Neta
+            'L' => NumberFormat::FORMAT_NUMBER_00, // Venta Bruta
         ];
     }
 

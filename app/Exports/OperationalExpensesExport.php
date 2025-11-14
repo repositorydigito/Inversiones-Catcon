@@ -14,8 +14,9 @@ use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
 use PhpOffice\PhpSpreadsheet\Style\Border;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
+use PhpOffice\PhpSpreadsheet\Style\NumberFormat;
 
-class OperationalExpensesExport implements FromQuery, WithHeadings, WithMapping, WithColumnWidths, WithTitle
+class OperationalExpensesExport implements FromQuery, WithHeadings, WithMapping, WithColumnWidths, WithTitle, \Maatwebsite\Excel\Concerns\WithColumnFormatting
 {
     protected $filters;
 
@@ -71,24 +72,27 @@ class OperationalExpensesExport implements FromQuery, WithHeadings, WithMapping,
             'Peajes (S/.)',
             'Gastos de Carga (S/.)',
             'Viáticos (S/.)',
+            'Gastos Variables (S/.)',
             'Gastos Operativos (S/.)',
             'Sueldo Variable (S/.)',
             'Jefe de Operaciones (S/.)',
             'Seguridad (S/.)',
             'Tipo de Gasto',
-            'Descripción',
-            'Gastos Variables (S/.)',
             'Monto Total (S/.)',
         ];
     }
 
     public function map($expense): array
     {
-        // Calcular gastos operativos
-        $peajes = $expense->despatch->tolls ?? 0;
-        $gastosCarga = $expense->despatch->loading_expenses ?? 0;
-        $viaticos = $expense->despatch->travel_allowances ?? 0;
-        $gastosOperativos = $peajes + $gastosCarga + $viaticos;
+        // Valores base
+        $peajes = (float)($expense->despatch->tolls ?? 0);
+        $gastosCarga = (float)($expense->despatch->loading_expenses ?? 0);
+        $viaticos = (float)($expense->despatch->travel_allowances ?? 0);
+        $isVariable = ($expense->expenseType?->category === 'variable');
+        $gastosVariables = $isVariable ? (float)($expense->amount ?? 0) : 0.0;
+        $gastosOperativos = $isVariable
+            ? $gastosVariables
+            : ($peajes + $gastosCarga + $viaticos);
 
         return [
             // Conductor
@@ -118,43 +122,40 @@ class OperationalExpensesExport implements FromQuery, WithHeadings, WithMapping,
             $expense->despatch?->unloading_point ?? '',
 
             // Peso Bruto
-            $expense->despatch?->total_gross_weight ?? '',
+            round((float)($expense->despatch?->total_gross_weight ?? 0), 2),
 
-            // Producto
-            $expense->despatch?->product ?? '',
+            // Producto (para gastos variables se muestra la descripción)
+            $isVariable ? ($expense->description ?? '') : ($expense->despatch?->product ?? ''),
 
             // Peajes - SOLO NÚMERO
-            $peajes,
+            round($peajes, 2),
 
             // Gastos de Carga - SOLO NÚMERO
-            $gastosCarga,
+            round($gastosCarga, 2),
 
             // Viáticos - SOLO NÚMERO
-            $viaticos,
+            round($viaticos, 2),
 
-            // Gastos Operativos - SOLO NÚMERO
-            $gastosOperativos,
+            // Gastos Variables - SOLO NÚMERO
+            round($gastosVariables, 2),
+
+            // Gastos Operativos - SOLO NÚMERO (depende de tipo)
+            round($gastosOperativos, 2),
 
             // Sueldo Variable - SOLO NÚMERO
-            $expense->despatch->variable_salary ?? 0,
+            round((float)($expense->despatch->variable_salary ?? 0), 2),
 
             // Jefe de Operaciones - SOLO NÚMERO
-            $expense->despatch->operations_manager ?? 0,
+            round((float)($expense->despatch->operations_manager ?? 0), 2),
 
             // Seguridad - SOLO NÚMERO
-            $expense->despatch->security ?? 0,
+            round((float)($expense->despatch->security ?? 0), 2),
 
             // Tipo de Gasto
             $expense->expenseType?->name ?? '',
 
-            // Descripción (solo para variables)
-            ($expense->expenseType?->category === 'variable') ? ($expense->description ?? '') : '',
-
-            // Gastos Variables - SOLO NÚMERO
-            ($expense->expenseType?->category === 'variable') ? ($expense->amount ?? 0) : 0,
-
             // Monto Total - SOLO NÚMERO
-            $expense->amount ?? 0,
+            round((float)($expense->amount ?? 0), 2),
         ];
     }
 
@@ -174,14 +175,29 @@ class OperationalExpensesExport implements FromQuery, WithHeadings, WithMapping,
             'K' => 12, // Peajes
             'L' => 15, // Gastos de Carga
             'M' => 12, // Viáticos
-            'N' => 18, // Gastos Operativos (NUEVA)
-            'O' => 15, // Sueldo Variable
-            'P' => 18, // Jefe de Operaciones
-            'Q' => 12, // Seguridad
-            'R' => 15, // Tipo de Gasto
-            'S' => 30, // Descripción
-            'T' => 15, // Gastos Variables
-            'U' => 15, // Monto Total
+            'N' => 15, // Gastos Variables
+            'O' => 18, // Gastos Operativos
+            'P' => 15, // Sueldo Variable
+            'Q' => 18, // Jefe de Operaciones
+            'R' => 12, // Seguridad
+            'S' => 15, // Tipo de Gasto
+            'T' => 15, // Monto Total
+        ];
+    }
+
+    public function columnFormats(): array
+    {
+        return [
+            'I' => NumberFormat::FORMAT_NUMBER_00, // Peso Bruto
+            'K' => NumberFormat::FORMAT_NUMBER_00, // Peajes
+            'L' => NumberFormat::FORMAT_NUMBER_00, // Gastos de Carga
+            'M' => NumberFormat::FORMAT_NUMBER_00, // Viáticos
+            'N' => NumberFormat::FORMAT_NUMBER_00, // Gastos Variables
+            'O' => NumberFormat::FORMAT_NUMBER_00, // Gastos Operativos
+            'P' => NumberFormat::FORMAT_NUMBER_00, // Sueldo Variable
+            'Q' => NumberFormat::FORMAT_NUMBER_00, // Jefe de Operaciones
+            'R' => NumberFormat::FORMAT_NUMBER_00, // Seguridad
+            'T' => NumberFormat::FORMAT_NUMBER_00, // Monto Total
         ];
     }
 
