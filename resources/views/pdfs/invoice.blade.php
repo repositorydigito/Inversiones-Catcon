@@ -84,11 +84,11 @@
         .items-table th {
             background-color: #000;
             color: #fff;
-            font-size: 13px;
+            font-size: 14px;
         }
 
         .items-table td {
-            font-size: 13px;
+            font-size: 14px;
             text-align: center;
         }
 
@@ -256,25 +256,21 @@
     <table class="items-table">
         <thead>
             <tr>
-                <th style="width: 4%">ITEM</th>
-                <th style="width: 10%">CÓDIGO</th>
-                <th style="width: 32%">DESCRIPCIÓN</th>
-                <th style="width: 6%">U.M.</th>
-                <th style="width: 7%">CANT.</th>
-                <th style="width: 11%">VALOR REF.</th>
-                <th style="width: 10%">P. UNIT.</th>
-                <th style="width: 10%">TOTAL</th>
+                <th style="width: 5%">ÍTEM</th>
+                <th style="width: 10%">CANTIDAD</th>
+                <th style="width: 8%">U.M.</th>
+                <th style="width: 47%">DESCRIPCIÓN</th>
+                <th style="width: 15%">VALOR UNITARIO</th>
+                <th style="width: 15%">TOTAL</th>
             </tr>
         </thead>
         <tbody>
             @foreach($invoice->items as $index => $item)
             <tr>
                 <td class="text-center">{{ $index + 1 }}</td>
-                <td class="text-center">{{ $item->code ?: '-' }}</td>
-                <td class="desc">{{ $item->description }}</td>
-                <td class="text-center">{{ $item->unitOfMeasure->code ?? 'UND' }}</td>
                 <td class="text-center">{{ number_format($item->quantity, 2) }}</td>
-                <td class="amount">{{ $currency_symbol }} {{ number_format($item->reference_value ?? 0, 2) }}</td>
+                <td class="text-center">{{ $item->unitOfMeasure->code ?? 'UND' }}</td>
+                <td class="desc">{{ $invoice->nubefact_key ?? $item->description }}</td>
                 <td class="amount">{{ $currency_symbol }} {{ number_format($item->unit_value, 2) }}</td>
                 <td class="amount">{{ $currency_symbol }} {{ number_format($item->total, 2) }}</td>
             </tr>

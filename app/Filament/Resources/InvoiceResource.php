@@ -34,6 +34,7 @@ use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\Filter;
 use Filament\Forms\Components\DatePicker as FilterDatePicker;
 use Filament\Notifications\Notification;
+use Filament\Forms\Components\Textarea;
 
 class InvoiceResource extends Resource
 {
@@ -308,6 +309,12 @@ class InvoiceResource extends Resource
                 Section::make('Detalles de Ítems')
                     ->description('Productos/servicios (se cargan automáticamente desde las guías).')
                     ->schema([
+                        Textarea::make('nubefact_key')
+                            ->label('Descripción para PDF')
+                            ->rows(4)
+                            ->nullable()
+                            ->helperText('Se mostrará en la columna "Descripción" del PDF de la factura.')
+                            ->columnSpanFull(),
                         Repeater::make('items')
                             ->label('')
                             ->schema([
