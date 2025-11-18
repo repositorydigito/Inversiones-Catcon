@@ -57,7 +57,14 @@ class OperationalExpenseResource extends Resource
                         Forms\Components\Select::make('vehicle_id')
                             ->label('Vehículo')
                             ->options(Vehicle::all()->pluck('plate_number', 'id'))
-                            ->nullable(),
+                            ->nullable()
+                            ->reactive()
+                            ->afterStateUpdated(function ($state, callable $set) {
+                                $vehicle = Vehicle::find($state);
+                                if ($vehicle && $vehicle->driver) {
+                                    $set('driver_id', $vehicle->driver->id);
+                                }
+                            }),
 
 
                         Forms\Components\DatePicker::make('expense_date')
