@@ -34,7 +34,7 @@ use Illuminate\Database\Eloquent\SoftDeletingScope;
 use Illuminate\Support\HtmlString;
 use Filament\Notifications\Notification;
 use Filament\Forms\Components\FileUpload;
-use App\Services\SunatXmlImportService;
+use App\Services\DespatchImport\SunatXmlImportService;
 use Filament\Tables\Actions\Action as TableAction;
 use Exception;
 
@@ -999,13 +999,13 @@ class DespatchResource extends Resource
                     ->action(function (array $data) {
                         try {
                             $uploadedFiles = $data['xml_files'];
-                            
+
                             if (!is_array($uploadedFiles)) {
                                 $uploadedFiles = [$uploadedFiles];
                             }
 
                             $xmlContents = [];
-                            
+
                             foreach ($uploadedFiles as $uploadedFile) {
                                 if (is_object($uploadedFile) && method_exists($uploadedFile, 'get')) {
                                     $xmlContents[] = $uploadedFile->get();
@@ -1023,11 +1023,11 @@ class DespatchResource extends Resource
                             }
 
                             $importService = app(SunatXmlImportService::class);
-                            
+
                             // Usar importación masiva o individual según la cantidad
                             if (count($xmlContents) === 1) {
                                 $result = $importService->importFromXml($xmlContents[0]);
-                                
+
                                 if ($result['success']) {
                                     $createdEntitiesText = '';
                                     if (!empty($result['created_entities'])) {
@@ -1051,9 +1051,9 @@ class DespatchResource extends Resource
                             } else {
                                 // Importación masiva
                                 $result = $importService->importMultipleFromXml($xmlContents);
-                                
+
                                 $statusSummary = "✅ Importadas: {$result['imported']}\n❌ Fallidas: {$result['failed']}\n📁 Total: {$result['total']}";
-                                
+
                                 $detailsText = '';
                                 foreach ($result['details'] as $detail) {
                                     if ($detail['status'] === 'success') {
@@ -1062,7 +1062,7 @@ class DespatchResource extends Resource
                                         $detailsText .= "\n✗ {$detail['message']}";
                                     }
                                 }
-                                
+
                                 $createdEntitiesText = '';
                                 if (!empty($result['created_entities'])) {
                                     $createdEntitiesText = "\n\n📝 Entidades nuevas:\n• " . implode("\n• ", array_slice($result['created_entities'], 0, 10));
