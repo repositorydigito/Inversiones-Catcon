@@ -176,7 +176,7 @@ class AccountReceivableResource extends Resource
             ->defaultSort('emission_date', 'desc')
             ->filters([
                 SelectFilter::make('status')
-                    ->label('Estado')
+                    ->label('Estado CUENTA POR PAGAR')
                     ->options([
                         'pendiente' => 'Pendiente',
                         'pagado' => 'Pagado',
@@ -206,23 +206,19 @@ class AccountReceivableResource extends Resource
                             );
                     }),
 
-                Filter::make('pay_date')
-                    ->form([
-                        FilterDatePicker::make('pay_from')
-                            ->label('Pagado desde'),
-                        FilterDatePicker::make('pay_until')
-                            ->label('Pagado hasta'),
+                SelectFilter::make('sunat_accepted')
+                    ->label('Estado FACTURA')
+                    ->options([
+                        '1' => 'Aceptado',
+                        '0' => 'Rechazado',
                     ])
                     ->query(function (Builder $query, array $data): Builder {
-                        return $query
-                            ->when(
-                                $data['pay_from'],
-                                fn (Builder $query, $date): Builder => $query->whereDate('pay_date', '>=', $date),
-                            )
-                            ->when(
-                                $data['pay_until'],
-                                fn (Builder $query, $date): Builder => $query->whereDate('pay_date', '<=', $date),
-                            );
+                        if (isset($data['value']) && $data['value'] !== '') {
+                            return $query->whereHas('invoice', function (Builder $query) use ($data) {
+                                $query->where('sunat_accepted', (bool) $data['value']);
+                            });
+                        }
+                        return $query;
                     }),
             ])
             ->actions([
@@ -263,7 +259,7 @@ class AccountReceivableResource extends Resource
 
                 // Tables\Actions\EditAction::make(),
             ])
-            ->bulkActions([                
+            ->bulkActions([
             ]);
     }
 
@@ -285,7 +281,7 @@ class AccountReceivableResource extends Resource
 
     public static function canCreate(): bool
     {
-        return false; 
+        return false;
     }
 
     public static function getNavigationBadge(): ?string
@@ -296,11 +292,11 @@ class AccountReceivableResource extends Resource
     public static function getNavigationBadgeColor(): string|array|null
     {
         $pendingCount = static::getModel()::where('status', 'pendiente')->count();
-        
+
         if ($pendingCount > 0) {
             return 'warning';
         }
-        
+
         return null;
     }
 }
