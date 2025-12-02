@@ -53,8 +53,15 @@ class DespatchFactory
             'arrival_address' => $xmlData['llegada']['address'],
 
             // Inferir departure_location y arrival_location desde frequent_locations
-            'departure_location' => $this->matcher->inferLocationPoint($xmlData['partida']['address']),
-            'arrival_location' => $this->matcher->inferLocationPoint($xmlData['llegada']['address']),
+            // Ahora pasamos también el ubigeo para mejorar el matching
+            'departure_location' => $this->matcher->inferLocationPoint(
+                $xmlData['partida']['address'],
+                $xmlData['partida']['ubigeo']
+            ),
+            'arrival_location' => $this->matcher->inferLocationPoint(
+                $xmlData['llegada']['address'],
+                $xmlData['llegada']['ubigeo']
+            ),
 
             // Punto 1 (carga) automatizado desde el último viaje del conductor
             'loading_point' => $autoLoadingPoint,
