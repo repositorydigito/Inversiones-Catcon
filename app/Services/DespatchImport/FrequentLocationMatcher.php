@@ -8,7 +8,7 @@ use App\Models\OperationalExpenseConfig;
 class FrequentLocationMatcher
 {
     /**
-     * Infiere el punto de ruta (point) basándose en dirección y opcionalmente ubigeo
+     * Infiere el punto de ruta (point) basándose en dirección
      * Usa normalización flexible, extracción de KM y similitud para encontrar coincidencias
      */
     public function inferLocationPoint(?string $address, ?string $ubigeo = null): ?string
@@ -17,21 +17,14 @@ class FrequentLocationMatcher
             return null;
         }
 
-        // PASO 1: Buscar por ubigeo primero (si está disponible)
-        if ($ubigeo) {
-            $ubigeoMatch = $this->findByUbigeo($ubigeo, $address);
-            if ($ubigeoMatch) {
-                return $ubigeoMatch->point;
-            }
-        }
-
-        // PASO 2: Extraer kilómetro de la dirección
+        // PASO 1: Extraer información relevante de la dirección
         $kilometer = $this->extractKilometer($address);
+        $numbers = $this->extractNumbers($address);
 
-        // PASO 3: Normalizar la dirección de entrada
+        // PASO 2: Normalizar la dirección de entrada
         $normalizedAddress = $this->normalizeForComparison($address);
 
-        // PASO 4: Buscar coincidencia exacta (normalizada)
+        // PASO 3: Buscar coincidencia exacta (normalizada)
         $exactMatch = FrequentLocation::where('is_active', true)
             ->get()
             ->first(function ($location) use ($normalizedAddress) {
@@ -42,7 +35,7 @@ class FrequentLocationMatcher
             return $exactMatch->point;
         }
 
-        // PASO 5: Si tenemos kilómetro, buscar por coincidencia de KM + carretera
+        // PASO 4: Si tenemos kilómetro, buscar por coincidencia de KM + carretera
         if ($kilometer !== null) {
             $kmMatch = $this->findByKilometerAndRoad($address, $kilometer);
             if ($kmMatch) {
@@ -50,24 +43,32 @@ class FrequentLocationMatcher
             }
         }
 
-        // PASO 6: Buscar por similitud con umbral reducido (70%)
-        $threshold = 70; // Reducido de 85% a 70%
+        // PASO 5: Buscar por similitud con bonificaciones inteligentes
+        $threshold = 70;
         $bestMatch = null;
         $bestScore = 0;
 
         foreach (FrequentLocation::where('is_active', true)->get() as $location) {
             $normalizedLocationName = $this->normalizeForComparison($location->name);
 
-            // Calcular similitud
+            // Calcular similitud base
             similar_text($normalizedAddress, $normalizedLocationName, $percent);
 
-            // Bonus si coincide el kilómetro
+            // BONUS 1: Si coincide el kilómetro (±1km de tolerancia)
             if ($kilometer !== null) {
                 $locationKm = $this->extractKilometer($location->name);
                 if ($locationKm !== null && abs($kilometer - $locationKm) <= 1) {
-                    // Si el KM coincide (±1km de tolerancia), dar bonus del 20%
                     $percent = min(100, $percent + 20);
                 }
+            }
+
+            // BONUS 2: Por números coincidentes (ubigeos, números de calle, etc.)
+            $locationNumbers = $this->extractNumbers($location->name);
+            $matchingNumbers = array_intersect($numbers, $locationNumbers);
+            if (count($matchingNumbers) > 0) {
+                // +5% por cada número que coincida (máximo +15%)
+                $numberBonus = min(15, count($matchingNumbers) * 5);
+                $percent = min(100, $percent + $numberBonus);
             }
 
             if ($percent >= $threshold && $percent > $bestScore) {
@@ -77,42 +78,6 @@ class FrequentLocationMatcher
         }
 
         return $bestMatch?->point;
-    }
-    /**
-     * Busca location por ubigeo
-     */
-    protected function findByUbigeo(string $ubigeo, string $address): ?FrequentLocation
-    {
-        // Buscar locations que contengan el ubigeo en su nombre
-        // Formato común: "150812 - PANAMERICANA NORTE KM. 170.6 VEGUETA"
-        $locations = FrequentLocation::where('is_active', true)
-            ->where('name', 'LIKE', $ubigeo . '%')
-            ->get();
-
-        if ($locations->count() === 1) {
-            return $locations->first();
-        }
-
-        // Si hay múltiples con el mismo ubigeo, usar similitud de dirección
-        if ($locations->count() > 1) {
-            $normalizedAddress = $this->normalizeForComparison($address);
-            $bestMatch = null;
-            $bestScore = 0;
-
-            foreach ($locations as $location) {
-                $normalizedLocationName = $this->normalizeForComparison($location->name);
-                similar_text($normalizedAddress, $normalizedLocationName, $percent);
-
-                if ($percent > $bestScore) {
-                    $bestScore = $percent;
-                    $bestMatch = $location;
-                }
-            }
-
-            return $bestMatch;
-        }
-
-        return null;
     }
     /**
      * Extrae el número de kilómetro de una dirección
@@ -130,6 +95,29 @@ class FrequentLocationMatcher
         }
 
         return null;
+    }
+    /**
+     * Extrae todos los números relevantes de una dirección
+     * (ubigeos, números de calle, etc.)
+     * Ejemplos:
+     * - "070101 - AV. OQUENDO NRO. 9201" -> [070101, 9201]
+     * - "AV. N STOR GAMBETTA 8583" -> [8583]
+     * - "150812 - PANAMERICANA NORTE KM. 170.6" -> [150812, 170]
+     */
+    protected function extractNumbers(string $address): array
+    {
+        $numbers = [];
+
+        // Buscar todos los números de 3 o más dígitos
+        // Esto captura: ubigeos (6 dígitos), números de calle, kilómetros sin KM, etc.
+        if (preg_match_all('/\b(\d{3,})\b/', $address, $matches)) {
+            foreach ($matches[1] as $number) {
+                // Convertir a entero para normalizar (elimina ceros a la izquierda)
+                $numbers[] = (int) $number;
+            }
+        }
+
+        return array_unique($numbers);
     }
     /**
      * Busca por coincidencia de kilómetro y nombre de carretera
@@ -174,7 +162,7 @@ class FrequentLocationMatcher
                 $score += 10; // Cercano
             }
 
-            if ($score > $bestScore && $score >= 60) { 
+            if ($score > $bestScore && $score >= 60) {
                 $bestScore = $score;
                 $bestMatch = $location;
             }
@@ -223,8 +211,8 @@ class FrequentLocationMatcher
             'unloading_point' => $this->normalizeForComparison($unloadingPoint),
         ];
 
-        // Umbral de similitud (70% más flexible)
-        $threshold = 70;
+        // Umbral de similitud (65% más flexible)
+        $threshold = 65;
 
         // Buscar coincidencia exacta primero
         $exactMatch = OperationalExpenseConfig::all()
