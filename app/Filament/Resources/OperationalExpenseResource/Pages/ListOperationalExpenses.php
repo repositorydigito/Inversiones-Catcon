@@ -15,6 +15,9 @@ class ListOperationalExpenses extends ListRecords
         return [
             Actions\CreateAction::make()
                 ->label('Registrar Gasto Variable'),
+            Actions\Action::make('create_abono')
+                ->label('Registrar Abono')
+                ->url(fn (): string => static::getResource()::getUrl('create-abono')),
         ];
     }
 }

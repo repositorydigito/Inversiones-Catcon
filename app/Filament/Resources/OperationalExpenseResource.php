@@ -101,6 +101,70 @@ class OperationalExpenseResource extends Resource
             ]);
     }
 
+    public static function abonoForm(Form $form): Form
+    {
+        return $form
+            ->schema([
+                Forms\Components\Section::make('Información del Abono')
+                    ->schema([
+                        Forms\Components\Select::make('driver_id')
+                            ->label('Conductor')
+                            ->options(Driver::all()->pluck('full_name', 'id'))
+                            ->required()
+                            ->reactive()
+                            ->afterStateUpdated(function ($state, callable $set) {
+                                $driver = Driver::find($state);
+                                if ($driver && $driver->vehicle) {
+                                    $set('vehicle_id', $driver->vehicle->id);
+                                }
+                            }),
+
+                        Forms\Components\Select::make('vehicle_id')
+                            ->label('Vehículo')
+                            ->options(Vehicle::all()->pluck('plate_number', 'id'))
+                            ->nullable()
+                            ->reactive()
+                            ->afterStateUpdated(function ($state, callable $set) {
+                                $vehicle = Vehicle::find($state);
+                                if ($vehicle && $vehicle->driver) {
+                                    $set('driver_id', $vehicle->driver->id);
+                                }
+                            }),
+
+                        Forms\Components\DatePicker::make('expense_date')
+                            ->label('Fecha del Abono')
+                            ->required()
+                            ->default(now()),
+                    ])->columns(2),
+
+                Forms\Components\Section::make('Detalle del Abono')
+                    ->schema([
+                        Forms\Components\TextInput::make('expense_type_name')
+                            ->label('Tipo')
+                            ->default('Abono')
+                            ->readOnly()
+                            ->required(),
+
+                        Forms\Components\TextInput::make('amount')
+                            ->label('Monto')
+                            ->numeric()
+                            ->prefix('S/.')
+                            ->minValue(0.01)
+                            ->required()
+                            ->validationMessages([
+                                'numeric' => 'El monto solo puede contener números.',
+                                'minValue' => 'El monto debe ser mayor que 0.',
+                                'required' => 'El monto es obligatorio.',
+                            ]),
+
+                        Forms\Components\Textarea::make('description')
+                            ->label('Descripción')
+                            ->default('ABONO')
+                            ->rows(2),
+                    ])->columns(2),
+            ]);
+    }
+
     public static function table(Table $table): Table
     {
         return $table
@@ -128,9 +192,13 @@ class OperationalExpenseResource extends Resource
                     ->badge()
                     ->color(fn(string $state): string => match ($state) {
                         'Gastos de Guía' => 'success',
+                        'Abono' => 'warning',
                         default => 'info',
                     })
                     ->formatStateUsing(function (OperationalExpense $record): string {
+                        if ($record->expense_type_name === 'Abono') {
+                            return 'Abono';
+                        }
                         $category = $record->expenseType->category === 'fixed' ? 'Regular' : 'Variable';
                         return "{$category}";
                     }),
@@ -377,13 +445,29 @@ class OperationalExpenseResource extends Resource
                     ->searchable(),
 
                 SelectFilter::make('expenseType.category')
-                    ->relationship('expenseType', 'category')
-                    ->getOptionLabelFromRecordUsing(fn($record) => match ($record->category) {
+                    ->label('Categoría')
+                    ->options([
                         'fixed' => 'Regular',
                         'variable' => 'Variable',
-                        default => $record->category
-                    })
-                    ->label('Categoría'),
+                        'abono' => 'Abono',
+                    ])
+                    ->query(function (Builder $query, array $data): Builder {
+                        if (isset($data['value'])) {
+                            if ($data['value'] === 'abono') {
+                                // Filtrar por gastos tipo "Abono"
+                                return $query->whereHas('expenseType', function ($query) {
+                                    $query->where('name', 'Abono');
+                                });
+                            } else {
+                                // Filtrar por categoría normal y excluir abonos
+                                return $query->whereHas('expenseType', function ($query) use ($data) {
+                                    $query->where('category', $data['value'])
+                                        ->where('name', '!=', 'Abono');
+                                });
+                            }
+                        }
+                        return $query;
+                    }),
 
                 Filter::make('expense_date')
                     ->form([
@@ -658,6 +742,7 @@ class OperationalExpenseResource extends Resource
         return [
             'index' => Pages\ListOperationalExpenses::route('/'),
             'create' => Pages\CreateOperationalExpense::route('/create'),
+            'create-abono' => Pages\CreateAbono::route('/create-abono'),
             'edit' => Pages\EditOperationalExpense::route('/{record}/edit'),
         ];
     }
