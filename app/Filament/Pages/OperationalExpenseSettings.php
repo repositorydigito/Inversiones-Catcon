@@ -69,7 +69,7 @@ class OperationalExpenseSettings extends Page implements HasTable
                 Tables\Columns\TextColumn::make('rate')
                     ->label('Tarifa')
                     ->money('PEN')
-                    ->formatStateUsing(fn ($state) => 'S/. ' . number_format($state, 3, '.', ','))
+                    ->formatStateUsing(fn ($state) => 'S/. ' . number_format($state, 5, '.', ','))
                     ->sortable(),
                 Tables\Columns\TextColumn::make('travel_allowances')
                     ->label('Viáticos')
@@ -138,7 +138,7 @@ class OperationalExpenseSettings extends Page implements HasTable
                                     ->label('Tarifa')
                                     ->numeric()
                                     ->prefix('S/.')
-                                    ->step(0.001)
+                                    ->step(0.00001)
                                     ->default(0),
                             ])
                             ->columns(3),
@@ -227,7 +227,7 @@ class OperationalExpenseSettings extends Page implements HasTable
                                     ->label('Tarifa')
                                     ->numeric()
                                     ->prefix('S/.')
-                                    ->step(0.001)
+                                    ->step(0.00001)
                                     ->default(0),
                             ])
                             ->columns(3),
