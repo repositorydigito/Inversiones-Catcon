@@ -29,6 +29,25 @@ class DespatchFactory
             ->first();
         $autoLoadingPoint = $previousDespatch?->unloading_point;
 
+        // Inferir puntos de partida y llegada
+        $departureLocation = $this->matcher->inferLocationPoint(
+            $xmlData['partida']['address'],
+            $xmlData['partida']['ubigeo']
+        );
+
+        $arrivalLocation = $this->matcher->inferLocationPoint(
+            $xmlData['llegada']['address'],
+            $xmlData['llegada']['ubigeo']
+        );
+
+        // Log conciso del matching (solo si hay problemas)
+        if (!$departureLocation || !$arrivalLocation) {
+            \Log::warning('⚠️ Importación con ubicaciones faltantes: ' . $xmlData['series'] . '-' . $xmlData['number'], [
+                'partida' => $departureLocation ?? '❌ SIN MATCH (' . $xmlData['partida']['address'] . ')',
+                'llegada' => $arrivalLocation ?? '❌ SIN MATCH (' . $xmlData['llegada']['address'] . ')'
+            ]);
+        }
+
         $despatch = Despatch::create([
             // Datos básicos
             'document_type' => 8, // GRE Transportista
@@ -52,16 +71,9 @@ class DespatchFactory
             'arrival_ubigeo' => $xmlData['llegada']['ubigeo'],
             'arrival_address' => $xmlData['llegada']['address'],
 
-            // Inferir departure_location y arrival_location desde frequent_locations
-            // Ahora pasamos también el ubigeo para mejorar el matching
-            'departure_location' => $this->matcher->inferLocationPoint(
-                $xmlData['partida']['address'],
-                $xmlData['partida']['ubigeo']
-            ),
-            'arrival_location' => $this->matcher->inferLocationPoint(
-                $xmlData['llegada']['address'],
-                $xmlData['llegada']['ubigeo']
-            ),
+            // Usar los puntos inferidos previamente (con logging)
+            'departure_location' => $departureLocation,
+            'arrival_location' => $arrivalLocation,
 
             // Punto 1 (carga) automatizado desde el último viaje del conductor
             'loading_point' => $autoLoadingPoint,

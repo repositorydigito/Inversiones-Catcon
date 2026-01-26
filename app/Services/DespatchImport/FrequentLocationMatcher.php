@@ -47,34 +47,72 @@ class FrequentLocationMatcher
         $threshold = 70;
         $bestMatch = null;
         $bestScore = 0;
+        $candidates = []; // Para logging
 
         foreach (FrequentLocation::where('is_active', true)->get() as $location) {
             $normalizedLocationName = $this->normalizeForComparison($location->name);
 
             // Calcular similitud base
             similar_text($normalizedAddress, $normalizedLocationName, $percent);
+            $basePercent = $percent;
 
             // BONUS 1: Si coincide el kilómetro (±1km de tolerancia)
+            $kmBonus = 0;
             if ($kilometer !== null) {
                 $locationKm = $this->extractKilometer($location->name);
                 if ($locationKm !== null && abs($kilometer - $locationKm) <= 1) {
-                    $percent = min(100, $percent + 20);
+                    $kmBonus = 20;
+                    $percent = min(100, $percent + $kmBonus);
                 }
             }
 
             // BONUS 2: Por números coincidentes (ubigeos, números de calle, etc.)
             $locationNumbers = $this->extractNumbers($location->name);
             $matchingNumbers = array_intersect($numbers, $locationNumbers);
+            $numberBonus = 0;
             if (count($matchingNumbers) > 0) {
                 // +5% por cada número que coincida (máximo +15%)
                 $numberBonus = min(15, count($matchingNumbers) * 5);
                 $percent = min(100, $percent + $numberBonus);
             }
 
+            // Guardar candidato para logging
+            if ($percent >= 50) { // Solo guardar candidatos razonables
+                $candidates[] = [
+                    'location' => $location->name,
+                    'point' => $location->point,
+                    'score_base' => round($basePercent, 1),
+                    'bonus_km' => $kmBonus,
+                    'bonus_numeros' => $numberBonus,
+                    'score_final' => round($percent, 1),
+                    'sobre_threshold' => $percent >= $threshold ? 'SÍ' : 'NO'
+                ];
+            }
+
             if ($percent >= $threshold && $percent > $bestScore) {
                 $bestScore = $percent;
                 $bestMatch = $location;
             }
+        }
+
+        // Solo loggear si NO hay match o si el match es débil
+        if (!$bestMatch) {
+            // Ordenar por score final descendente
+            usort($candidates, fn($a, $b) => $b['score_final'] <=> $a['score_final']);
+
+            \Log::warning('NO se encontró match para dirección', [
+                'direccion' => $address,
+                'ubigeo' => $ubigeo,
+                'mejor_candidato' => !empty($candidates) ? $candidates[0] : 'ninguno'
+            ]);
+        } elseif ($bestScore < 80) {
+            // Si el match es débil (score bajo), advertir
+            \Log::warning('Match DÉBIL encontrado', [
+                'direccion' => $address,
+                'punto_asignado' => $bestMatch->point,
+                'score' => round($bestScore, 1) . '%',
+                'frequent_location' => $bestMatch->name
+            ]);
         }
 
         return $bestMatch?->point;

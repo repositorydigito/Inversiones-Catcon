@@ -81,6 +81,14 @@ class SunatXmlImportService
         // Recalcular viáticos después de importar todas las guías
         if ($results['imported'] > 0) {
             $this->calculator->recalculateTravelAllowancesAfterImport();
+
+            // Log resumen de importación
+            Log::info('Resumen de importación múltiple', [
+                'total_procesados' => $results['total'],
+                'importados_exitosamente' => $results['imported'],
+                'fallidos' => $results['failed'],
+                'nuevas_entidades_creadas' => count($results['created_entities'])
+            ]);
         }
 
         $results['created_entities'] = array_unique($results['created_entities']);
@@ -112,9 +120,9 @@ class SunatXmlImportService
 
             DB::commit();
 
-            Log::info("XML importado exitosamente", [
-                'despatch_id' => $despatch->id,
-                'serie_numero' => $despatch->series . '-' . $despatch->number
+            Log::info("XML importado: {$despatch->series}-{$despatch->number} | {$despatch->departure_location} → {$despatch->arrival_location}", [
+                'id' => $despatch->id,
+                'conductor' => $despatch->driver->first_name . ' ' . $despatch->driver->last_name
             ]);
 
             return [
