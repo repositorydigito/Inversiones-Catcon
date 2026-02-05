@@ -778,19 +778,24 @@ class DespatchResource extends Resource
                     ->badge()
                     ->label('Estado SUNAT')
                     ->getStateUsing(function (Despatch $record): string {
-                        // Solo verificamos accepted_by_sunat
-                        if ($record->accepted_by_sunat) {
+                        // Lógica: null = Generado, true = Aceptado, false = Anulado
+                        if ($record->accepted_by_sunat === true) {
                             return 'Aceptado';
+                        }
+                        if ($record->accepted_by_sunat === false) {
+                            return 'Anulado';
                         }
                         return 'Generado';
                     })
                     ->colors([
-                        'success' => 'Aceptado', // Verde para Aceptado
-                        'warning' => 'Generado', // Amarillo/Naranja para Generado
+                        'success' => 'Aceptado',   // Verde para Aceptado
+                        'warning' => 'Generado',   // Amarillo para Generado
+                        'danger' => 'Anulado',     // Rojo para Anulado
                     ])
                     ->icons([
                         'heroicon-s-check-circle' => 'Aceptado',
                         'heroicon-s-clock' => 'Generado',
+                        'heroicon-s-x-circle' => 'Anulado',
                     ])
                     //->tooltip(fn (Despatch $record): ?string => $record->sunat_description)
                     ->sortable(),
@@ -807,7 +812,26 @@ class DespatchResource extends Resource
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
-                //
+                Tables\Filters\SelectFilter::make('estado')
+                    ->label('Estado SUNAT')
+                    ->options([
+                        // 'generado' => 'Generado',
+                        'aceptado' => 'Aceptado',
+                        'anulado' => 'Anulado',
+                    ])
+                    ->query(function (Builder $query, array $data) {
+                        if (!isset($data['value'])) {
+                            return $query;
+                        }
+
+                        return match($data['value']) {
+                            // 'generado' => $query->whereNull('accepted_by_sunat'),
+                            'aceptado' => $query->where('accepted_by_sunat', true),
+                            'anulado' => $query->where('accepted_by_sunat', false),
+                            default => $query,
+                        };
+                    })
+                    ->placeholder('Todos los estados'),
             ])
             ->actions([
                 // Acción para consultar estado en SUNAT directo
@@ -864,7 +888,7 @@ class DespatchResource extends Resource
 
                         $record->refresh();
                     })
-                    ->visible(fn (Despatch $record): bool => !$record->accepted_by_sunat && !is_null($record->sunat_ticket)),
+                    ->visible(fn (Despatch $record): bool => $record->accepted_by_sunat !== true && $record->accepted_by_sunat !== false && !is_null($record->sunat_ticket)),
 
                 // Acción para reenviar a SUNAT (si falló el envío inicial)
                 Tables\Actions\Action::make('resendToSunat')
@@ -894,9 +918,49 @@ class DespatchResource extends Resource
 
                         $record->refresh();
                     })
-                    ->visible(fn (Despatch $record): bool => !$record->accepted_by_sunat && (is_null($record->sunat_ticket) || !empty($record->sunat_soap_error)))
+                    ->visible(fn (Despatch $record): bool => $record->accepted_by_sunat !== true && $record->accepted_by_sunat !== false && (is_null($record->sunat_ticket) || !empty($record->sunat_soap_error)))
                     ->requiresConfirmation()
                     ->modalDescription('¿Está seguro de reenviar esta guía a SUNAT?'),
+
+                // Acción para anular la guía
+                Tables\Actions\Action::make('void')
+                    ->label('Anular')
+                    ->icon('heroicon-o-x-circle')
+                    ->color('danger')
+                    ->action(function (Despatch $record) {
+                        try {
+                            // Eliminar gastos operativos primero (aunque con cascade se eliminan solos)
+                            $record->operationalExpenses()->delete();
+
+                            // Cambiar el estado a anulado
+                            $record->update([
+                                'accepted_by_sunat' => false,
+                                'sunat_description' => 'Anulado manualmente por el usuario',
+                            ]);
+
+                            Notification::make()
+                                ->title('Guía Anulada')
+                                ->body("La guía {$record->series}-{$record->number} ha sido anulada correctamente.")
+                                ->success()
+                                ->send();
+
+                        } catch (Exception $e) {
+                            Notification::make()
+                                ->title('Error al Anular')
+                                ->body($e->getMessage())
+                                ->danger()
+                                ->send();
+                        }
+
+                        $record->refresh();
+                    })
+                    ->visible(fn (Despatch $record): bool => $record->accepted_by_sunat !== false)
+                    ->requiresConfirmation()
+                    ->modalHeading('Anular Guía de Remisión')
+                    ->modalDescription(fn (Despatch $record): string =>
+                        "¿Está seguro de anular la guía {$record->series}-{$record->number}? Esta acción también eliminará los gastos operativos asociados."
+                    )
+                    ->modalSubmitActionLabel('Sí, anular'),
 
                 /* Tables\Actions\Action::make('downloadPdf')
                     ->label('PDF')
@@ -965,18 +1029,21 @@ class DespatchResource extends Resource
                     ->visible(fn (Despatch $record): bool => !empty($record->enlace_del_cdr)),
 
                 Tables\Actions\DeleteAction::make()
-                    ->visible(fn (Despatch $record): bool => !$record->accepted_by_sunat)
+                    ->visible(fn (Despatch $record): bool => $record->accepted_by_sunat !== true && $record->accepted_by_sunat !== false)
                     ->requiresConfirmation()
                     ->modalHeading('Eliminar Guía de Remisión')
                     ->modalDescription(fn (Despatch $record): string =>
-                        "¿Está seguro de eliminar la guía {$record->series}-{$record->number}? Esta acción no se puede deshacer."
+                        "¿Está seguro de eliminar la guía {$record->series}-{$record->number}? Esta acción no se puede deshacer y también eliminará los gastos operativos asociados."
                     )
                     ->modalSubmitActionLabel('Sí, eliminar')
                     ->successNotificationTitle('Guía eliminada')
                     ->before(function (Despatch $record) {
                         // Verificación adicional de seguridad
-                        if ($record->accepted_by_sunat) {
+                        if ($record->accepted_by_sunat === true) {
                             throw new \Exception('No se puede eliminar una guía aceptada por SUNAT');
+                        }
+                        if ($record->accepted_by_sunat === false) {
+                            throw new \Exception('No se puede eliminar una guía anulada. Use la opción Anular si desea cambiar el estado.');
                         }
                     }),
 
