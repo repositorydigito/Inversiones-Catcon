@@ -87,7 +87,16 @@ class DespatchObserver
             return;
         }
 
-        // Calcular el total de gastos operativos
+        // Verificar si ya existe un gasto operativo para este despatch
+        // Los gastos operativos son registros históricos inmutables - una vez creados, NO se modifican
+        $existingExpense = OperationalExpense::where('despatch_id', $despatch->id)->first();
+
+        if ($existingExpense) {
+            // Si ya existe, no hacer nada - preservar datos históricos
+            return;
+        }
+
+        // Si no existe, crear el gasto operativo con los datos actuales del despatch
         $totalExpenses = $despatch->tolls + $despatch->loading_expenses +
                         $despatch->travel_allowances + $despatch->variable_salary +
                         $despatch->operations_manager + $despatch->security;
@@ -97,12 +106,11 @@ class DespatchObserver
             ['category' => 'fixed', 'is_active' => true]
         );
 
-        OperationalExpense::updateOrCreate([
+        OperationalExpense::create([
             'driver_id' => $despatch->driver_id,
-            'despatch_id' => $despatch->id,
-            'expense_type_id' => $expenseType->id,
-        ], [
             'vehicle_id' => $despatch->vehicle_id,
+            'expense_type_id' => $expenseType->id,
+            'despatch_id' => $despatch->id,
             'client_id' => $despatch->client_id,
             'expense_date' => $despatch->emission_date,
             'amount' => $totalExpenses,
