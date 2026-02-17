@@ -1047,6 +1047,8 @@ class DespatchResource extends Resource
                         }
                     }),
 
+                Tables\Actions\DeleteAction::make(),
+
             ])
             ->headerActions([
                 TableAction::make('importFromXml')
