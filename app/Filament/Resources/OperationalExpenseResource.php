@@ -705,19 +705,30 @@ class OperationalExpenseResource extends Resource
                                         Forms\Components\TextInput::make('travel_allowances')
                                             ->label('Viáticos')
                                             ->prefix('S/.')
-                                            ->disabled()
-                                            ->dehydrated(),
+                                            ->numeric()
+                                            ->minValue(0)
+                                            ->dehydrated()
+                                            ->helperText('⚠️ Los viáticos se asignan automáticamente al primer viaje del día por conductor. Modificar solo si hay una corrección justificada.'),
                                     ])
                                     ->columns(3),
                             ])
                             ->columns(2)
                     ])
                     ->action(function (OperationalExpense $record, array $data): void {
+                        // Separar viáticos del resto: el observer los sobreescribiría si van en el update principal
+                        $travelAllowances = $data['travel_allowances'] ?? null;
+                        unset($data['travel_allowances']);
+
                         // Calcular venta neta si hay tarifa y peso bruto
                         if (isset($data['rate']) && $record->despatch->total_gross_weight) {
                             $data['net_sale'] = $record->despatch->total_gross_weight * $data['rate'];
                         }
                         $record->despatch->update($data);
+
+                        // Guardar viáticos silenciosamente para que el observer no los recalcule
+                        if ($travelAllowances !== null) {
+                            $record->despatch->updateQuietly(['travel_allowances' => $travelAllowances]);
+                        }
 
                         Notification::make()
                             ->title('Información de ruta actualizada')
